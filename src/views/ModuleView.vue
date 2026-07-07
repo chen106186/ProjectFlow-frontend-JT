@@ -1,14 +1,7 @@
 <template>
   <div class="module-view">
-    <a-breadcrumb class="module-view__breadcrumb">
-      <a-breadcrumb-item>首页</a-breadcrumb-item>
-      <a-breadcrumb-item v-if="route.meta.group !== route.meta.title">{{ route.meta.group }}</a-breadcrumb-item>
-      <a-breadcrumb-item>{{ route.meta.title }}</a-breadcrumb-item>
-    </a-breadcrumb>
-
     <header class="module-hero">
       <div>
-        <h1>{{ route.meta.title }}</h1>
         <p>{{ config.subtitle }}</p>
       </div>
       <a-space class="module-hero__actions">
@@ -306,10 +299,6 @@ const rankingRows = [
   min-width: 0;
 }
 
-.module-view__breadcrumb {
-  margin-bottom: 12px;
-}
-
 .module-hero {
   display: flex;
   align-items: flex-start;
@@ -324,13 +313,6 @@ const rankingRows = [
 
 .module-hero__actions {
   flex-shrink: 0;
-}
-
-.module-hero h1 {
-  margin: 0 0 8px;
-  color: #1f1f1f;
-  font-size: 24px;
-  font-weight: 600;
 }
 
 .module-hero p {
