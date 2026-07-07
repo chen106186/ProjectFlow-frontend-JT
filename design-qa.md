@@ -1,10 +1,10 @@
 # Design QA
 
 - Source visual truth: `../项目开发与管理平台.docx` embedded `word/media/image3.png`
-- Implementation screenshot: `.codex-tools/home-implementation.png`
-- Viewport: 1366 x 678 normalized comparison region
+- Implementation screenshot: `.codex-tools/home-1920x1080.png`
+- Viewport: 1920 x 1080 desktop verification
 - State: 首页空数据初始化状态
-- Full-view comparison evidence: `.codex-tools/home-comparison.png`
+- Full-view evidence: `.codex-tools/home-1920x1080.png`
 - Focused region comparison: 未单独拆分；本次范围为平台壳层初始化，完整视图已清晰覆盖顶部栏、侧边导航、指标卡、待办区和日历区。
 
 ## Findings
@@ -21,6 +21,7 @@
 - 将日历头部改为中文年月和左右切换控件。
 - 增加 Day.js 中文本地化，使星期标题显示为中文。
 - 移除无通知数据时的红色零角标。
+- 移除内容区 1440px 最大宽度限制，使首页和模块页完整利用 1920px 宽屏视窗。
 
 ## Implementation Checklist
 

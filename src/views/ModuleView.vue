@@ -31,8 +31,7 @@ const handleBackHome = () => {
 
 <style scoped>
 .module-view {
-  max-width: 1440px;
-  margin: 0 auto;
+  min-width: 0;
 }
 
 .module-view__breadcrumb {
