@@ -2,9 +2,8 @@
   <div class="module-view">
     <template v-if="isPersonalTasks">
       <section v-if="personalMode === 'task-detail'" class="personal-page">
-        <h1 class="prototype-title">个人工作 &gt; 我的任务 &gt; 任务详情</h1>
         <div class="detail-actions">
-          <a-button class="back-button" @click="personalMode = 'task-list'">
+          <a-button class="back-button" @click="handleBackToTaskList">
             <template #icon><LeftOutlined /></template>
             返回
           </a-button>
@@ -85,7 +84,6 @@
       </section>
 
       <section v-else class="personal-page">
-        <h1 class="prototype-title">个人工作 &gt; 我的任务</h1>
         <a-card class="prototype-card filter-panel" :bordered="false">
           <a-form class="prototype-filter" layout="inline">
             <a-form-item label="任务名称"><a-input /></a-form-item>
@@ -123,7 +121,7 @@
               <tbody>
                 <tr v-for="record in personalTasks" :key="record.id">
                   <td>{{ record.index }}</td>
-                  <td><button class="text-link" type="button" @click="personalMode = 'task-detail'">{{ record.name }}</button></td>
+                  <td><button class="text-link" type="button" @click="handleTaskDetail">{{ record.name }}</button></td>
                   <td><button class="text-link" type="button">{{ record.project }}</button></td>
                   <td>{{ record.role }}</td>
                   <td>{{ record.tag }}</td>
@@ -153,8 +151,7 @@
 
     <template v-else-if="isPersonalBugs">
       <section v-if="personalMode === 'bug-detail'" class="personal-page">
-        <h1 class="prototype-title">个人工作 &gt; 我的Bug &gt; Bug详情</h1>
-        <a-button class="back-button" @click="personalMode = 'bug-list'">
+        <a-button class="back-button" @click="handleBackToBugList">
           <template #icon><LeftOutlined /></template>
           返回
         </a-button>
@@ -180,7 +177,6 @@
       </section>
 
       <section v-else class="personal-page">
-        <h1 class="prototype-title">个人工作 &gt; 我的Bug</h1>
         <a-card class="prototype-card filter-panel" :bordered="false">
           <a-form class="prototype-filter bug-filter" layout="inline">
             <a-form-item label="搜索"><a-input /></a-form-item>
@@ -214,7 +210,7 @@
           <a-table :columns="personalBugColumns" :data-source="personalBugs" :pagination="smallPagination" :scroll="{ x: 1320, y: 330 }" size="middle" row-key="id">
             <template #bodyCell="{ column, record, text }">
               <template v-if="column.dataIndex === 'title'">
-                <a-button type="link" class="cell-link bug-title" @click="personalMode = 'bug-detail'">
+                <a-button type="link" class="cell-link bug-title" @click="handleBugDetail">
                   <BugOutlined />{{ text }}
                 </a-button>
               </template>
@@ -225,7 +221,7 @@
                 <a-tag :color="record.statusColor">{{ text }}</a-tag>
               </template>
               <template v-else-if="column.dataIndex === 'operation'">
-                <a-button type="link" size="small" @click="personalMode = 'bug-detail'">详情</a-button>
+                <a-button type="link" size="small" @click="handleBugDetail">详情</a-button>
               </template>
               <template v-else>{{ text }}</template>
             </template>
@@ -237,7 +233,9 @@
     <template v-else-if="isPersonalDaily">
       <section class="personal-page daily-page">
         <div class="daily-header">
-          <h1 class="prototype-title">个人工作 / 日报</h1>
+          <div class="prototype-heading prototype-heading--inline">
+            <h1 class="prototype-title">日报</h1>
+          </div>
           <a-space>
             <a-select class="daily-select" value="全部" :options="selectOptions" />
             <a-input-search class="daily-search" placeholder="请搜索或选择人员" />
@@ -297,7 +295,9 @@
       <section class="personal-page statistics-page">
         <a-card class="prototype-card statistics-shell" :bordered="false">
           <div class="stats-title-row">
-            <h1>我的统计</h1>
+            <div class="prototype-heading prototype-heading--inline">
+              <h1 class="prototype-title">我的统计</h1>
+            </div>
             <a-select class="daily-select" value="今天" :options="todayOptions" />
           </div>
           <section class="stat-cards">
@@ -308,27 +308,28 @@
           </section>
           <section class="stats-panels">
             <a-card class="chart-card" :bordered="false" title="任务完成趋势">
-              <div class="line-chart">
-                <span v-for="point in trendPoints" :key="point.day" class="trend-point" :style="{ left: point.left, bottom: point.bottom }">{{ point.value }}</span>
-              </div>
-              <div class="axis-labels"><span>06/01</span><span>06/05</span><span>06/09</span><span>06/13</span><span>06/17</span><span>06/21</span></div>
+              <div ref="trendChartRef" class="echart trend-chart"></div>
             </a-card>
             <a-card class="chart-card" :bordered="false" title="工作分布">
               <div class="distribution">
-                <div>
+                <div class="distribution-panel">
                   <h3>项目分布</h3>
-                  <a-progress type="circle" :percent="60" :size="128" />
-                  <p>XX管理平台 60%</p>
-                  <p>XX电商平台 30%</p>
-                  <p>其他项目 10%</p>
+                  <div ref="projectChartRef" class="echart donut-chart"></div>
+                  <ul class="chart-legend">
+                    <li><span class="legend-dot blue"></span>XX管理平台 <strong>60%</strong></li>
+                    <li><span class="legend-dot cyan"></span>XX电商平台 <strong>30%</strong></li>
+                    <li><span class="legend-dot gray"></span>其他项目 <strong>10%</strong></li>
+                  </ul>
                 </div>
-                <div>
+                <div class="distribution-panel">
                   <h3>任务状态分布</h3>
-                  <a-progress type="circle" :percent="60" :size="128" status="success" />
-                  <p>已完成 60%</p>
-                  <p>进行中 25%</p>
-                  <p>逾期 10%</p>
-                  <p>待开始 5%</p>
+                  <div ref="statusChartRef" class="echart donut-chart"></div>
+                  <ul class="chart-legend">
+                    <li><span class="legend-dot green"></span>已完成 <strong>60%</strong></li>
+                    <li><span class="legend-dot blue"></span>进行中 <strong>25%</strong></li>
+                    <li><span class="legend-dot red"></span>逾期 <strong>10%</strong></li>
+                    <li><span class="legend-dot gray"></span>待开始 <strong>5%</strong></li>
+                  </ul>
                 </div>
               </div>
             </a-card>
@@ -468,16 +469,24 @@ import {
   ScheduleOutlined,
   UndoOutlined,
 } from '@ant-design/icons-vue'
-import { computed, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import * as echarts from 'echarts'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
+const router = useRouter()
 const personalMode = ref('task-list')
 const taskEditOpen = ref(false)
 const bugEditOpen = ref(false)
 const dailyEditOpen = ref(false)
 const uploadOpen = ref(false)
 const dailyHasRecord = ref(true)
+const trendChartRef = ref(null)
+const projectChartRef = ref(null)
+const statusChartRef = ref(null)
+let trendChart
+let projectChart
+let statusChart
 
 const isPersonalTasks = computed(() => route.name === 'PersonalTasks')
 const isPersonalBugs = computed(() => route.name === 'PersonalBugs')
@@ -485,13 +494,175 @@ const isPersonalDaily = computed(() => route.name === 'PersonalDaily')
 const isPersonalStatistics = computed(() => route.name === 'PersonalStatistics')
 
 watch(
-  () => route.name,
-  name => {
-    personalMode.value = name === 'PersonalBugs' ? 'bug-list' : 'task-list'
+  () => [route.name, route.query.detail],
+  ([name, detail]) => {
+    if (name === 'PersonalTasks' && detail === 'task') {
+      personalMode.value = 'task-detail'
+    } else if (name === 'PersonalBugs' && detail === 'bug') {
+      personalMode.value = 'bug-detail'
+    } else {
+      personalMode.value = name === 'PersonalBugs' ? 'bug-list' : 'task-list'
+    }
+
     dailyHasRecord.value = true
+
+    if (name === 'PersonalStatistics') {
+      nextTick(renderStatisticsCharts)
+    }
   },
   { immediate: true },
 )
+
+function disposeStatisticsCharts() {
+  trendChart?.dispose()
+  projectChart?.dispose()
+  statusChart?.dispose()
+  trendChart = undefined
+  projectChart = undefined
+  statusChart = undefined
+}
+
+function createDonutOption(data, colors) {
+  return {
+  color: colors,
+  tooltip: { show: false },
+  series: [
+    {
+      type: 'pie',
+      radius: ['68%', '82%'],
+      center: ['50%', '50%'],
+      avoidLabelOverlap: true,
+      label: {
+        show: true,
+        position: 'center',
+        formatter: '{d}%',
+        color: '#111827',
+        fontSize: 28,
+        fontWeight: 700,
+      },
+      labelLine: { show: false },
+      data,
+    },
+  ],
+  }
+}
+
+function renderStatisticsCharts() {
+  if (!trendChartRef.value || !projectChartRef.value || !statusChartRef.value) {
+    return
+  }
+
+  disposeStatisticsCharts()
+
+  trendChart = echarts.init(trendChartRef.value)
+  projectChart = echarts.init(projectChartRef.value)
+  statusChart = echarts.init(statusChartRef.value)
+
+  trendChart.setOption({
+    color: ['#2f80ed'],
+    tooltip: {
+      trigger: 'axis',
+      formatter: params => {
+        const item = params[0]
+        return `${item.axisValue}<br/>完成数：${item.value}`
+      },
+    },
+    grid: { top: 28, right: 24, bottom: 34, left: 42 },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: ['06/01', '06/03', '06/05', '06/07', '06/09', '06/11', '06/13', '06/15', '06/17', '06/19', '06/21'],
+      axisLine: { lineStyle: { color: '#d8dee8' } },
+      axisLabel: { color: '#6b7280', fontSize: 12 },
+      axisTick: { show: false },
+    },
+    yAxis: {
+      type: 'value',
+      min: 0,
+      max: 5,
+      splitLine: { lineStyle: { color: '#eef2f7' } },
+      axisLabel: { color: '#6b7280', fontSize: 12 },
+    },
+    series: [
+      {
+        name: '完成数',
+        type: 'line',
+        smooth: false,
+        symbol: 'circle',
+        symbolSize: 8,
+        data: [1, 2, 1, 3, 2, 3, 1, 2, 3, 2, 4],
+        lineStyle: { width: 3, color: '#2f80ed' },
+        itemStyle: { color: '#fff', borderColor: '#2f80ed', borderWidth: 3 },
+        areaStyle: { color: 'rgba(47, 128, 237, 0.12)' },
+        label: {
+          show: true,
+          formatter: ({ value }) => value,
+          color: '#2f80ed',
+          fontWeight: 700,
+        },
+      },
+    ],
+  })
+
+  projectChart.setOption(createDonutOption(
+    [
+      { value: 60, name: 'XX管理平台' },
+      { value: 30, name: 'XX电商平台' },
+      { value: 10, name: '其他项目' },
+    ],
+    ['#1677ff', '#69b1ff', '#c8cfd9'],
+  ))
+
+  statusChart.setOption(createDonutOption(
+    [
+      { value: 60, name: '已完成' },
+      { value: 25, name: '进行中' },
+      { value: 10, name: '逾期' },
+      { value: 5, name: '待开始' },
+    ],
+    ['#27c27a', '#1677ff', '#ff4d4f', '#c8cfd9'],
+  ))
+}
+
+const handleChartResize = () => {
+  trendChart?.resize()
+  projectChart?.resize()
+  statusChart?.resize()
+}
+
+window.addEventListener('resize', handleChartResize)
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleChartResize)
+  disposeStatisticsCharts()
+})
+
+const updateDetailQuery = detail => {
+  router.replace({
+    path: route.path,
+    query: detail ? { ...route.query, detail } : Object.fromEntries(Object.entries(route.query).filter(([key]) => key !== 'detail')),
+  })
+}
+
+const handleTaskDetail = () => {
+  personalMode.value = 'task-detail'
+  updateDetailQuery('task')
+}
+
+const handleBackToTaskList = () => {
+  personalMode.value = 'task-list'
+  updateDetailQuery()
+}
+
+const handleBugDetail = () => {
+  personalMode.value = 'bug-detail'
+  updateDetailQuery('bug')
+}
+
+const handleBackToBugList = () => {
+  personalMode.value = 'bug-list'
+  updateDetailQuery()
+}
 
 const selectOptions = [
   { label: '全部', value: '全部' },
@@ -654,8 +825,19 @@ const trendPoints = [
 
 .personal-page,
 .module-fallback {
+  width: 100%;
   max-width: 1440px;
+  min-width: 0;
   margin: 0 auto;
+}
+
+.personal-page {
+  scrollbar-color: #b8b8b8 transparent;
+  scrollbar-width: thin;
+}
+
+.statistics-page {
+  max-width: 1280px;
 }
 
 .prototype-title {
@@ -663,6 +845,22 @@ const trendPoints = [
   color: #222;
   font-size: 24px;
   font-weight: 700;
+}
+
+.prototype-heading {
+  margin-bottom: 14px;
+}
+
+.prototype-heading .prototype-title {
+  margin: 6px 0 0;
+}
+
+.prototype-heading--inline {
+  margin-bottom: 0;
+}
+
+.prototype-heading--inline .prototype-title {
+  margin-top: 6px;
 }
 
 .prototype-card {
@@ -673,16 +871,47 @@ const trendPoints = [
 
 .filter-panel {
   margin-bottom: 10px;
+  overflow: hidden;
+}
+
+.filter-panel :deep(.ant-card-body) {
+  padding: 18px 24px 22px;
 }
 
 .prototype-filter {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px 44px;
+  gap: 18px 40px;
+  align-items: end;
+  width: 100%;
 }
 
 .prototype-filter :deep(.ant-form-item) {
+  min-width: 0;
   margin: 0;
+}
+
+.prototype-filter :deep(.ant-form-item-row) {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  width: 100%;
+}
+
+.prototype-filter :deep(.ant-form-item-label) {
+  min-width: 76px;
+  padding: 0 10px 0 0;
+  text-align: right;
+}
+
+.prototype-filter :deep(.ant-form-item-label > label) {
+  height: 38px;
+  color: #222;
+  font-size: 14px;
+}
+
+.prototype-filter :deep(.ant-form-item-control) {
+  min-width: 0;
 }
 
 .prototype-filter :deep(.ant-form-item-control-input-content) {
@@ -692,15 +921,31 @@ const trendPoints = [
 .prototype-filter :deep(.ant-input),
 .prototype-filter :deep(.ant-select),
 .prototype-filter :deep(.ant-picker) {
+  min-width: 0;
   width: 100%;
+  height: 38px;
+}
+
+.prototype-filter :deep(.ant-select-selector) {
+  min-height: 38px;
 }
 
 .filter-buttons {
+  grid-column: 4;
   justify-self: end;
 }
 
+.filter-buttons :deep(.ant-form-item-row) {
+  display: block;
+}
+
+.filter-buttons :deep(.ant-btn) {
+  min-width: 72px;
+  height: 36px;
+}
+
 .bug-filter {
-  grid-template-columns: 1.3fr repeat(3, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .list-card {
@@ -738,6 +983,8 @@ const trendPoints = [
   width: 100%;
   min-height: 334px;
   overflow: auto;
+  scrollbar-color: #9b9b9b #f1f1f1;
+  scrollbar-width: thin;
 }
 
 .prototype-table {
@@ -859,6 +1106,8 @@ const trendPoints = [
 .log-card :deep(.ant-card-body) {
   max-height: 318px;
   overflow: auto;
+  scrollbar-color: #b8b8b8 transparent;
+  scrollbar-width: thin;
 }
 
 .section-title {
@@ -880,8 +1129,9 @@ const trendPoints = [
 }
 
 .related-bugs :deep(.ant-card-body) {
-  max-height: 492px;
   overflow: auto;
+  scrollbar-color: #b8b8b8 transparent;
+  scrollbar-width: thin;
 }
 
 .bug-mini-card {
@@ -920,6 +1170,8 @@ const trendPoints = [
   max-height: calc(100vh - 174px);
   padding: 8px 16px;
   overflow: auto;
+  scrollbar-color: #b8b8b8 transparent;
+  scrollbar-width: thin;
 }
 
 .bug-detail-card h2 {
@@ -1097,8 +1349,12 @@ const trendPoints = [
 }
 
 .statistics-shell {
-  padding: 18px 22px;
+  min-height: 572px;
+  padding: 18px 22px 22px;
+  overflow: hidden;
   background: #fff;
+  border-color: #e9eef5;
+  border-radius: 8px;
 }
 
 .stats-title-row {
@@ -1115,7 +1371,7 @@ const trendPoints = [
 
 .stat-cards {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(150px, 1fr));
   gap: 12px;
   margin-bottom: 16px;
 }
@@ -1125,9 +1381,11 @@ const trendPoints = [
   gap: 16px;
   align-items: center;
   min-height: 94px;
-  padding: 16px;
+  padding: 16px 18px;
+  background: #fff;
   border: 1px solid #edf0f3;
   border-radius: 8px;
+  box-shadow: 0 4px 14px rgb(15 35 55 / 4%);
 }
 
 .stat-card span:not(.stat-icon) {
@@ -1160,24 +1418,90 @@ const trendPoints = [
 
 .stats-panels {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(460px, 0.9fr);
+  grid-template-columns: minmax(0, 1.06fr) minmax(0, 0.94fr);
   gap: 16px;
 }
 
 .chart-card {
   min-height: 330px;
+  min-width: 0;
   border: 1px solid #edf0f3;
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgb(15 35 55 / 4%);
+}
+
+.chart-card :deep(.ant-card-head) {
+  min-height: 52px;
+  border-bottom: 0;
+}
+
+.chart-card :deep(.ant-card-head-title) {
+  color: #17233d;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.chart-card :deep(.ant-card-body) {
+  min-width: 0;
+  padding: 14px 22px 22px;
+  overflow: hidden;
+}
+
+.echart {
+  width: 100%;
+  min-width: 0;
+}
+
+.trend-chart {
+  height: 286px;
+}
+
+.donut-chart {
+  width: 136px;
+  height: 136px;
 }
 
 .line-chart {
   position: relative;
-  height: 190px;
-  margin: 18px 18px 8px;
+  height: 206px;
+  margin: 8px 18px 8px 26px;
   background:
-    linear-gradient(#eef2f7 1px, transparent 1px) 0 0 / 100% 38px,
-    linear-gradient(90deg, #eef2f7 1px, transparent 1px) 0 0 / 72px 100%;
+    linear-gradient(#eef2f7 1px, transparent 1px) 0 0 / 100% 41px,
+    linear-gradient(90deg, #eef2f7 1px, transparent 1px) 0 0 / 76px 100%,
+    linear-gradient(180deg, rgb(22 119 255 / 10%), rgb(22 119 255 / 2%));
   border-left: 1px solid #d8dee8;
   border-bottom: 1px solid #d8dee8;
+}
+
+.line-chart::after {
+  position: absolute;
+  inset: 28px 18px 42px 24px;
+  content: '';
+  background:
+    linear-gradient(145deg, transparent 0 8%, #3d8bfd 8.3% 8.8%, transparent 9.1% 17%, #3d8bfd 17.3% 17.8%, transparent 18.1% 30%, #3d8bfd 30.3% 30.8%, transparent 31.1% 44%, #3d8bfd 44.3% 44.8%, transparent 45.1% 58%, #3d8bfd 58.3% 58.8%, transparent 59.1% 72%, #3d8bfd 72.3% 72.8%, transparent 73.1% 86%, #3d8bfd 86.3% 86.8%, transparent 87.1%);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.chart-tooltip {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  z-index: 1;
+  display: grid;
+  gap: 4px;
+  min-width: 92px;
+  padding: 10px 12px;
+  color: #4b5563;
+  background: #fff;
+  border: 1px solid #e5eaf0;
+  border-radius: 6px;
+  box-shadow: 0 8px 20px rgb(15 35 55 / 8%);
+}
+
+.chart-tooltip strong {
+  color: #17233d;
+  font-weight: 600;
 }
 
 .trend-point {
@@ -1204,17 +1528,76 @@ const trendPoints = [
 .distribution {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 22px;
+  gap: 18px;
+  align-items: start;
+  min-width: 0;
   text-align: center;
 }
 
-.distribution h3 {
-  margin-bottom: 18px;
+.distribution-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
 }
 
-.distribution p {
-  margin: 8px 0 0;
-  color: #6b7280;
+.distribution-panel h3 {
+  width: 100%;
+  margin: 0 0 14px;
+  color: #394b59;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: left;
+}
+
+.chart-legend {
+  display: grid;
+  gap: 8px;
+  width: min(100%, 168px);
+  margin: 12px auto 0;
+  padding: 0;
+  color: #5f6673;
+  list-style: none;
+}
+
+.chart-legend li {
+  display: grid;
+  grid-template-columns: 9px minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+  font-size: 12px;
+  text-align: left;
+}
+
+.chart-legend li > :nth-child(2) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chart-legend strong {
+  color: #394b59;
+  font-weight: 600;
+}
+
+.legend-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.legend-dot.blue { background: #1677ff; }
+.legend-dot.cyan { background: #69b1ff; }
+.legend-dot.green { background: #27c27a; }
+.legend-dot.red { background: #ff4d4f; }
+.legend-dot.gray { background: #c8cfd9; }
+
+.project-ring :deep(.ant-progress-text),
+.status-ring :deep(.ant-progress-text) {
+  color: #17233d;
+  font-weight: 700;
 }
 
 .modal-note {
@@ -1296,6 +1679,7 @@ const trendPoints = [
   .bug-filter,
   .stat-cards,
   .stats-panels,
+  .distribution,
   .task-detail-grid {
     grid-template-columns: 1fr;
   }
@@ -1303,5 +1687,47 @@ const trendPoints = [
   .daily-workspace {
     grid-template-columns: 1fr;
   }
+}
+
+:global(.app-content__body::-webkit-scrollbar),
+.personal-page::-webkit-scrollbar,
+.prototype-table-scroll::-webkit-scrollbar,
+.log-card :deep(.ant-card-body::-webkit-scrollbar),
+.related-bugs :deep(.ant-card-body::-webkit-scrollbar),
+.bug-detail-card::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+:global(.app-content__body::-webkit-scrollbar-track),
+.personal-page::-webkit-scrollbar-track,
+.prototype-table-scroll::-webkit-scrollbar-track,
+.log-card :deep(.ant-card-body::-webkit-scrollbar-track),
+.related-bugs :deep(.ant-card-body::-webkit-scrollbar-track),
+.bug-detail-card::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+:global(.app-content__body::-webkit-scrollbar-thumb),
+.personal-page::-webkit-scrollbar-thumb,
+.prototype-table-scroll::-webkit-scrollbar-thumb,
+.log-card :deep(.ant-card-body::-webkit-scrollbar-thumb),
+.related-bugs :deep(.ant-card-body::-webkit-scrollbar-thumb),
+.bug-detail-card::-webkit-scrollbar-thumb {
+  background: #b8b8b8;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: content-box;
+}
+
+:global(.app-content__body::-webkit-scrollbar-thumb:hover),
+.personal-page::-webkit-scrollbar-thumb:hover,
+.prototype-table-scroll::-webkit-scrollbar-thumb:hover,
+.log-card :deep(.ant-card-body::-webkit-scrollbar-thumb:hover),
+.related-bugs :deep(.ant-card-body::-webkit-scrollbar-thumb:hover),
+.bug-detail-card::-webkit-scrollbar-thumb:hover {
+  background: #8f8f8f;
+  border: 2px solid transparent;
+  background-clip: content-box;
 }
 </style>

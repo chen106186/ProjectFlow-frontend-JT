@@ -31,7 +31,7 @@
     </a-layout-header>
 
     <a-layout class="app-layout__body">
-      <a-layout-sider class="app-sider" :width="212" theme="light">
+      <a-layout-sider v-model:collapsed="isSiderCollapsed" class="app-sider" :width="212" :collapsed-width="64" collapsible theme="light">
         <a-menu mode="inline" :open-keys="openKeys" :selected-keys="selectedKeys" @open-change="handleOpenChange">
           <a-menu-item key="/" @click="handleNavigate('/')">
             <HomeOutlined />
@@ -70,7 +70,17 @@
       </a-layout-sider>
 
       <a-layout-content class="app-content">
-        <router-view />
+        <header v-if="route.name !== 'Home'" class="app-content__header">
+          <a-breadcrumb>
+            <a-breadcrumb-item v-for="(item, index) in breadcrumbItems" :key="item.title">
+              <router-link v-if="item.path && index < breadcrumbItems.length - 1" :to="item.path">{{ item.title }}</router-link>
+              <span v-else>{{ item.title }}</span>
+            </a-breadcrumb-item>
+          </a-breadcrumb>
+        </header>
+        <div :class="['app-content__body', { 'app-content__body--fixed': route.meta.isBugPage }]">
+          <router-view />
+        </div>
       </a-layout-content>
     </a-layout>
   </a-layout>
@@ -93,8 +103,38 @@ import { useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
 const router = useRouter()
+const isSiderCollapsed = ref(false)
 const openKeys = ref([])
-const selectedKeys = computed(() => [route.path])
+const selectedKeys = computed(() => [route.path.startsWith('/bugs') ? '/bugs' : route.path])
+const groupPathMap = {
+  '个人工作': '/personal/tasks',
+  '项目清单': '/projects/management',
+  '任务列表': '/tasks/all',
+  'Bug 列表': '/bugs',
+}
+const breadcrumbItems = computed(() => {
+  const items = []
+  const group = route.meta.group
+  const title = route.meta.title || '首页'
+
+  if (group) {
+    items.push({ title: group, path: groupPathMap[group] })
+  }
+
+  if (!group || group !== title) {
+    items.push({ title })
+  }
+
+  if (route.name === 'PersonalTasks' && route.query.detail === 'task') {
+    items.push({ title: '任务详情' })
+  }
+
+  if (route.name === 'PersonalBugs' && route.query.detail === 'bug') {
+    items.push({ title: 'Bug详情' })
+  }
+
+  return items
+})
 
 const routeGroupMap = {
   '/personal': 'personal',
@@ -127,7 +167,8 @@ const handleUserMenuClick = ({ key }) => {
 <style scoped>
 .app-layout {
   min-width: 1100px;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .app-header {
@@ -194,10 +235,13 @@ const handleUserMenuClick = ({ key }) => {
 }
 
 .app-layout__body {
-  min-height: calc(100vh - 68px);
+  height: calc(100vh - 68px);
+  min-height: 0;
+  overflow: hidden;
 }
 
 .app-sider {
+  overflow: hidden;
   border-right: 1px solid #edf0f3;
 }
 
@@ -217,9 +261,38 @@ const handleUserMenuClick = ({ key }) => {
 }
 
 .app-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   min-width: 0;
-  padding: 26px 28px 32px;
-  overflow: auto;
+  overflow: hidden;
   background: #f3f6f9;
+}
+
+.app-content__header {
+  display: flex;
+  flex: 0 0 52px;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0 28px;
+  background: #fff;
+  border-bottom: 1px solid #edf0f3;
+}
+
+.app-content__header :deep(.ant-breadcrumb) {
+  font-size: 16px;
+  line-height: 24px;
+}
+
+.app-content__body {
+  flex: 1;
+  min-height: 0;
+  padding: 20px 28px 32px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.app-content__body--fixed {
+  overflow: hidden;
 }
 </style>

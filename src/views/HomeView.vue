@@ -1,7 +1,5 @@
 <template>
   <div class="home-view">
-    <h1 class="page-title">首页</h1>
-
     <section class="home-metrics" aria-label="项目概览">
       <button v-for="metric in metrics" :key="metric.title" class="metric-card" type="button" @click="handleMetricClick(metric.path)">
         <span class="metric-card__icon" :class="metric.iconClass"><component :is="metric.icon" /></span>
@@ -52,6 +50,8 @@
         </a-button>
       </a-card>
     </section>
+
+    <TaskCalendarModal v-model:open="isCalendarVisible" />
   </div>
 </template>
 
@@ -65,13 +65,15 @@ import {
   ProfileOutlined,
   RightOutlined,
 } from '@ant-design/icons-vue'
-import { message } from 'ant-design-vue'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+
+import TaskCalendarModal from '@/components/TaskCalendarModal.vue'
 
 const router = useRouter()
 const activeTodoTab = ref('all')
 const calendarValue = ref()
+const isCalendarVisible = ref(false)
 
 const metrics = [
   { title: '管理类项目', path: '/projects/management', icon: FolderOpenOutlined, iconClass: 'metric-card__icon--blue' },
@@ -85,7 +87,7 @@ const handleMetricClick = path => {
 }
 
 const handleCalendarClick = () => {
-  message.info('任务日历业务页面将在接口契约确认后实现')
+  isCalendarVisible.value = true
 }
 
 const handleCalendarMonthChange = (value, onChange, offset) => {
@@ -95,15 +97,7 @@ const handleCalendarMonthChange = (value, onChange, offset) => {
 
 <style scoped>
 .home-view {
-  max-width: 1440px;
-  margin: 0 auto;
-}
-
-.page-title {
-  margin: 0 0 16px;
-  color: #1f1f1f;
-  font-size: 24px;
-  font-weight: 600;
+  min-width: 0;
 }
 
 .home-metrics {

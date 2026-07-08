@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 import AppLayout from '@/layouts/AppLayout.vue'
+import BugManagementView from '@/views/BugManagementView.vue'
 import HomeView from '@/views/HomeView.vue'
 import LoginView from '@/views/LoginView.vue'
 import ModuleView from '@/views/ModuleView.vue'
@@ -15,7 +16,13 @@ const moduleRoutes = [
   { path: 'tasks/all', name: 'AllTasks', title: '全部任务', group: '任务列表' },
   { path: 'tasks/development', name: 'DevelopmentTasks', title: '开发任务', group: '任务列表' },
   { path: 'tasks/testing', name: 'TestingTasks', title: '测试任务', group: '任务列表' },
-  { path: 'bugs', name: 'BugList', title: 'Bug 列表', group: 'Bug 列表' },
+]
+
+const bugRoutes = [
+  { path: 'bugs', name: 'BugList', title: 'Bug 列表', view: 'list' },
+  { path: 'bugs/new', name: 'BugCreate', title: '新增 Bug', view: 'create' },
+  { path: 'bugs/:id/edit', name: 'BugEdit', title: '编辑 Bug', view: 'edit' },
+  { path: 'bugs/:id', name: 'BugDetail', title: 'Bug 详情', view: 'detail' },
 ]
 
 const router = createRouter({
@@ -37,6 +44,17 @@ const router = createRouter({
           component: HomeView,
           meta: { title: '首页' },
         },
+        ...bugRoutes.map(route => ({
+          path: route.path,
+          name: route.name,
+          component: BugManagementView,
+          meta: {
+            title: route.title,
+            group: 'Bug 列表',
+            bugView: route.view,
+            isBugPage: true,
+          },
+        })),
         ...moduleRoutes.map(route => ({
           path: route.path,
           name: route.name,
