@@ -103,7 +103,11 @@
 
         <a-card class="prototype-card list-card task-list-card" :bordered="false">
           <div class="list-toolbar">
-            <span></span>
+            <a-button v-if="isTaskModule" type="primary" @click="openTaskModal('create')">
+              <template #icon><PlusOutlined /></template>
+              新建任务
+            </a-button>
+            <span v-else></span>
             <a-space>
               <span class="muted">分组条件：</span>
               <a-select class="group-select" value="所属项目" :options="projectGroupOptions" />
@@ -133,7 +137,7 @@
                   <td>{{ record.planEnd }}</td>
                   <td>{{ record.actualEnd }}</td>
                   <td>{{ record.createdAt }}</td>
-                  <td><button class="icon-link" type="button" title="编辑任务" @click="taskEditOpen = true"><EditOutlined /></button></td>
+                  <td><button class="icon-link" type="button" title="编辑任务" @click="openTaskModal('edit')"><EditOutlined /></button></td>
                 </tr>
               </tbody>
             </table>
@@ -381,7 +385,7 @@
       </section>
     </template>
 
-    <a-modal v-model:open="taskEditOpen" width="660px" title="编辑任务" centered>
+    <a-modal v-model:open="taskEditOpen" width="660px" :title="taskModalTitle" centered>
       <template #footer>
         <a-space>
           <a-button @click="taskEditOpen = false">取消</a-button>
@@ -545,6 +549,7 @@ const route = useRoute()
 const router = useRouter()
 const personalMode = ref('task-list')
 const taskEditOpen = ref(false)
+const taskModalMode = ref('edit')
 const bugEditOpen = ref(false)
 const dailyEditOpen = ref(false)
 const uploadOpen = ref(false)
@@ -565,6 +570,7 @@ const isPersonalStatistics = computed(() => route.name === 'PersonalStatistics')
 const taskModuleRouteNames = ['AllTasks', 'DevelopmentTasks', 'TestingTasks']
 const isTaskModule = computed(() => taskModuleRouteNames.includes(route.name))
 const currentTaskRole = computed(() => (route.name === 'TestingTasks' ? '测试' : '开发'))
+const taskModalTitle = computed(() => (taskModalMode.value === 'create' ? '新建任务' : '编辑任务'))
 const visibleTasks = computed(() => {
   if (route.name === 'TestingTasks') {
     return personalTasks.map(task => ({ ...task, role: '测试' }))
@@ -753,6 +759,11 @@ const updateDetailQuery = detail => {
 const handleTaskDetail = () => {
   personalMode.value = 'task-detail'
   updateDetailQuery('task')
+}
+
+const openTaskModal = mode => {
+  taskModalMode.value = mode
+  taskEditOpen.value = true
 }
 
 const handleBackToTaskList = () => {
