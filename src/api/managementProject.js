@@ -1,0 +1,27 @@
+import { download, request } from '@/utils/request'
+
+export const getProjectList = params => request('/api/projects', { params })
+export const getProjectDetail = id => request(`/api/projects/${id}`)
+export const createProject = data => request('/api/projects', { method: 'POST', body: data })
+export const updateProject = (id, data) => request(`/api/projects/${id}`, { method: 'PUT', body: data })
+export const deleteProject = id => request(`/api/projects/${id}`, { method: 'DELETE' })
+
+export const getGanttNodes = projectId => request(`/api/projects/${projectId}/gantt`)
+export const getGanttSummary = projectId => request(`/api/projects/${projectId}/gantt/summary`)
+export const updateGanttNode = (projectId, nodeId, data) => request(`/api/projects/${projectId}/nodes/${nodeId}`, { method: 'PATCH', body: data })
+
+export const getProjectTasks = params => request('/api/tasks', { params })
+export const getProjectBugs = params => request('/api/bugs', { params })
+
+export const getProjectReports = params => request('/api/project-reports', { params })
+export const createProjectReport = data => request('/api/project-reports', { method: 'POST', body: data })
+export const updateProjectReport = (id, data) => request(`/api/project-reports/${id}`, { method: 'PUT', body: data })
+
+export const getProjectFiles = params => request('/api/files', { params })
+export const uploadProjectFile = data => request('/api/files', { method: 'POST', body: data })
+export const deleteProjectFile = id => request(`/api/files/${id}`, { method: 'DELETE' })
+export const deleteProjectFiles = ids => request('/api/files/batch', { method: 'DELETE', body: { ids } })
+export const downloadProjectFile = id => download(`/api/files/${id}/download`)
+
+export const getDicts = () => request('/api/dicts')
+export const getSystemUsers = params => request('/api/system/users', { params })

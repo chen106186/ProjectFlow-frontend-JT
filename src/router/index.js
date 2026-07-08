@@ -1,10 +1,10 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 import AppLayout from '@/layouts/AppLayout.vue'
-import BugManagementView from '@/views/BugManagementView.vue'
+import BugManagementView from '@/views/bug-management-view/index.vue'
 import HomeView from '@/views/HomeView.vue'
 import LoginView from '@/views/LoginView.vue'
-import ManagementProjectView from '@/views/ManagementProjectView.vue'
+import ManagementProject from '@/views/management-project/index.vue'
 import ModuleView from '@/views/ModuleView.vue'
 
 const moduleRoutes = [
@@ -65,7 +65,7 @@ const router = createRouter({
         ...managementProjectRoutes.map(route => ({
           path: route.path,
           name: route.name,
-          component: ManagementProjectView,
+          component: ManagementProject,
           meta: {
             title: route.title,
             group: '项目清单',
