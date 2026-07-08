@@ -134,6 +134,18 @@ const breadcrumbItems = computed(() => {
     items.push({ title })
   }
 
+  if (route.name === 'PersonalTasks' && route.query.detail === 'task') {
+    items.push({ title: '任务详情' })
+  }
+
+  if (['AllTasks', 'DevelopmentTasks', 'TestingTasks'].includes(route.name) && route.query.detail === 'task') {
+    items.push({ title: '任务详情' })
+  }
+
+  if (route.name === 'PersonalBugs' && route.query.detail === 'bug') {
+    items.push({ title: 'Bug详情' })
+  }
+
   return items
 })
 
