@@ -6,5 +6,6 @@ import 'dayjs/locale/zh-cn'
 import App from './App.vue'
 import router from './router'
 import './styles/main.css'
+import './styles/frappe-gantt.css'
 
 createApp(App).use(Antd).use(router).mount('#app')

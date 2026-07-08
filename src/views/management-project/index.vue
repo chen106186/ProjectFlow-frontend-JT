@@ -185,7 +185,6 @@ import { ArrowLeftOutlined, BugOutlined, CheckCircleOutlined, CheckOutlined, Clo
 import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import Gantt from 'frappe-gantt'
-import 'frappe-gantt-css'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ProjectDetailTabs from './components/ProjectDetailTabs.vue'
@@ -264,6 +263,26 @@ const nodeOptions = stageOptions.map(item => item.value)
 const groupOptions = [{ label: '项目经理', value: 'manager' }, { label: '项目阶段', value: 'stage' }, { label: '项目状态', value: 'status' }, { label: '项目类型', value: 'type' }, { label: '合同状态', value: 'contractStatus' }]
 
 const projects = ref([])
+const demoProjectId = 'demo-management-project'
+const demoManagementProject = {
+  id: demoProjectId,
+  name: '管理类项目演示数据',
+  managerId: undefined,
+  manager: '张三',
+  department: '数字化管理部',
+  contractor: '项目实施中心',
+  supervisor: '李四',
+  stage: '开发',
+  status: '进行中',
+  statusCode: 'IN_PROGRESS',
+  contractStatus: '已签订',
+  contractStatusCode: 'SIGNED',
+  amount: 128.5,
+  type: '数字化项目',
+  description: '用于演示管理类项目列表和详情页的本地数据。',
+  plannedStartDate: '2025-05-01',
+  plannedEndDate: '2025-12-31',
+}
 
 const createDefaultForm = () => ({ name: '', managerId: undefined, department: '', contractor: '', supervisor: undefined, type: '数字化项目', nodes: [], stage: '商机跟进', status: 'NOT_STARTED', contractStatus: 'NOT_SIGNED', amount: 0, description: '' })
 const formState = reactive(createDefaultForm())
@@ -318,7 +337,13 @@ const ganttSummaryData = reactive({ total: 0, completed: 0, overdue: 0, dueSoon:
 const ganttSummary = computed(() => [{ label: '项目状态', value: currentProject.value?.status || '-', desc: `整体进度 ${ganttSummaryData.overallProgress}%`, class: 'gantt-progress', icon: ProjectOutlined }, { label: '延期任务', value: `${ganttSummaryData.overdue} 个`, desc: '需重点关注', class: 'risk-high', icon: WarningOutlined }, { label: '即将到期', value: `${ganttSummaryData.dueSoon} 个`, desc: '未来 3 天内到期', class: 'risk-due', icon: ClockCircleOutlined }])
 const ganttStatusColors = { 未开始: 'default', 进行中: 'processing', 即将到期: 'gold', 已完成: 'green', 已逾期: 'red', 里程碑: 'green' }
 const ganttStatusClasses = { 未开始: 'gantt-not-started', 进行中: 'gantt-in-progress', 即将到期: 'gantt-due-soon', 已完成: 'gantt-completed', 已逾期: 'gantt-overdue', 里程碑: 'gantt-milestone' }
-const ganttStatusOptions = computed(() => taskStatusOptions.value)
+const ganttStatusOptions = computed(() => taskStatusOptions.value.length ? taskStatusOptions.value : [
+  { label: '未开始', value: 'NOT_STARTED' },
+  { label: '进行中', value: 'IN_PROGRESS' },
+  { label: '即将到期', value: 'DUE_SOON' },
+  { label: '已完成', value: 'COMPLETED' },
+  { label: '已逾期', value: 'OVERDUE' },
+])
 const ganttNodeColumns = [
   { title: '节点名称', dataIndex: 'name', width: 160 }, { title: '计划开始', dataIndex: 'planStart', width: 120 }, { title: '计划结束', dataIndex: 'planEnd', width: 120 },
   { title: '实际开始', dataIndex: 'actualStart', width: 120 }, { title: '实际结束', dataIndex: 'actualEnd', width: 120 }, { title: '状态', dataIndex: 'status', width: 90 },
@@ -377,6 +402,8 @@ const summaryItems = computed(() => [{ label: '项目名称', value: currentProj
 
 const getDictLabel = (type, value) => dictLabels[type]?.[value] || value || '-'
 const getUserName = id => managerOptions.value.find(item => item.value === id)?.label || (id ? `用户 ${id}` : '-')
+const isDemoProject = projectId => String(projectId) === demoProjectId
+const getStatusLabel = value => ganttStatusOptions.value.find(item => item.value === value)?.label || getDictLabel('taskStatus', value)
 const mapProject = project => ({
   ...project,
   manager: getUserName(project.managerId),
@@ -390,6 +417,38 @@ const mapProject = project => ({
   supervisor: '-',
   amount: 0,
 })
+
+const applyDemoProjectData = async () => {
+  currentProject.value = { ...demoManagementProject }
+  Object.assign(ganttSummaryData, { total: 7, completed: 2, overdue: 1, dueSoon: 2, overallProgress: 52 })
+  ganttNodeRows.value = [
+    { id: 1, name: '商机跟进', planStart: '2025/05/01', planEnd: '2025/05/10', actualStart: '2025/05/01', actualEnd: '2025/05/08', status: '已完成', statusCode: 'COMPLETED', progress: 100 },
+    { id: 2, name: '可研批复', planStart: '2025/05/11', planEnd: '2025/05/31', actualStart: '2025/05/12', actualEnd: '2025/05/30', status: '已完成', statusCode: 'COMPLETED', progress: 100 },
+    { id: 3, name: '招标', planStart: '2025/06/01', planEnd: '2025/06/20', actualStart: '2025/06/02', actualEnd: '-', status: '进行中', statusCode: 'IN_PROGRESS', progress: 70 },
+    { id: 4, name: '合同签订', planStart: '2025/06/21', planEnd: '2025/07/10', actualStart: '-', actualEnd: '-', status: '即将到期', statusCode: 'DUE_SOON', progress: 35 },
+    { id: 5, name: '概设批复', planStart: '2025/07/11', planEnd: '2025/08/10', actualStart: '-', actualEnd: '-', status: '已逾期', statusCode: 'OVERDUE', progress: 20, isOverdue: true },
+    { id: 6, name: '开发', planStart: '2025/08/11', planEnd: '2025/10/20', actualStart: '-', actualEnd: '-', status: '未开始', statusCode: 'NOT_STARTED', progress: 0 },
+    { id: 7, name: '验收', planStart: '2025/10/21', planEnd: '2025/12/31', actualStart: '-', actualEnd: '-', status: '未开始', statusCode: 'NOT_STARTED', progress: 0 },
+  ]
+  taskRows.value = [
+    { id: 1, name: '项目章程编制', owner: '张三', priority: '高', status: '已完成', planStart: '2025-05-01', planEnd: '2025-05-08', actualStart: '2025-05-01', actualEnd: '2025-05-08' },
+    { id: 2, name: '供应商评审', owner: '李四', priority: '高', status: '进行中', planStart: '2025-06-01', planEnd: '2025-06-15', actualStart: '2025-06-02', actualEnd: '-' },
+    { id: 3, name: '合同条款确认', owner: '王五', priority: '中', status: '进行中', planStart: '2025-06-18', planEnd: '2025-07-05', actualStart: '-', actualEnd: '-' },
+  ]
+  bugRows.value = [
+    { id: 1, code: 'BUG-M-001', title: '里程碑进度同步异常', severity: '紧急', priorityCode: 'URGENT', status: '待修复', statusCode: 'PENDING_FIX', assignee: '张三', creator: '李四' },
+    { id: 2, code: 'BUG-M-002', title: '合同金额展示精度错误', severity: '一般', priorityCode: 'MEDIUM', status: '修复中', statusCode: 'FIXING', assignee: '王五', creator: '李四' },
+  ]
+  reportRows.value = [
+    { id: 1, title: '管理类项目周报', type: '周报', typeCode: 'WEEKLY', status: '准备中', statusCode: 'DRAFT', planTime: '2026-06-15', actualTime: '-', target: '管理层', place: '会议室A', description: '汇报项目整体进展。' },
+    { id: 2, title: '合同签订专项汇报', type: '专项汇报', typeCode: 'SPECIAL', status: '已完成', statusCode: 'COMPLETED', planTime: '2026-06-08', actualTime: '2026-06-08', target: '项目委员会', place: '线上会议', description: '汇报合同签订风险。' },
+  ]
+  documentRows.value = [
+    { id: 'demo-doc-1', name: '项目章程.docx', type: 'DOCX', size: '1.8MB', version: 'V1.0', uploader: '张三', category: '需求类', uploadTime: '2026-06-10' },
+    { id: 'demo-doc-2', name: '合同评审表.xlsx', type: 'XLSX', size: '860KB', version: 'V1.1', uploader: '李四', category: '合同类', uploadTime: '2026-06-12' },
+  ]
+  await renderGantt()
+}
 
 const fetchReferenceData = async () => {
   try {
@@ -426,16 +485,24 @@ const fetchProjects = async () => {
       pageNo: projectPagination.current,
       pageSize: projectPagination.pageSize,
     })
-    projects.value = result.records.map(mapProject)
-    projectPagination.total = result.total
+    const rows = result.records.map(mapProject)
+    projects.value = rows.length ? rows : [demoManagementProject]
+    projectPagination.total = result.total || projects.value.length
   } catch (error) {
-    message.error(error.message)
+    projects.value = [demoManagementProject]
+    projectPagination.total = 1
+    message.warning('接口不可用，已展示Demo数据')
   } finally {
     projectLoading.value = false
   }
 }
 
 const fetchProjectRelatedData = async projectId => {
+  if (isDemoProject(projectId)) {
+    await applyDemoProjectData()
+    return
+  }
+
   detailLoading.value = true
   taskLoading.value = true
   bugLoading.value = true
@@ -496,11 +563,22 @@ const renderGantt = async () => {
 const syncRoute = async () => {
   if (viewMode.value === 'create') { Object.assign(formState, createDefaultForm()); editingId.value = null; return }
   if (viewMode.value === 'list') { await fetchProjects(); return }
-  const projectId = Number(route.params.id)
+  const projectId = route.params.id
+  if (isDemoProject(projectId)) {
+    if (viewMode.value === 'edit') {
+      message.warning('Demo数据无需编辑')
+      handleBack()
+      return
+    }
+    if (viewMode.value === 'detail') { activeTab.value = 'gantt'; await fetchProjectRelatedData(projectId) }
+    return
+  }
+
+  const numericProjectId = Number(projectId)
   if (viewMode.value === 'edit') {
     detailLoading.value = true
     try {
-      const project = await getProjectDetail(projectId)
+      const project = await getProjectDetail(numericProjectId)
       Object.assign(formState, createDefaultForm(), project)
       editingId.value = project.id
     } catch (error) {
@@ -509,7 +587,7 @@ const syncRoute = async () => {
       detailLoading.value = false
     }
   }
-  if (viewMode.value === 'detail') { activeTab.value = 'gantt'; await fetchProjectRelatedData(projectId) }
+  if (viewMode.value === 'detail') { activeTab.value = 'gantt'; await fetchProjectRelatedData(numericProjectId) }
 }
 watch(() => [route.name, route.params.id], syncRoute)
 watch(activeTab, renderGantt)
@@ -542,11 +620,41 @@ const handleGanttRow = record => ({
     ganttEditVisible.value = true
   },
 })
+const refreshDemoGanttSummary = () => {
+  const rows = ganttNodeRows.value
+  const completed = rows.filter(node => node.statusCode === 'COMPLETED').length
+  const overdue = rows.filter(node => node.statusCode === 'OVERDUE').length
+  const dueSoon = rows.filter(node => node.statusCode === 'DUE_SOON').length
+  const overallProgress = rows.length ? Math.round(rows.reduce((total, node) => total + node.progress, 0) / rows.length) : 0
+  Object.assign(ganttSummaryData, { total: rows.length, completed, overdue, dueSoon, overallProgress })
+}
+const updateDemoGanttNode = async () => {
+  ganttNodeRows.value = ganttNodeRows.value.map(node => node.id === ganttForm.id ? {
+    ...node,
+    planStart: ganttForm.planStart.replaceAll('-', '/'),
+    planEnd: ganttForm.planEnd.replaceAll('-', '/'),
+    actualStart: ganttForm.actualStart?.replaceAll('-', '/') || '-',
+    actualEnd: ganttForm.actualEnd?.replaceAll('-', '/') || '-',
+    status: getStatusLabel(ganttForm.status),
+    statusCode: ganttForm.status,
+    progress: ganttForm.progress,
+    isOverdue: ganttForm.status === 'OVERDUE',
+  } : node)
+  refreshDemoGanttSummary()
+  ganttEditVisible.value = false
+  await renderGantt()
+  message.success('Demo节点更新成功')
+}
 const handleSaveGanttNode = async () => {
   if (ganttSubmitLoading.value) return
   await ganttFormRef.value?.validate()
   ganttSubmitLoading.value = true
   try {
+    if (isDemoProject(route.params.id)) {
+      await updateDemoGanttNode()
+      return
+    }
+
     await updateGanttNode(Number(route.params.id), ganttForm.id, { nodeName: ganttForm.name, plannedStartDate: ganttForm.planStart, plannedEndDate: ganttForm.planEnd, actualStartDate: ganttForm.actualStart || null, actualEndDate: ganttForm.actualEnd || null, status: ganttForm.status, progressPercent: ganttForm.progress })
     ganttEditVisible.value = false
     await fetchProjectRelatedData(Number(route.params.id))
@@ -558,10 +666,22 @@ const handleSaveGanttNode = async () => {
   }
 }
 const handleCreate = () => router.push({ name: 'ManagementProjectCreate' })
-const handleEdit = record => router.push({ name: 'ManagementProjectEdit', params: { id: record.id } })
+const handleEdit = record => {
+  if (isDemoProject(record.id)) {
+    message.warning('Demo数据无需编辑')
+    return
+  }
+
+  router.push({ name: 'ManagementProjectEdit', params: { id: record.id } })
+}
 const handleDetail = record => router.push({ name: 'ManagementProjectDetail', params: { id: record.id } })
 const handleBack = () => router.push({ name: 'ManagementProjects' })
 const handleDelete = async record => {
+  if (isDemoProject(record.id)) {
+    message.warning('Demo数据无需删除')
+    return
+  }
+
   try {
     await deleteProject(record.id)
     message.success('项目删除成功')

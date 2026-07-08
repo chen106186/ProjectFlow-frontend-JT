@@ -35,3 +35,33 @@
 - 修复弹窗主内容区定位和星期起始日。
 
 final result: blocked
+
+---
+
+# 执行类项目页面 Design QA
+
+- Source visual truth: `E:/01-项目/01-2026年项目/10-公司内部管理系统/原型图-0710/项目清单/执行类项目/项目清单执行类项目.png`
+- Implementation screenshot: 未生成
+- Viewport: 1366 x 678（原型图尺寸）
+- State: 执行类项目列表默认状态
+- Full-view comparison evidence: 已打开原型图；本地实现截图因开发服务器启动权限未获批准而缺失
+- Focused region comparison evidence: 无法完成同视口筛选区、工具栏及表格区域对比
+
+## Findings
+
+- [P1] 缺少实现截图，无法确认筛选区、表格密度、间距与原型的视觉一致性。
+  - Blocker: 本地前端开发服务器启动权限未获批准。
+  - Required follow-up: 用户手动启动前端服务后，按 1366 x 678 视口捕获 `/projects/execution` 并进行对比。
+- 字体与排版：代码沿用项目及 Ant Design Vue 现有字体层级，尚未完成渲染核对。
+- 间距与布局：实现为顶部筛选卡片和下方列表卡片，尚未完成同视口核对。
+- 色彩与视觉变量：沿用项目蓝色主操作和语义状态色，尚未完成截图采样核对。
+- 图像与资产：该页面无业务图片，操作图标复用 Ant Design Icons。
+- 文案与内容：筛选项、列表字段和操作文案已按原型实现。
+
+## Patches Made
+
+- 新增执行类项目独立页面及路由。
+- 接入项目、任务数、Bug 数、用户和字典接口。
+- 实现查询、重置、分页、列表/分组、新建、编辑、详情和删除交互。
+
+final result: blocked

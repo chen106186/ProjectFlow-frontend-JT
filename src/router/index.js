@@ -2,6 +2,8 @@ import { createRouter, createWebHistory } from 'vue-router'
 
 import AppLayout from '@/layouts/AppLayout.vue'
 import BugManagementView from '@/views/bug-management-view/index.vue'
+import ExecutionProject from '@/views/execution-project/index.vue'
+import ExecutionProjectDetail from '@/views/execution-project/DetailView.vue'
 import HomeView from '@/views/HomeView.vue'
 import LoginView from '@/views/LoginView.vue'
 import ManagementProject from '@/views/management-project/index.vue'
@@ -12,7 +14,6 @@ const moduleRoutes = [
   { path: 'personal/bugs', name: 'PersonalBugs', title: '我的 Bug', group: '个人工作' },
   { path: 'personal/daily', name: 'PersonalDaily', title: '我的日报', group: '个人工作' },
   { path: 'personal/statistics', name: 'PersonalStatistics', title: '我的统计', group: '个人工作' },
-  { path: 'projects/execution', name: 'ExecutionProjects', title: '执行类项目', group: '项目清单' },
   { path: 'tasks/all', name: 'AllTasks', title: '全部任务', group: '任务列表' },
   { path: 'tasks/development', name: 'DevelopmentTasks', title: '开发任务', group: '任务列表' },
   { path: 'tasks/testing', name: 'TestingTasks', title: '测试任务', group: '任务列表' },
@@ -74,6 +75,23 @@ const router = createRouter({
             isProjectPage: true,
           },
         })),
+        {
+          path: 'projects/execution',
+          name: 'ExecutionProjects',
+          component: ExecutionProject,
+          meta: { title: '执行类项目', group: '项目清单' },
+        },
+        {
+          path: 'projects/execution/:id',
+          name: 'ExecutionProjectDetail',
+          component: ExecutionProjectDetail,
+          meta: {
+            title: '项目详情',
+            group: '项目清单',
+            parentTitle: '执行类项目',
+            isProjectPage: true,
+          },
+        },
         ...moduleRoutes.map(route => ({
           path: route.path,
           name: route.name,
