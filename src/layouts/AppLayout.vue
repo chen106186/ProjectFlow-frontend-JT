@@ -78,7 +78,7 @@
             </a-breadcrumb-item>
           </a-breadcrumb>
         </header>
-        <div :class="['app-content__body', { 'app-content__body--fixed': route.meta.isBugPage }]">
+        <div :class="['app-content__body', { 'app-content__body--fixed': route.meta.isBugPage || route.meta.isProjectPage }]">
           <router-view />
         </div>
       </a-layout-content>
@@ -105,7 +105,11 @@ const route = useRoute()
 const router = useRouter()
 const isSiderCollapsed = ref(false)
 const openKeys = ref([])
-const selectedKeys = computed(() => [route.path.startsWith('/bugs') ? '/bugs' : route.path])
+const selectedKeys = computed(() => {
+  if (route.path.startsWith('/bugs')) return ['/bugs']
+  if (route.path.startsWith('/projects/management')) return ['/projects/management']
+  return [route.path]
+})
 const groupPathMap = {
   '个人工作': '/personal/tasks',
   '项目清单': '/projects/management',
@@ -115,10 +119,15 @@ const groupPathMap = {
 const breadcrumbItems = computed(() => {
   const items = []
   const group = route.meta.group
+  const parentTitle = route.meta.parentTitle
   const title = route.meta.title || '首页'
 
   if (group) {
     items.push({ title: group, path: groupPathMap[group] })
+  }
+
+  if (parentTitle && parentTitle !== title) {
+    items.push({ title: parentTitle, path: '/projects/management' })
   }
 
   if (!group || group !== title) {
@@ -258,7 +267,7 @@ const handleUserMenuClick = ({ key }) => {
   height: 100%;
   min-width: 0;
   overflow: hidden;
-  background: #f3f6f9;
+  background: #f5f5f7;
 }
 
 .app-content__header {
@@ -282,6 +291,7 @@ const handleUserMenuClick = ({ key }) => {
   padding: 20px 28px 32px;
   overflow-x: hidden;
   overflow-y: auto;
+  background: #f5f5f7;
 }
 
 .app-content__body--fixed {

@@ -4,6 +4,7 @@ import AppLayout from '@/layouts/AppLayout.vue'
 import BugManagementView from '@/views/BugManagementView.vue'
 import HomeView from '@/views/HomeView.vue'
 import LoginView from '@/views/LoginView.vue'
+import ManagementProjectView from '@/views/ManagementProjectView.vue'
 import ModuleView from '@/views/ModuleView.vue'
 
 const moduleRoutes = [
@@ -11,7 +12,6 @@ const moduleRoutes = [
   { path: 'personal/bugs', name: 'PersonalBugs', title: '我的 Bug', group: '个人工作' },
   { path: 'personal/daily', name: 'PersonalDaily', title: '我的日报', group: '个人工作' },
   { path: 'personal/statistics', name: 'PersonalStatistics', title: '我的统计', group: '个人工作' },
-  { path: 'projects/management', name: 'ManagementProjects', title: '管理类项目', group: '项目清单' },
   { path: 'projects/execution', name: 'ExecutionProjects', title: '执行类项目', group: '项目清单' },
   { path: 'tasks/all', name: 'AllTasks', title: '全部任务', group: '任务列表' },
   { path: 'tasks/development', name: 'DevelopmentTasks', title: '开发任务', group: '任务列表' },
@@ -23,6 +23,13 @@ const bugRoutes = [
   { path: 'bugs/new', name: 'BugCreate', title: '新增 Bug', view: 'create' },
   { path: 'bugs/:id/edit', name: 'BugEdit', title: '编辑 Bug', view: 'edit' },
   { path: 'bugs/:id', name: 'BugDetail', title: 'Bug 详情', view: 'detail' },
+]
+
+const managementProjectRoutes = [
+  { path: 'projects/management', name: 'ManagementProjects', title: '管理类项目', view: 'list' },
+  { path: 'projects/management/new', name: 'ManagementProjectCreate', title: '新建项目', view: 'create' },
+  { path: 'projects/management/:id/edit', name: 'ManagementProjectEdit', title: '编辑项目', view: 'edit' },
+  { path: 'projects/management/:id', name: 'ManagementProjectDetail', title: '项目详情', view: 'detail' },
 ]
 
 const router = createRouter({
@@ -53,6 +60,18 @@ const router = createRouter({
             group: 'Bug 列表',
             bugView: route.view,
             isBugPage: true,
+          },
+        })),
+        ...managementProjectRoutes.map(route => ({
+          path: route.path,
+          name: route.name,
+          component: ManagementProjectView,
+          meta: {
+            title: route.title,
+            group: '项目清单',
+            parentTitle: '管理类项目',
+            projectView: route.view,
+            isProjectPage: true,
           },
         })),
         ...moduleRoutes.map(route => ({

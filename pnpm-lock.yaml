@@ -23,6 +23,9 @@ importers:
       dayjs:
         specifier: ^1.11.21
         version: 1.11.21
+      frappe-gantt:
+        specifier: ^1.2.2
+        version: 1.2.2
       vue:
         specifier: ^3.5.13
         version: 3.5.39
@@ -620,6 +623,9 @@ packages:
     peerDependenciesMeta:
       picomatch:
         optional: true
+
+  frappe-gantt@1.2.2:
+    resolution: {integrity: sha512-1+uPNRa92LBIeKiZCVhJMiGIifJk5ONaoerXI8eBREXWRZGGoTJR5ATpMpsnAQcyBA6Gnq5wIht4eL+e4eHMBA==}
 
   fsevents@2.3.3:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
@@ -1368,6 +1374,8 @@ snapshots:
   fdir@6.5.0(picomatch@4.0.5):
     optionalDependencies:
       picomatch: 4.0.5
+
+  frappe-gantt@1.2.2: {}
 
   fsevents@2.3.3:
     optional: true
