@@ -246,17 +246,34 @@
           </a-space>
         </div>
         <div class="date-toolbar">
-          <a-button><LeftOutlined /></a-button>
-          <strong>2026-06-14</strong>
-          <a-button><RightOutlined /></a-button>
-          <a-button>回到今天</a-button>
-          <a-date-picker />
-          <a-date-picker />
+          <a-button class="date-nav-button" @click="shiftDailyDate(-1)"><LeftOutlined /></a-button>
+          <strong>{{ selectedDailyDateText }}</strong>
+          <a-button class="date-nav-button" @click="shiftDailyDate(1)"><RightOutlined /></a-button>
+          <a-button @click="backToToday">回到今天</a-button>
+          <a-date-picker v-model:value="selectedDailyDate" :allow-clear="false" />
         </div>
         <section class="daily-workspace">
           <a-card class="week-card" :bordered="false">
-            <div class="week-head"><LeftOutlined /> <strong>本周 0h</strong> <RightOutlined /></div>
-            <button v-for="day in weekDays" :key="day.day" class="week-day" :class="{ active: day.active }">{{ day.label }}</button>
+            <div class="week-head">
+              <a-button type="text" class="week-nav-button" @click="shiftDailyWeek(-1)"><LeftOutlined /></a-button>
+              <div>
+                <strong>{{ weekTitle }}</strong>
+                <span>{{ weekRangeText }}</span>
+              </div>
+              <a-button type="text" class="week-nav-button" @click="shiftDailyWeek(1)"><RightOutlined /></a-button>
+            </div>
+            <button
+              v-for="day in weekDays"
+              :key="day.key"
+              class="week-day"
+              :class="{ active: day.active, today: day.today }"
+              type="button"
+              @click="selectDailyDate(day.date)"
+            >
+              <span>{{ day.week }}</span>
+              <strong>{{ day.day }}</strong>
+              <em>{{ day.dateText }}</em>
+            </button>
           </a-card>
           <a-card class="daily-content-card" :bordered="false">
             <template v-if="dailyHasRecord">
@@ -271,19 +288,27 @@
               <h3>已上传附件（2）</h3>
               <div class="daily-files">
                 <article v-for="file in dailyFiles" :key="file.name" class="daily-file">
-                  <FileTextOutlined />
+                  <span class="daily-file-icon" :class="file.type">
+                    <component :is="file.icon" />
+                  </span>
                   <div>
                     <strong>{{ file.name }}</strong>
                     <p>{{ file.size }}　{{ file.time }}　张三</p>
-                    <a-space>
-                      <a-button type="link" size="small">预览</a-button>
-                      <a-button type="link" size="small">下载</a-button>
-                      <a-button type="link" danger size="small">删除</a-button>
+                    <a-space :size="6">
+                      <a-tooltip title="预览">
+                        <a-button class="file-action-button" type="text" size="small" aria-label="预览"><EyeOutlined /></a-button>
+                      </a-tooltip>
+                      <a-tooltip title="下载">
+                        <a-button class="file-action-button" type="text" size="small" aria-label="下载"><DownloadOutlined /></a-button>
+                      </a-tooltip>
+                      <a-tooltip title="删除">
+                        <a-button class="file-action-button danger" type="text" size="small" aria-label="删除"><DeleteOutlined /></a-button>
+                      </a-tooltip>
                     </a-space>
                   </div>
                 </article>
               </div>
-              <span class="daily-time">2026-06-14 18:00</span>
+              <span class="daily-time">{{ dailySubmitTime }}</span>
             </template>
             <a-empty v-else description="今天还没有工作记录" />
           </a-card>
@@ -405,13 +430,50 @@
         <a-form-item label="工作内容">
           <div class="editor-box">
             <div class="editor-tools">
-              <PictureOutlined />
-              <LinkOutlined />
-              <UndoOutlined />
-              <RedoOutlined />
-              <a-button type="primary" size="small">上传</a-button>
+              <a-tooltip title="插入图片">
+                <PictureOutlined />
+              </a-tooltip>
+              <a-tooltip title="插入链接">
+                <LinkOutlined />
+              </a-tooltip>
+              <a-tooltip title="撤销">
+                <UndoOutlined />
+              </a-tooltip>
+              <a-tooltip title="重做">
+                <RedoOutlined />
+              </a-tooltip>
+              <a-upload
+                class="daily-upload"
+                :file-list="dailyUploadFiles"
+                :before-upload="handleDailyBeforeUpload"
+                :on-remove="handleDailyUploadRemove"
+                :show-upload-list="false"
+                accept=".doc,.docx,.pdf,.xls,.xlsx,.png,.jpg,.jpeg"
+                multiple
+              >
+                <a-button type="primary" size="small">
+                  <template #icon><UploadOutlined /></template>
+                  上传
+                </a-button>
+              </a-upload>
             </div>
             <a-textarea :rows="7" />
+            <div v-if="dailyUploadFiles.length" class="daily-upload-list">
+              <article v-for="file in dailyUploadFiles" :key="file.uid" class="daily-upload-item">
+                <span class="daily-upload-icon" :class="getDailyUploadType(file.name)">
+                  <component :is="getDailyUploadIcon(file.name)" />
+                </span>
+                <div>
+                  <strong>{{ file.name }}</strong>
+                  <p>{{ formatFileSize(file.size) }}</p>
+                </div>
+                <a-tooltip title="移除">
+                  <a-button class="file-action-button danger" type="text" size="small" aria-label="移除" @click="handleDailyUploadRemove(file)">
+                    <DeleteOutlined />
+                  </a-button>
+                </a-tooltip>
+              </article>
+            </div>
           </div>
         </a-form-item>
         <a-form-item label="所属项目"><a-select :options="projectOptions" /></a-form-item>
@@ -453,9 +515,14 @@
 import {
   BugOutlined,
   CheckCircleOutlined,
+  DeleteOutlined,
+  DownloadOutlined,
   EditOutlined,
   ExclamationCircleOutlined,
+  EyeOutlined,
+  FilePdfOutlined,
   FileTextOutlined,
+  FileWordOutlined,
   InboxOutlined,
   LeftOutlined,
   LinkOutlined,
@@ -467,8 +534,10 @@ import {
   RightOutlined,
   ScheduleOutlined,
   UndoOutlined,
+  UploadOutlined,
 } from '@ant-design/icons-vue'
 import * as echarts from 'echarts'
+import dayjs from 'dayjs'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -480,6 +549,8 @@ const bugEditOpen = ref(false)
 const dailyEditOpen = ref(false)
 const uploadOpen = ref(false)
 const dailyHasRecord = ref(true)
+const selectedDailyDate = ref(dayjs())
+const dailyUploadFiles = ref([])
 const trendChartRef = ref(null)
 const projectChartRef = ref(null)
 const statusChartRef = ref(null)
@@ -501,6 +572,32 @@ const visibleTasks = computed(() => {
 
   return personalTasks
 })
+const selectedDailyDateText = computed(() => selectedDailyDate.value.format('YYYY-MM-DD'))
+const weekStart = computed(() => selectedDailyDate.value.subtract((selectedDailyDate.value.day() + 6) % 7, 'day'))
+const weekEnd = computed(() => weekStart.value.add(6, 'day'))
+const weekTitle = computed(() => {
+  const currentWeekStart = dayjs().subtract((dayjs().day() + 6) % 7, 'day')
+  return weekStart.value.isSame(currentWeekStart, 'day') ? '本周 0h' : `${weekStart.value.format('MM-DD')} 周 0h`
+})
+const weekRangeText = computed(() => `${weekStart.value.format('MM.DD')} - ${weekEnd.value.format('MM.DD')}`)
+const weekDays = computed(() => {
+  const weekLabels = ['一', '二', '三', '四', '五', '六', '日']
+
+  return Array.from({ length: 7 }).map((_, index) => {
+    const date = weekStart.value.add(index, 'day')
+
+    return {
+      date,
+      key: date.format('YYYY-MM-DD'),
+      week: weekLabels[index],
+      day: date.format('DD'),
+      dateText: date.format('MM-DD'),
+      active: date.isSame(selectedDailyDate.value, 'day'),
+      today: date.isSame(dayjs(), 'day'),
+    }
+  })
+})
+const dailySubmitTime = computed(() => `${selectedDailyDate.value.format('YYYY-MM-DD')} 18:00`)
 
 watch(
   () => [route.name, route.query.detail],
@@ -673,6 +770,66 @@ const handleBackToBugList = () => {
   updateDetailQuery()
 }
 
+const selectDailyDate = date => {
+  selectedDailyDate.value = date
+}
+
+const shiftDailyDate = amount => {
+  selectedDailyDate.value = selectedDailyDate.value.add(amount, 'day')
+}
+
+const shiftDailyWeek = amount => {
+  selectedDailyDate.value = selectedDailyDate.value.add(amount, 'week')
+}
+
+const backToToday = () => {
+  selectedDailyDate.value = dayjs()
+}
+
+const getFileExtension = name => name.split('.').pop()?.toLowerCase() || ''
+
+const getDailyUploadType = name => {
+  const ext = getFileExtension(name)
+  if (ext === 'pdf') return 'pdf'
+  if (['doc', 'docx'].includes(ext)) return 'docx'
+  if (['png', 'jpg', 'jpeg'].includes(ext)) return 'image'
+  if (['xls', 'xlsx'].includes(ext)) return 'excel'
+  return 'file'
+}
+
+const getDailyUploadIcon = name => {
+  const type = getDailyUploadType(name)
+  if (type === 'pdf') return FilePdfOutlined
+  if (type === 'docx') return FileWordOutlined
+  if (type === 'image') return PictureOutlined
+  return FileTextOutlined
+}
+
+const formatFileSize = size => {
+  if (!size) return '0 KB'
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`
+  return `${(size / 1024 / 1024).toFixed(1)} MB`
+}
+
+const handleDailyBeforeUpload = file => {
+  dailyUploadFiles.value = [
+    ...dailyUploadFiles.value,
+    {
+      uid: file.uid,
+      name: file.name,
+      size: file.size,
+      status: 'done',
+      originFileObj: file,
+    },
+  ]
+
+  return false
+}
+
+const handleDailyUploadRemove = file => {
+  dailyUploadFiles.value = dailyUploadFiles.value.filter(item => item.uid !== file.uid)
+}
+
 const selectOptions = [
   { label: '全部', value: '全部' },
   { label: '张三', value: '张三' },
@@ -790,19 +947,9 @@ const taskLogs = [
   { time: '2026-06-01 10:00', user: '张三', text: '任务创建，开始需求分析' },
 ]
 
-const weekDays = [
-  { label: '一 15', day: 15, active: true },
-  { label: '二 16', day: 16 },
-  { label: '三 17', day: 17 },
-  { label: '四 18', day: 18 },
-  { label: '五 19', day: 19 },
-  { label: '六 20', day: 20 },
-  { label: '日 14', day: 14 },
-]
-
 const dailyFiles = [
-  { name: '银行流水.pdf', size: '2.34 MB', time: '2024-05-16 14:32' },
-  { name: '银行流水说明.docx', size: '1.12 MB', time: '2024-05-16 14:28' },
+  { name: '银行流水.pdf', type: 'pdf', icon: FilePdfOutlined, size: '2.34 MB', time: '2024-05-16 14:32' },
+  { name: '银行流水说明.docx', type: 'docx', icon: FileWordOutlined, size: '1.12 MB', time: '2024-05-16 14:28' },
 ]
 
 const uploadFiles = [
@@ -1265,17 +1412,24 @@ const trendPoints = [
 }
 
 .date-toolbar strong {
+  min-width: 126px;
   font-size: 20px;
+  text-align: center;
+}
+
+.date-nav-button {
+  width: 38px;
+  padding: 0;
 }
 
 .daily-workspace {
   display: grid;
-  grid-template-columns: 172px minmax(0, 1fr);
+  grid-template-columns: 196px minmax(0, 1fr);
   gap: 14px;
 }
 
 .week-card {
-  height: 248px;
+  height: fit-content;
 }
 
 .week-head,
@@ -1286,21 +1440,88 @@ const trendPoints = [
 }
 
 .week-head {
-  gap: 20px;
-  margin-bottom: 8px;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #edf1f6;
+}
+
+.week-head div {
+  min-width: 0;
+  text-align: center;
+}
+
+.week-head strong,
+.week-head span {
+  display: block;
+}
+
+.week-head strong {
+  color: #17233d;
+  font-size: 15px;
+}
+
+.week-head span {
+  margin-top: 2px;
+  color: #8c8c8c;
+  font-size: 12px;
+}
+
+.week-nav-button {
+  width: 28px;
+  height: 28px;
+  padding: 0;
 }
 
 .week-day {
+  justify-content: flex-start;
+  gap: 10px;
   width: 100%;
-  height: 28px;
-  color: #5f6368;
+  height: 40px;
+  padding: 0 10px;
+  color: #4b5563;
   background: transparent;
   border: 0;
-  border-radius: 4px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.week-day + .week-day {
+  margin-top: 4px;
+}
+
+.week-day:hover {
+  background: #f3f8ff;
+}
+
+.week-day span {
+  width: 20px;
+  color: #8c8c8c;
+}
+
+.week-day strong {
+  width: 28px;
+  color: inherit;
+  font-size: 16px;
+}
+
+.week-day em {
+  margin-left: auto;
+  color: #9ca3af;
+  font-size: 12px;
+  font-style: normal;
 }
 
 .week-day.active {
   background: #e6f4ff;
+  color: #1677ff;
+  font-weight: 600;
+}
+
+.week-day.today:not(.active) {
+  color: #1677ff;
+  background: #f5faff;
 }
 
 .daily-content-card {
@@ -1334,23 +1555,68 @@ const trendPoints = [
 
 .daily-files {
   display: grid;
-  gap: 10px;
-  width: 246px;
+  grid-template-columns: repeat(auto-fit, minmax(254px, 300px));
+  gap: 12px;
+  max-width: 628px;
 }
 
 .daily-file {
   display: grid;
-  grid-template-columns: 30px 1fr;
+  grid-template-columns: 42px 1fr;
   gap: 12px;
-  padding: 14px 10px;
+  align-items: start;
+  padding: 14px 12px;
+  background: #fff;
   border: 1px solid #e5eaf0;
-  border-radius: 4px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgb(15 35 55 / 4%);
+}
+
+.daily-file-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  color: #fff;
+  font-size: 22px;
+  border-radius: 8px;
+}
+
+.daily-file-icon.pdf {
+  background: #ff4d4f;
+}
+
+.daily-file-icon.docx {
+  background: #1677ff;
+}
+
+.daily-file strong {
+  display: block;
+  max-width: 198px;
+  overflow: hidden;
+  color: #17233d;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .daily-file p {
   margin: 6px 0;
   color: #8c8c8c;
   font-size: 12px;
+}
+
+.file-action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  color: #1677ff;
+}
+
+.file-action-button.danger {
+  color: #ff4d4f;
 }
 
 .daily-time {
@@ -1641,9 +1907,82 @@ const trendPoints = [
   border-bottom: 1px solid #edf0f3;
 }
 
+.editor-tools > .anticon {
+  color: #4b5563;
+}
+
+.daily-upload {
+  display: inline-flex;
+}
+
 .editor-box :deep(textarea.ant-input) {
   border: 0;
   box-shadow: none;
+}
+
+.daily-upload-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 8px;
+  padding: 10px;
+  border-top: 1px solid #edf0f3;
+}
+
+.daily-upload-item {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 28px;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  background: #f8fbff;
+  border: 1px solid #e5edf7;
+  border-radius: 6px;
+}
+
+.daily-upload-item strong {
+  display: block;
+  overflow: hidden;
+  color: #17233d;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.daily-upload-item p {
+  margin: 2px 0 0;
+  color: #8c8c8c;
+  font-size: 12px;
+}
+
+.daily-upload-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  color: #fff;
+  font-size: 18px;
+  border-radius: 7px;
+}
+
+.daily-upload-icon.pdf {
+  background: #ff4d4f;
+}
+
+.daily-upload-icon.docx {
+  background: #1677ff;
+}
+
+.daily-upload-icon.image {
+  background: #13c2c2;
+}
+
+.daily-upload-icon.excel {
+  background: #22a06b;
+}
+
+.daily-upload-icon.file {
+  background: #8c8c8c;
 }
 
 .form-tip {
