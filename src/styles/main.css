@@ -12,10 +12,36 @@ body,
 
 body {
   min-width: 1100px;
-  color: #262626;
-  font-family: 'Microsoft YaHei', 'PingFang SC', Arial, sans-serif;
-  background: #f3f6f9;
+  color: #1d1d1f;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif;
+  background: #f5f5f7;
   -webkit-font-smoothing: antialiased;
+}
+
+* {
+  scrollbar-color: rgb(134 134 139 / 55%) transparent;
+  scrollbar-width: thin;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgb(134 134 139 / 45%);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgb(110 110 115 / 72%);
+  background-clip: padding-box;
 }
 
 a {
@@ -25,4 +51,43 @@ a {
 button,
 input {
   font: inherit;
+}
+
+.ant-card {
+  overflow: hidden;
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgb(0 0 0 / 4%);
+  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.ant-card:hover {
+  box-shadow: 0 12px 30px rgb(0 0 0 / 9%);
+  transform: translateY(-2px);
+}
+
+.ant-modal-content {
+  overflow: hidden;
+  border-radius: 18px;
+  box-shadow: 0 24px 70px rgb(0 0 0 / 18%);
+}
+
+.ant-btn,
+.ant-input,
+.ant-input-affix-wrapper,
+.ant-select-selector,
+.ant-picker,
+.ant-input-number {
+  border-radius: 9px;
+}
+
+.ant-btn {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.ant-btn:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.ant-table-tbody > tr > td {
+  transition: background-color 0.2s ease;
 }
