@@ -1,6 +1,6 @@
 <template>
   <div class="module-view">
-    <template v-if="isPersonalTasks">
+    <template v-if="isPersonalTasks || isTaskModule">
       <section v-if="personalMode === 'task-detail'" class="personal-page">
         <div class="detail-actions">
           <a-button class="back-button" @click="handleBackToTaskList">
@@ -16,7 +16,7 @@
             <a-descriptions-item label="任务名称">用户管理模块前端开发</a-descriptions-item>
             <a-descriptions-item label="所属项目">XX企业数字化管理系统</a-descriptions-item>
             <a-descriptions-item label="负责人">张三</a-descriptions-item>
-            <a-descriptions-item label="角色">开发</a-descriptions-item>
+            <a-descriptions-item label="角色">{{ currentTaskRole }}</a-descriptions-item>
             <a-descriptions-item label="创建时间">2026-06-01</a-descriptions-item>
             <a-descriptions-item label="优先级"><a-tag color="orange">高</a-tag></a-descriptions-item>
             <a-descriptions-item label="状态"><a-tag color="blue">进行中</a-tag></a-descriptions-item>
@@ -119,7 +119,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="record in personalTasks" :key="record.id">
+                <tr v-for="record in visibleTasks" :key="record.id">
                   <td>{{ record.index }}</td>
                   <td><button class="text-link" type="button" @click="handleTaskDetail">{{ record.name }}</button></td>
                   <td><button class="text-link" type="button">{{ record.project }}</button></td>
@@ -363,17 +363,16 @@
           <a-button type="primary" @click="taskEditOpen = false">确认</a-button>
         </a-space>
       </template>
-      <p class="modal-note">功能说明：只有实际开始和实际结束时间可编辑</p>
       <a-form class="prototype-modal-form" layout="horizontal" :label-col="{ span: 5 }">
         <a-form-item label="任务名称"><a-input value="用户管理模块前端开发" /></a-form-item>
-        <a-form-item label="所属项目"><a-input value="国网项目" /></a-form-item>
         <a-form-item label="负责人"><a-select value="张三" :options="userOptions" /></a-form-item>
-        <a-form-item label="优先级"><a-input value="高" /></a-form-item>
-        <a-form-item label="实际开始日期"><a-input value="6月6日" /></a-form-item>
-        <a-form-item label="实际结束日期"><a-input value="6月6日" /></a-form-item>
+        <a-form-item label="角色"><a-select :value="currentTaskRole" :options="roleOptions" /></a-form-item>
+        <a-form-item label="标签"><a-input value="测试" /></a-form-item>
         <a-form-item label="状态"><a-select value="未开始" :options="statusOptions" /></a-form-item>
-        <a-form-item label="标签"><a-input value="高" /></a-form-item>
-        <a-form-item label="备注"><a-textarea :rows="3" /></a-form-item>
+        <a-form-item label="优先级"><a-select value="紧急" :options="priorityOptions" /></a-form-item>
+        <a-form-item label="计划开始时间"><a-date-picker /></a-form-item>
+        <a-form-item label="实际开始时间"><a-date-picker /></a-form-item>
+        <a-form-item label="任务描述"><a-textarea :rows="4" /></a-form-item>
       </a-form>
     </a-modal>
 
@@ -492,11 +491,21 @@ const isPersonalTasks = computed(() => route.name === 'PersonalTasks')
 const isPersonalBugs = computed(() => route.name === 'PersonalBugs')
 const isPersonalDaily = computed(() => route.name === 'PersonalDaily')
 const isPersonalStatistics = computed(() => route.name === 'PersonalStatistics')
+const taskModuleRouteNames = ['AllTasks', 'DevelopmentTasks', 'TestingTasks']
+const isTaskModule = computed(() => taskModuleRouteNames.includes(route.name))
+const currentTaskRole = computed(() => (route.name === 'TestingTasks' ? '测试' : '开发'))
+const visibleTasks = computed(() => {
+  if (route.name === 'TestingTasks') {
+    return personalTasks.map(task => ({ ...task, role: '测试' }))
+  }
+
+  return personalTasks
+})
 
 watch(
   () => [route.name, route.query.detail],
   ([name, detail]) => {
-    if (name === 'PersonalTasks' && detail === 'task') {
+    if ((name === 'PersonalTasks' || taskModuleRouteNames.includes(name)) && detail === 'task') {
       personalMode.value = 'task-detail'
     } else if (name === 'PersonalBugs' && detail === 'bug') {
       personalMode.value = 'bug-detail'
@@ -676,6 +685,8 @@ const projectOptions = [
 ]
 const userOptions = [{ label: '张三', value: '张三' }, { label: '李四', value: '李四' }]
 const statusOptions = [{ label: '未开始', value: '未开始' }, { label: '进行中', value: '进行中' }, { label: '已完成', value: '已完成' }]
+const roleOptions = [{ label: '开发', value: '开发' }, { label: '测试', value: '测试' }]
+const priorityOptions = [{ label: '紧急', value: '紧急' }, { label: '高', value: '高' }, { label: '中', value: '中' }, { label: '低', value: '低' }]
 const bugLevelOptions = [{ label: '严重', value: '严重' }, { label: '致命', value: '致命' }, { label: '一般', value: '一般' }]
 const taskOptions = [{ label: '用户管理模块前端开发', value: '用户管理模块前端开发' }]
 const todayOptions = [{ label: '今天', value: '今天' }, { label: '本周', value: '本周' }, { label: '本月', value: '本月' }]
