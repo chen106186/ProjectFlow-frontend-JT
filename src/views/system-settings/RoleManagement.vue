@@ -12,36 +12,40 @@
         <a-input v-model:value="keyword" class="role-search" placeholder="请输入角色名称" allow-clear>
           <template #prefix><SearchOutlined /></template>
         </a-input>
-        <div class="role-list">
-          <article
-            v-for="role in filteredRoles"
-            :key="role.id"
-            :class="['role-item', { 'role-item--active': role.id === currentRoleId }]"
-            @click="handleSelectRole(role)"
-          >
-            <div class="role-item__content">
-              <strong>{{ role.name }}</strong>
-              <span>{{ role.description }}</span>
-            </div>
-            <a-button class="role-item__edit" type="text" size="small" @click.stop="handleEditRole(role)">
-              <template #icon><EditOutlined /></template>
-            </a-button>
-          </article>
-        </div>
+        <a-spin :spinning="roleLoading">
+          <div class="role-list">
+            <article
+              v-for="role in filteredRoles"
+              :key="role.id"
+              :class="['role-item', { 'role-item--active': role.id === currentRoleId }]"
+              @click="handleSelectRole(role)"
+            >
+              <div class="role-item__content">
+                <strong>{{ role.name }}</strong>
+                <span>{{ role.code }}</span>
+              </div>
+              <a-button class="role-item__edit" type="text" size="small" @click.stop="handleEditRole(role)">
+                <template #icon><EditOutlined /></template>
+              </a-button>
+            </article>
+          </div>
+        </a-spin>
       </a-card>
 
       <a-card class="prototype-card permission-card" :bordered="false">
         <div class="permission-title">
-          <DownOutlined />
-          <span>菜单权限</span>
+          <span><DownOutlined /> 菜单权限</span>
+          <a-button type="primary" size="small" :loading="permissionSaving" :disabled="!currentRoleId" @click="handleSavePermissions">保存权限</a-button>
         </div>
-        <a-tree
-          v-model:checkedKeys="checkedPermissionKeys"
-          class="permission-tree"
-          :tree-data="permissionTree"
-          checkable
-          default-expand-all
-        />
+        <a-spin :spinning="menuLoading || permissionLoading">
+          <a-tree
+            v-model:checkedKeys="checkedPermissionKeys"
+            class="permission-tree"
+            :tree-data="permissionTree"
+            checkable
+            default-expand-all
+          />
+        </a-spin>
       </a-card>
     </div>
 
@@ -49,17 +53,18 @@
       v-model:open="roleModalOpen"
       :title="modalTitle"
       width="576px"
+      :confirm-loading="submitLoading"
       ok-text="确认"
       cancel-text="取消"
       @ok="handleSaveRole"
       @cancel="handleCancel"
     >
-      <a-form class="role-form" :label-col="{ span: 4 }" :wrapper-col="{ span: 18 }">
-        <a-form-item label="角色">
-          <a-input v-model:value="roleForm.name" placeholder="请输入角色名称" />
+      <a-form ref="formRef" class="role-form" :model="roleForm" :rules="formRules" :label-col="{ span: 4 }" :wrapper-col="{ span: 18 }">
+        <a-form-item label="编码" name="code">
+          <a-input v-model:value="roleForm.code" placeholder="请输入角色编码" />
         </a-form-item>
-        <a-form-item label="描述">
-          <a-textarea v-model:value="roleForm.description" placeholder="请输入角色描述" :rows="4" />
+        <a-form-item label="角色" name="name">
+          <a-input v-model:value="roleForm.name" placeholder="请输入角色名称" />
         </a-form-item>
       </a-form>
     </a-modal>
@@ -68,108 +73,127 @@
 
 <script setup>
 import { DownOutlined, EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons-vue'
-import { computed, reactive, ref } from 'vue'
-
-const permissionTree = [
-  { title: '首页', key: 'home' },
-  {
-    title: '个人工作',
-    key: 'personal',
-    children: [
-      { title: '我的任务', key: 'personal-tasks' },
-      { title: '我的 Bug', key: 'personal-bugs' },
-      { title: '我的需求', key: 'personal-demands' },
-      { title: '我的日报', key: 'personal-daily' },
-      { title: '我的统计', key: 'personal-statistics' },
-    ],
-  },
-  {
-    title: '项目清单',
-    key: 'projects',
-    children: [
-      { title: '管理类项目', key: 'management-projects' },
-      { title: '执行类项目', key: 'execution-projects' },
-    ],
-  },
-  {
-    title: '任务列表',
-    key: 'tasks',
-    children: [
-      { title: '全部任务', key: 'all-tasks' },
-      { title: '开发任务', key: 'development-tasks' },
-      { title: '测试任务', key: 'testing-tasks' },
-    ],
-  },
-  { title: '需求管理', key: 'demands' },
-  { title: 'Bug 列表', key: 'bugs' },
-  {
-    title: '系统设置',
-    key: 'settings',
-    children: [
-      { title: '用户管理', key: 'settings-users' },
-      { title: '角色管理', key: 'settings-roles' },
-      { title: '操作日志', key: 'settings-logs' },
-    ],
-  },
-]
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import {
+  assignSystemRoleMenus,
+  createSystemRole,
+  getSystemMenus,
+  getSystemRoleMenus,
+  getSystemRoles,
+  updateSystemRole,
+} from '@/api/systemSettings'
 
 const defaultRoleForm = () => ({
   id: undefined,
+  code: '',
   name: '',
-  description: '',
 })
 
 const keyword = ref('')
-const currentRoleId = ref(1)
+const currentRoleId = ref()
 const roleModalOpen = ref(false)
 const modalMode = ref('create')
+const roleLoading = ref(false)
+const menuLoading = ref(false)
+const permissionLoading = ref(false)
+const permissionSaving = ref(false)
+const submitLoading = ref(false)
+const formRef = ref()
 const roleForm = reactive(defaultRoleForm())
-const checkedPermissionKeys = ref([
-  'home',
-  'personal',
-  'personal-tasks',
-  'personal-bugs',
-  'projects',
-  'management-projects',
-  'execution-projects',
-  'tasks',
-  'all-tasks',
-  'development-tasks',
-  'testing-tasks',
-])
-const roles = ref([
-  { id: 1, name: '总经办/超级管理员', description: '系统最高权限，拥有所有功能权限' },
-  { id: 2, name: '项目经理', description: '负责项目管理和任务分配' },
-  { id: 3, name: '开发负责人', description: '负责任务管理和任务分配' },
-  { id: 4, name: 'UI设计师', description: '负责设计UI' },
-  { id: 5, name: '开发工程师', description: '负责项目开发和Bug修复' },
-  { id: 6, name: '测试工程师', description: '负责测试和Bug提交' },
-  { id: 7, name: '人事', description: '负责人员管理' },
-])
+const checkedPermissionKeys = ref([])
+const roles = ref([])
+const menus = ref([])
+
+const formRules = {
+  code: [{ required: true, message: '请输入角色编码', trigger: 'blur' }],
+  name: [{ required: true, message: '请输入角色名称', trigger: 'blur' }],
+}
 
 const filteredRoles = computed(() => {
   if (!keyword.value) {
     return roles.value
   }
 
-  return roles.value.filter(role => role.name.includes(keyword.value))
+  return roles.value.filter(role => role.name.includes(keyword.value) || role.code.includes(keyword.value))
 })
 
 const modalTitle = computed(() => (modalMode.value === 'create' ? '新增角色' : '编辑角色'))
+const permissionTree = computed(() => buildMenuTree(menus.value))
 
-const handleSelectRole = role => {
+onMounted(async () => {
+  await Promise.all([fetchRoles(), fetchMenus()])
+  if (roles.value.length) {
+    await handleSelectRole(roles.value[0])
+  }
+})
+
+const buildMenuTree = items => {
+  const nodeMap = new Map()
+  const roots = []
+
+  items.forEach(item => {
+    nodeMap.set(item.id, { title: item.name, key: item.id, children: [] })
+  })
+
+  items.forEach(item => {
+    const node = nodeMap.get(item.id)
+    if (item.parentId && nodeMap.has(item.parentId)) {
+      nodeMap.get(item.parentId).children.push(node)
+      return
+    }
+    roots.push(node)
+  })
+
+  return roots
+}
+
+const fetchRoles = async () => {
+  roleLoading.value = true
+
+  try {
+    roles.value = await getSystemRoles()
+  } finally {
+    roleLoading.value = false
+  }
+}
+
+const fetchMenus = async () => {
+  menuLoading.value = true
+
+  try {
+    menus.value = await getSystemMenus()
+  } finally {
+    menuLoading.value = false
+  }
+}
+
+const fetchRoleMenus = async roleId => {
+  permissionLoading.value = true
+
+  try {
+    checkedPermissionKeys.value = await getSystemRoleMenus(roleId)
+  } finally {
+    permissionLoading.value = false
+  }
+}
+
+const handleSelectRole = async role => {
   currentRoleId.value = role.id
+  await fetchRoleMenus(role.id)
 }
 
 const handleAddRole = () => {
   modalMode.value = 'create'
   Object.assign(roleForm, defaultRoleForm())
+  formRef.value?.clearValidate()
   roleModalOpen.value = true
 }
 
 const handleEditRole = role => {
   modalMode.value = 'edit'
   Object.assign(roleForm, role)
+  formRef.value?.clearValidate()
   roleModalOpen.value = true
 }
 
@@ -177,29 +201,50 @@ const handleCancel = () => {
   roleModalOpen.value = false
 }
 
-const handleSaveRole = () => {
-  if (!roleForm.name) {
+const handleSaveRole = async () => {
+  if (submitLoading.value) {
     return
   }
 
-  if (modalMode.value === 'edit') {
-    const target = roles.value.find(role => role.id === roleForm.id)
-    if (target) {
-      target.name = roleForm.name
-      target.description = roleForm.description
+  try {
+    await formRef.value?.validate()
+    submitLoading.value = true
+
+    if (modalMode.value === 'edit') {
+      await updateSystemRole(roleForm.id, {
+        code: roleForm.code,
+        name: roleForm.name,
+      })
+      message.success('编辑成功')
+    } else {
+      const role = await createSystemRole({
+        code: roleForm.code,
+        name: roleForm.name,
+      })
+      currentRoleId.value = role.id
+      message.success('新增成功')
     }
+
     roleModalOpen.value = false
+    await fetchRoles()
+  } finally {
+    submitLoading.value = false
+  }
+}
+
+const handleSavePermissions = async () => {
+  if (!currentRoleId.value) {
     return
   }
 
-  const newRole = {
-    id: Date.now(),
-    name: roleForm.name,
-    description: roleForm.description,
+  permissionSaving.value = true
+
+  try {
+    await assignSystemRoleMenus(currentRoleId.value, checkedPermissionKeys.value)
+    message.success('权限已保存')
+  } finally {
+    permissionSaving.value = false
   }
-  roles.value = [newRole, ...roles.value]
-  currentRoleId.value = newRole.id
-  roleModalOpen.value = false
 }
 </script>
 
@@ -298,11 +343,17 @@ const handleSaveRole = () => {
 
 .permission-title {
   display: flex;
-  gap: 10px;
   align-items: center;
+  justify-content: space-between;
   height: 56px;
   font-weight: 500;
   border-bottom: 1px solid #f0f0f0;
+}
+
+.permission-title span {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
 }
 
 .permission-tree {

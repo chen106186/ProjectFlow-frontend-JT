@@ -1,0 +1,18 @@
+import { request } from '@/utils/request'
+
+export const getSystemUsers = params => request('/api/system/users', { params })
+export const createSystemUser = data => request('/api/system/users', { method: 'POST', body: data })
+export const updateSystemUser = (id, data) => request(`/api/system/users/${id}`, { method: 'PUT', body: data })
+export const updateSystemUserEnabled = (id, enabled) => request(`/api/system/users/${id}/enabled`, { method: 'PATCH', body: { enabled } })
+export const assignSystemUserRoles = (id, roleIds) => request(`/api/system/users/${id}/roles`, { method: 'PUT', body: { roleIds } })
+
+export const getSystemDepartments = () => request('/api/system/departments')
+export const createSystemDepartment = data => request('/api/system/departments', { method: 'POST', body: data })
+export const updateSystemDepartment = (id, data) => request(`/api/system/departments/${id}`, { method: 'PUT', body: data })
+export const deleteSystemDepartment = id => request(`/api/system/departments/${id}`, { method: 'DELETE' })
+export const getSystemRoles = () => request('/api/system/roles')
+export const createSystemRole = data => request('/api/system/roles', { method: 'POST', body: data })
+export const updateSystemRole = (id, data) => request(`/api/system/roles/${id}`, { method: 'PUT', body: data })
+export const getSystemMenus = () => request('/api/system/menus')
+export const getSystemRoleMenus = id => request(`/api/system/roles/${id}/menus`)
+export const assignSystemRoleMenus = (id, menuIds) => request(`/api/system/roles/${id}/menus`, { method: 'PUT', body: { menuIds } })
