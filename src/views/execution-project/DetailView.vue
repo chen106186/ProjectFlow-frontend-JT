@@ -355,67 +355,30 @@ const pagination = { pageSize: 5, showSizeChanger: false }
 const uploadForm = reactive({ location: '项目文档库', category: '需求类', description: '' })
 const storageOptions = toOptions(['项目文档库', '公共文档库'])
 const documentCategoryOptions = toOptions(['合同类', '需求类', '设计类', '开发类', '验收类'])
-const summaryItems = computed(() => [{ label: '项目名称', value: currentProject.value?.name || '-' }, { label: '项目类型', value: '执行类项目' }, { label: '项目经理', value: currentProject.value?.manager || '-' }, { label: '项目阶段', value: currentProject.value?.stage || '-' }, { label: '项目状态', value: currentProject.value?.status || '-', tag: true, color: 'processing' }, { label: '计划开始', value: currentProject.value?.plannedStartDate || '-' }, { label: '计划结束', value: currentProject.value?.plannedEndDate || '-' }, { label: '项目描述', value: currentProject.value?.description || '-' }])
-const demoProjectId = 'demo-execution-project'
-
+const summaryItems = computed(() => [
+  { label: '项目名称', value: currentProject.value?.name || '-' },
+  { label: '项目类型', value: '执行类项目' },
+  { label: '业务部门', value: currentProject.value?.department || '-' },
+  { label: '项目经理', value: currentProject.value?.manager || '-' },
+  { label: '项目阶段', value: currentProject.value?.stage || '-' },
+  { label: '项目状态', value: currentProject.value?.status || '-', tag: true, color: 'processing' },
+  { label: '计划开始', value: currentProject.value?.plannedStartDate || '-' },
+  { label: '计划结束', value: currentProject.value?.plannedEndDate || '-' },
+  { label: '项目描述', value: currentProject.value?.description || '-' },
+])
 const getDictLabel = (type, value) => dictLabels[type]?.[value] || value || '-'
 const getUserName = id => managerOptions.value.find(item => item.value === id)?.label || (id ? `用户 ${id}` : '-')
-const mapProject = project => ({ ...project, manager: getUserName(project.managerId), status: getDictLabel('projectStatus', project.status), statusCode: project.status })
+const mapProject = project => ({
+  ...project,
+  department: project.department || project.businessDepartment || '-',
+  manager: getUserName(project.managerId),
+  status: getDictLabel('projectStatus', project.status),
+  statusCode: project.status,
+})
 const handleBack = () => router.push({ name: 'ExecutionProjects' })
 const formatFileSize = size => size >= 1024 * 1024 ? `${(size / 1024 / 1024).toFixed(1)}MB` : `${Math.ceil((size || 0) / 1024)}KB`
-const isDemoProject = () => route.params.id === demoProjectId
 const formatNodeDate = value => value === '-' ? undefined : value?.replaceAll('/', '-')
 const getStatusLabel = value => ganttStatusOptions.value.find(item => item.value === value)?.label || getDictLabel('taskStatus', value)
-
-const applyDemoProjectData = async () => {
-  currentProject.value = {
-    id: demoProjectId,
-    name: '执行类项目演示数据',
-    manager: '张三',
-    stage: '开发',
-    status: '进行中',
-    statusCode: 'IN_PROGRESS',
-    plannedStartDate: '2025-05-01',
-    plannedEndDate: '2025-12-31',
-    description: '用于演示执行类项目详情页的本地数据。',
-  }
-  Object.assign(ganttSummaryData, { total: 7, completed: 2, overdue: 2, dueSoon: 3, overallProgress: 45 })
-  ganttNodeRows.value = [
-    { id: 1, name: '项目立项', planStart: '2025/05/01', planEnd: '2025/05/10', actualStart: '2025/05/01', actualEnd: '2025/05/08', status: '已完成', statusCode: 'COMPLETED', progress: 100 },
-    { id: 2, name: '需求分析', planStart: '2025/05/11', planEnd: '2025/05/31', actualStart: '2025/05/12', actualEnd: '2025/05/29', status: '已完成', statusCode: 'COMPLETED', progress: 100 },
-    { id: 3, name: 'UI设计', planStart: '2025/06/01', planEnd: '2025/06/20', actualStart: '2025/06/02', actualEnd: '2025/06/18', status: '进行中', statusCode: 'IN_PROGRESS', progress: 75 },
-    { id: 4, name: '开发阶段', planStart: '2025/06/21', planEnd: '2025/09/15', actualStart: '2025/06/21', actualEnd: '-', status: '进行中', statusCode: 'IN_PROGRESS', progress: 45 },
-    { id: 5, name: '测试阶段', planStart: '2025/09/16', planEnd: '2025/10/15', actualStart: '-', actualEnd: '-', status: '未开始', statusCode: 'NOT_STARTED', progress: 0 },
-    { id: 6, name: '上线试运行', planStart: '2025/10/16', planEnd: '2025/11/15', actualStart: '-', actualEnd: '-', status: '未开始', statusCode: 'NOT_STARTED', progress: 0 },
-    { id: 7, name: '验收', planStart: '2025/11/16', planEnd: '2025/12/31', actualStart: '-', actualEnd: '-', status: '未开始', statusCode: 'NOT_STARTED', progress: 0 },
-  ]
-  taskRows.value = [
-    { id: 1, name: '用户权限系统设计', owner: '张三', priority: '高', priorityCode: 'HIGH', status: '进行中', planStart: '06/01', planEnd: '06/10', actualStart: '06/01', actualEnd: '06/14' },
-    { id: 2, name: '数据模型设计', owner: '李四', priority: '高', priorityCode: 'HIGH', status: '进行中', planStart: '06/05', planEnd: '06/15', actualStart: '06/05', actualEnd: '06/19' },
-    { id: 3, name: '接口联调', owner: '王五', priority: '中', priorityCode: 'MEDIUM', status: '进行中', planStart: '06/08', planEnd: '06/18', actualStart: '06/08', actualEnd: '06/22' },
-    { id: 4, name: '页面开发', owner: '赵六', priority: '中', priorityCode: 'MEDIUM', status: '进行中', planStart: '05/20', planEnd: '06/05', actualStart: '05/21', actualEnd: '06/07' },
-    { id: 5, name: '测试用例编写', owner: '孙七', priority: '低', priorityCode: 'LOW', status: '未开始', planStart: '06/20', planEnd: '06/28', actualStart: '-', actualEnd: '-' },
-  ]
-  bugRows.value = [
-    { id: 1, code: 'BUG-2026-00102', title: '登录页面验证码不刷新', severity: '严重', priorityCode: 'URGENT', status: '待处理', statusCode: 'PENDING_FIX', assignee: '张三', creator: '李四' },
-    { id: 2, code: 'BUG-2026-00101', title: '数据导入时文件格式校验错误', severity: '严重', priorityCode: 'URGENT', status: '修复中', statusCode: 'FIXING', assignee: '张三', creator: '李四' },
-    { id: 3, code: 'BUG-2026-00098', title: '报表导出后数据缺失', severity: '一般', priorityCode: 'MEDIUM', status: '已完成', statusCode: 'COMPLETED', assignee: '王五', creator: '李四' },
-    { id: 4, code: 'BUG-2026-00095', title: '系统偶发性卡顿', severity: '一般', priorityCode: 'MEDIUM', status: '待处理', statusCode: 'PENDING_FIX', assignee: '赵六', creator: '李四' },
-  ]
-  reportRows.value = [
-    { id: 1, title: '周四向领导汇报Q2进展', type: '周报', status: '准备中', planTime: '2026-06-15 14:00', actualTime: '-', target: '领导层', place: '会议室A' },
-    { id: 2, title: '客户演示-权限管理模块', type: '客户汇报', status: '已完成', planTime: '2026-06-08 10:00', actualTime: '2026-06-08 10:05', target: 'XX客户', place: '线上腾讯会议' },
-    { id: 3, title: '项目月度进度汇报', type: '月报', status: '已完成', planTime: '2026-06-01 11:00', actualTime: '2026-06-01 11:10', target: '管理层', place: '会议室B' },
-    { id: 4, title: '版本发布前评审汇报', type: '评审汇报', status: '已完成', planTime: '2026-05-28 16:00', actualTime: '2026-05-28 16:20', target: '产品部、测试部', place: '线下会议室C' },
-  ]
-  documentRows.value = [
-    { id: 'demo-doc-1', name: '项目需求说明书V2.0.docx', type: 'DOCX', size: '2.3MB', version: 'V2.0', uploader: '张三', category: '需求类', uploadTime: '2026-06-10' },
-    { id: 'demo-doc-2', name: '系统架构设计图.drawio', type: 'DRAWIO', size: '1.1MB', version: 'V1.0', uploader: '李四', category: '设计类', uploadTime: '2026-06-11' },
-    { id: 'demo-doc-3', name: '接口文档V1.2.docx', type: 'DOCX', size: '856KB', version: 'V1.2', uploader: '王五', category: '开发类', uploadTime: '2026-06-12' },
-    { id: 'demo-doc-4', name: '合同扫描件.pdf', type: 'PDF', size: '4.5MB', version: 'V1.0', uploader: '赵六', category: '合同类', uploadTime: '2026-06-13' },
-  ]
-  await renderGantt()
-}
 
 const fetchReferenceData = async () => {
   try {
@@ -434,11 +397,6 @@ const fetchReferenceData = async () => {
 }
 
 const fetchProjectRelatedData = async projectId => {
-  if (isDemoProject()) {
-    await applyDemoProjectData()
-    return
-  }
-
   detailLoading.value = true
   taskLoading.value = true
   bugLoading.value = true
@@ -512,33 +470,6 @@ const handleGanttRow = record => ({
   },
 })
 
-const refreshDemoGanttSummary = () => {
-  const rows = ganttNodeRows.value
-  const completed = rows.filter(node => node.statusCode === 'COMPLETED').length
-  const overdue = rows.filter(node => node.statusCode === 'OVERDUE').length
-  const dueSoon = rows.filter(node => node.statusCode === 'DUE_SOON').length
-  const overallProgress = rows.length ? Math.round(rows.reduce((total, node) => total + node.progress, 0) / rows.length) : 0
-  Object.assign(ganttSummaryData, { total: rows.length, completed, overdue, dueSoon, overallProgress })
-}
-
-const updateDemoGanttNode = async () => {
-  ganttNodeRows.value = ganttNodeRows.value.map(node => node.id === ganttForm.id ? {
-    ...node,
-    planStart: ganttForm.planStart.replaceAll('-', '/'),
-    planEnd: ganttForm.planEnd.replaceAll('-', '/'),
-    actualStart: ganttForm.actualStart?.replaceAll('-', '/') || '-',
-    actualEnd: ganttForm.actualEnd?.replaceAll('-', '/') || '-',
-    status: getStatusLabel(ganttForm.status),
-    statusCode: ganttForm.status,
-    progress: ganttForm.progress,
-    isOverdue: ganttForm.status === 'OVERDUE',
-  } : node)
-  refreshDemoGanttSummary()
-  ganttEditVisible.value = false
-  await renderGantt()
-  message.success('Demo节点更新成功')
-}
-
 const handleSaveGanttNode = async () => {
   if (ganttSubmitLoading.value) return
 
@@ -546,11 +477,6 @@ const handleSaveGanttNode = async () => {
   ganttSubmitLoading.value = true
 
   try {
-    if (isDemoProject()) {
-      await updateDemoGanttNode()
-      return
-    }
-
     await updateGanttNode(route.params.id, ganttForm.id, {
       nodeName: ganttForm.name,
       plannedStartDate: ganttForm.planStart,
@@ -589,26 +515,6 @@ const handleStartUpload = async () => {
     return
   }
 
-  if (isDemoProject()) {
-    uploadFiles.value.forEach(file => {
-      documentRows.value.unshift({
-        id: file.uid,
-        name: file.name,
-        type: file.name.split('.').pop()?.toUpperCase() || '-',
-        size: formatFileSize(file.size),
-        version: uploadForm.description || 'V1.0',
-        uploader: 'Demo用户',
-        category: uploadForm.category,
-        uploadTime: dayjs().format('YYYY-MM-DD'),
-      })
-      file.percent = 100
-    })
-    message.success('Demo文件上传成功')
-    uploadVisible.value = false
-    uploadFiles.value = []
-    return
-  }
-
   uploadLoading.value = true
   try {
     for (const uploadFile of uploadFiles.value) {
@@ -625,7 +531,7 @@ const handleStartUpload = async () => {
     message.success('文件上传成功')
     uploadVisible.value = false
     uploadFiles.value = []
-    await fetchProjectRelatedData(Number(route.params.id))
+    await fetchProjectRelatedData(route.params.id)
   } catch (error) {
     message.error(error.message)
   } finally {
@@ -634,11 +540,6 @@ const handleStartUpload = async () => {
 }
 
 const handleDownloadDocument = async record => {
-  if (isDemoProject()) {
-    message.info(`Demo文件：${record.name}`)
-    return
-  }
-
   try {
     const result = await downloadProjectFile(record.id)
     const link = document.createElement('a')
@@ -652,12 +553,6 @@ const handleDownloadDocument = async record => {
 }
 
 const handleDeleteDocument = async record => {
-  if (isDemoProject()) {
-    documentRows.value = documentRows.value.filter(item => item.id !== record.id)
-    message.success('Demo文件删除成功')
-    return
-  }
-
   try {
     await deleteProjectFile(record.id)
     documentRows.value = documentRows.value.filter(item => item.id !== record.id)
@@ -669,13 +564,6 @@ const handleDeleteDocument = async record => {
 
 const handleDeleteDocuments = async () => {
   if (!selectedDocumentIds.value.length) return
-
-  if (isDemoProject()) {
-    documentRows.value = documentRows.value.filter(item => !selectedDocumentIds.value.includes(item.id))
-    selectedDocumentIds.value = []
-    message.success('Demo文件批量删除成功')
-    return
-  }
 
   try {
     await deleteProjectFiles(selectedDocumentIds.value)

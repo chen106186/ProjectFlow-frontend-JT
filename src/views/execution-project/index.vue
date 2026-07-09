@@ -29,9 +29,9 @@
       </a-table>
 
       <div v-else class="execution-groups">
-        <section v-for="group in groupedProjects" :key="group.value" class="execution-group">
+        <section v-for="(group, groupIndex) in groupedProjects" :key="group.value" class="execution-group">
           <header class="execution-group__header"><button type="button" @click="handleToggleGroup(group.value)"><RightOutlined v-if="collapsedGroups.includes(group.value)" /><DownOutlined v-else />{{ group.label }}</button><a-tag>{{ group.rows.length }}</a-tag></header>
-          <a-table v-if="!collapsedGroups.includes(group.value)" row-key="id" :columns="columns" :data-source="group.rows" :pagination="false" :scroll="{ x: 980 }" :show-header="false">
+          <a-table v-if="!collapsedGroups.includes(group.value)" row-key="id" :columns="columns" :data-source="group.rows" :pagination="false" :scroll="{ x: 980 }" :show-header="groupIndex === 0">
             <template #bodyCell="{ column, record, index, text }">
               <template v-if="column.dataIndex === 'index'">{{ index + 1 }}</template>
               <template v-else-if="column.dataIndex === 'name'"><a-button type="link" class="table-link" @click="handleDetail(record)">{{ text }}</a-button></template>
@@ -64,7 +64,7 @@ import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
-import { createProject, deleteProject, getDicts, getProjectBugs, getProjectList, getProjectTasks, getSystemUsers, updateProject } from '@/api/managementProject'
+import { createProject, deleteProject, getDicts, getProjectDetail, getProjectList, getProjectStats, getSystemUsers, updateProject } from '@/api/managementProject'
 
 const loading = ref(false)
 const submitLoading = ref(false)
@@ -81,25 +81,12 @@ const displayMode = ref('list')
 const groupField = ref('stage')
 const collapsedGroups = ref([])
 
-const stageOptions = ['需求分析', 'UI设计', '开发', '测试', '上线试运行'].map(value => ({ label: value, value }))
+const stageOptions = ref([])
 const withAll = options => [{ label: '全部', value: '全部' }, ...options]
 const managerFilterOptions = computed(() => withAll(managerOptions.value))
-const stageFilterOptions = withAll(stageOptions)
+const stageFilterOptions = computed(() => withAll(stageOptions.value))
 const statusFilterOptions = computed(() => withAll(statusOptions.value))
 const groupOptions = [{ label: '项目阶段', value: 'stage' }, { label: '项目经理', value: 'manager' }, { label: '项目状态', value: 'status' }]
-const demoExecutionProject = {
-  id: 'demo-execution-project',
-  name: '执行类项目演示数据',
-  managerId: undefined,
-  manager: '张三',
-  stage: '开发',
-  status: '进行中',
-  statusCode: 'IN_PROGRESS',
-  description: '用于演示执行类项目详情页的本地数据。',
-  taskCount: 5,
-  bugCount: 4,
-}
-
 const query = reactive({ keyword: '', managerId: '全部', stage: '全部', status: '全部' })
 const appliedQuery = reactive({ ...query })
 const pagination = reactive({ current: 1, pageSize: 10, total: 0, pageSizeOptions: ['10', '20', '50'], showSizeChanger: true, showTotal: total => `共 ${total} 条` })
@@ -115,7 +102,7 @@ const columns = [
   { title: '操作', dataIndex: 'operation', width: 190, fixed: 'right' },
 ]
 
-const createDefaultForm = () => ({ name: '', department: '', managerId: undefined, participantIds: [], managementProjectId: undefined, stage: '需求分析', status: 'NOT_STARTED', description: '' })
+const createDefaultForm = () => ({ name: '', department: '', managerId: undefined, participantIds: [], managementProjectId: undefined, stage: 'REQUIREMENT_ANALYSIS', status: 'NOT_STARTED', description: '' })
 const formState = reactive(createDefaultForm())
 const formRules = {
   name: [{ required: true, message: '请输入项目名称', trigger: 'blur' }],
@@ -144,6 +131,7 @@ const fetchReferenceData = async () => {
       getSystemUsers({ pageNo: 1, pageSize: 200, enabled: true }),
       getProjectList({ projectType: 'MANAGEMENT', pageNo: 1, pageSize: 200 }),
     ])
+    stageOptions.value = dicts.find(item => item.type === 'projectStage')?.items || []
     const projectStatus = dicts.find(item => item.type === 'projectStatus')?.items || []
     statusOptions.value = projectStatus
     Object.assign(statusLabels, Object.fromEntries(projectStatus.map(item => [item.value, item.label])))
@@ -158,16 +146,27 @@ const fetchProjects = async () => {
   loading.value = true
   try {
     const result = await getProjectList({ projectType: 'EXECUTION', keyword: appliedQuery.keyword, managerId: appliedQuery.managerId === '全部' ? undefined : appliedQuery.managerId, status: appliedQuery.status === '全部' ? undefined : appliedQuery.status, pageNo: pagination.current, pageSize: pagination.pageSize })
-    const rows = await Promise.all(result.records.map(async project => {
-      const [tasks, bugs] = await Promise.all([getProjectTasks({ projectId: project.id, pageNo: 1, pageSize: 1 }), getProjectBugs({ projectId: project.id, pageNo: 1, pageSize: 1 })])
-      return { ...project, manager: getManagerName(project.managerId), status: statusLabels[project.status] || project.status || '-', statusCode: project.status, taskCount: tasks.total, bugCount: bugs.total }
+    const ids = result.records.map(p => p.id)
+    const statsMap = ids.length
+      ? Object.fromEntries((await getProjectStats(ids)).map(s => [s.projectId, s]))
+      : {}
+    const rows = result.records.map(project => ({
+      ...project,
+      department: project.department || project.businessDepartment || '-',
+      manager: getManagerName(project.managerId),
+      stage: stageOptions.value.find(item => item.value === project.stage)?.label || project.stage || '-',
+      stageCode: project.stage,
+      status: statusLabels[project.status] || project.status || '-',
+      statusCode: project.status,
+      taskCount: statsMap[project.id]?.taskCount ?? 0,
+      bugCount: statsMap[project.id]?.bugCount ?? 0,
     }))
-    projects.value = rows.length ? rows : [demoExecutionProject]
-    pagination.total = result.total || projects.value.length
+    projects.value = rows
+    pagination.total = result.total
   } catch (error) {
-    projects.value = [demoExecutionProject]
-    pagination.total = 1
-    message.warning('接口不可用，已展示Demo数据')
+    projects.value = []
+    pagination.total = 0
+    message.error(error.message)
   } finally {
     loading.value = false
   }
@@ -178,14 +177,28 @@ const handleReset = async () => { Object.assign(query, { keyword: '', managerId:
 const handleTableChange = async page => { pagination.current = page.current; pagination.pageSize = page.pageSize; await fetchProjects() }
 const handleToggleGroup = value => { collapsedGroups.value = collapsedGroups.value.includes(value) ? collapsedGroups.value.filter(item => item !== value) : [...collapsedGroups.value, value] }
 const handleCreate = () => { editingId.value = null; Object.assign(formState, createDefaultForm()); formVisible.value = true }
-const handleEdit = record => { editingId.value = record.id; Object.assign(formState, createDefaultForm(), { name: record.name, managerId: record.managerId, stage: record.stage, status: record.statusCode, description: record.description }); formVisible.value = true }
+const handleEdit = async record => {
+  editingId.value = record.id
+  formVisible.value = true
+  try {
+    const detail = await getProjectDetail(record.id)
+    Object.assign(formState, createDefaultForm(), {
+      name: detail.name,
+      department: detail.businessDepartment || detail.department || '',
+      managerId: detail.managerId,
+      participantIds: detail.participantIds || [],
+      managementProjectId: detail.managementProjectId || undefined,
+      stage: detail.stage,
+      status: detail.status,
+      description: detail.description,
+    })
+  } catch (error) {
+    message.error(error.message)
+    formVisible.value = false
+  }
+}
 const handleDetail = record => { router.push({ name: 'ExecutionProjectDetail', params: { id: record.id } }) }
 const handleDelete = async record => {
-  if (record.id === demoExecutionProject.id) {
-    message.warning('Demo数据无需删除')
-    return
-  }
-
   try { await deleteProject(record.id); message.success('项目删除成功'); await fetchProjects() } catch (error) { message.error(error.message) }
 }
 const handleSubmit = async () => {
@@ -193,20 +206,24 @@ const handleSubmit = async () => {
   await formRef.value?.validate()
   submitLoading.value = true
   try {
-    if (editingId.value === demoExecutionProject.id) {
-      Object.assign(demoExecutionProject, { name: formState.name, managerId: formState.managerId, stage: formState.stage, statusCode: formState.status, status: statusLabels[formState.status] || formState.status, description: formState.description })
-      projects.value = projects.value.map(project => project.id === demoExecutionProject.id ? { ...demoExecutionProject } : project)
-      message.success('Demo项目编辑成功')
-      formVisible.value = false
-      return
+    const data = {
+      projectType: 'EXECUTION',
+      name: formState.name,
+      businessDepartment: formState.department,
+      managerId: formState.managerId,
+      stage: formState.stage,
+      status: formState.status,
+      description: formState.description,
     }
-
-    const data = { projectType: 'EXECUTION', name: formState.name, managerId: formState.managerId, stage: formState.stage, status: formState.status, description: formState.description }
-    if (editingId.value) await updateProject(editingId.value, data)
-    else await createProject(data)
+    const savedProject = editingId.value
+      ? await updateProject(editingId.value, data)
+      : await createProject(data)
     message.success(editingId.value ? '项目编辑成功' : '项目新建成功')
     formVisible.value = false
     await fetchProjects()
+    if (!editingId.value && savedProject?.id) {
+      router.push({ name: 'ExecutionProjectDetail', params: { id: savedProject.id } })
+    }
   } catch (error) {
     message.error(error.message)
   } finally {

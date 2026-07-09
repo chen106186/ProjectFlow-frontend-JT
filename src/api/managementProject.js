@@ -23,5 +23,7 @@ export const deleteProjectFile = id => request(`/api/files/${id}`, { method: 'DE
 export const deleteProjectFiles = ids => request('/api/files/batch', { method: 'DELETE', body: { ids } })
 export const downloadProjectFile = id => download(`/api/files/${id}/download`)
 
+export const getProjectStats = projectIds => request('/api/projects/stats', { params: { projectIds: projectIds.join(',') } })
+
 export const getDicts = () => request('/api/dicts')
 export const getSystemUsers = params => request('/api/system/users', { params })

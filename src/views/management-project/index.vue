@@ -31,9 +31,9 @@
           </template>
         </a-table>
         <div v-else class="project-group-list">
-          <section v-for="group in groupedProjects" :key="group.value" class="project-group">
+          <section v-for="(group, groupIndex) in groupedProjects" :key="group.value" class="project-group">
             <header class="project-group__header"><button type="button" @click="handleToggleGroup(group.value)"><RightOutlined v-if="isGroupCollapsed(group.value)" /><DownOutlined v-else />{{ group.label }}</button><a-tag>{{ group.rows.length }}</a-tag></header>
-            <a-table v-if="!isGroupCollapsed(group.value)" row-key="id" :columns="projectColumns" :data-source="group.rows" :pagination="false" :scroll="{ x: 1480 }" :show-header="false">
+            <a-table v-if="!isGroupCollapsed(group.value)" row-key="id" :columns="projectColumns" :data-source="group.rows" :pagination="false" :scroll="{ x: 1480 }" :show-header="groupIndex === 0">
               <template #bodyCell="{ column, record, index, text }">
                 <template v-if="column.dataIndex === 'index'">{{ index + 1 }}</template>
                 <template v-else-if="column.dataIndex === 'name'"><a-button type="link" class="table-link" @click="handleDetail(record)">{{ text }}</a-button></template>
@@ -54,8 +54,8 @@
         <a-form-item label="项目经理" name="managerId"><a-select v-model:value="formState.managerId" :options="managerOptions" placeholder="请选择项目经理" /></a-form-item>
         <a-form-item label="业务部门"><a-input v-model:value="formState.department" placeholder="请输入业务部门" /></a-form-item>
         <a-form-item label="承建单位"><a-input v-model:value="formState.contractor" placeholder="请输入承建单位" /></a-form-item>
-        <a-form-item label="业务主管"><a-select v-model:value="formState.supervisor" :options="managerOptions" placeholder="请选择业务主管" /></a-form-item>
-        <a-form-item label="项目类型" name="type"><a-select v-model:value="formState.type" :options="typeOptions" /></a-form-item>
+        <a-form-item label="业务主管"><a-input v-model:value="formState.supervisor" placeholder="请输入业务主管" /></a-form-item>
+        <a-form-item label="项目类型" name="type"><a-select v-model:value="formState.type" :options="projectTypeFormOptions" /></a-form-item>
         <a-form-item label="项目节点"><a-checkbox-group v-model:value="formState.nodes" :options="nodeOptions" /></a-form-item>
         <a-form-item label="项目阶段"><a-select v-model:value="formState.stage" :options="stageOptions" /></a-form-item>
         <a-form-item label="项目状态"><a-select v-model:value="formState.status" :options="projectStatusOptions" /></a-form-item>
@@ -242,8 +242,8 @@ let ganttInstance
 
 const toOptions = values => values.map(value => ({ label: value, value }))
 const managerOptions = ref([])
-const typeOptions = toOptions(['数字化项目', '信息化项目', '科研项目'])
-const stageOptions = toOptions(['商机跟进', '可研批复', '招标', '合同签订', '概设批复', '需求分析', 'UI设计', '开发', '测试', '上线试运行'])
+const projectTypeFormOptions = ref([])
+const stageOptions = ref([])
 const projectStatusOptions = ref([])
 const contractOptions = ref([])
 const taskStatusOptions = ref([])
@@ -253,38 +253,24 @@ const bugPriorityOptions = ref([])
 const reportTypeOptions = ref([])
 const reportStatusOptions = ref([])
 const dictLabels = reactive({})
+const projectTypeLabels = {
+  DIGITALIZATION: '数字化项目',
+  INFORMATIZATION: '信息化项目',
+  RESEARCH: '科研项目',
+  MANAGEMENT: '管理类项目',
+  EXECUTION: '执行类项目',
+}
 const withAll = options => [{ label: '全部', value: '全部' }, ...options]
 const managerFilterOptions = computed(() => withAll(managerOptions.value))
-const typeFilterOptions = withAll(typeOptions)
-const stageFilterOptions = withAll(stageOptions)
+const typeFilterOptions = computed(() => withAll(projectTypeFormOptions.value))
+const stageFilterOptions = computed(() => withAll(stageOptions.value))
 const projectStatusFilterOptions = computed(() => withAll(projectStatusOptions.value))
 const contractFilterOptions = computed(() => withAll(contractOptions.value))
-const nodeOptions = stageOptions.map(item => item.value)
+const nodeOptions = computed(() => stageOptions.value.map(item => item.value))
 const groupOptions = [{ label: '项目经理', value: 'manager' }, { label: '项目阶段', value: 'stage' }, { label: '项目状态', value: 'status' }, { label: '项目类型', value: 'type' }, { label: '合同状态', value: 'contractStatus' }]
 
 const projects = ref([])
-const demoProjectId = 'demo-management-project'
-const demoManagementProject = {
-  id: demoProjectId,
-  name: '管理类项目演示数据',
-  managerId: undefined,
-  manager: '张三',
-  department: '数字化管理部',
-  contractor: '项目实施中心',
-  supervisor: '李四',
-  stage: '开发',
-  status: '进行中',
-  statusCode: 'IN_PROGRESS',
-  contractStatus: '已签订',
-  contractStatusCode: 'SIGNED',
-  amount: 128.5,
-  type: '数字化项目',
-  description: '用于演示管理类项目列表和详情页的本地数据。',
-  plannedStartDate: '2025-05-01',
-  plannedEndDate: '2025-12-31',
-}
-
-const createDefaultForm = () => ({ name: '', managerId: undefined, department: '', contractor: '', supervisor: undefined, type: '数字化项目', nodes: [], stage: '商机跟进', status: 'NOT_STARTED', contractStatus: 'NOT_SIGNED', amount: 0, description: '' })
+const createDefaultForm = () => ({ name: '', managerId: undefined, department: '', contractor: '', supervisor: '', type: 'DIGITALIZATION', nodes: [], stage: 'BUSINESS_OPPORTUNITY', status: 'NOT_STARTED', contractStatus: 'NOT_SIGNED', amount: 0, description: '' })
 const formState = reactive(createDefaultForm())
 const query = reactive({ keyword: '', managerId: '全部', type: '全部', contractStatus: '全部', stage: '全部', status: '全部' })
 const appliedQuery = reactive({ ...query })
@@ -398,57 +384,54 @@ const documentRowSelection = computed(() => ({
 const uploadForm = reactive({ location: '项目文档库', category: '需求类', description: '' })
 const storageOptions = toOptions(['项目文档库', '公共文档库'])
 const documentCategoryOptions = toOptions(['合同类', '需求类', '设计类', '开发类', '验收类'])
-const summaryItems = computed(() => [{ label: '项目名称', value: currentProject.value?.name || '-' }, { label: '项目类型', value: '管理类项目' }, { label: '项目经理', value: currentProject.value?.manager || '-' }, { label: '项目阶段', value: currentProject.value?.stage || '-' }, { label: '项目状态', value: currentProject.value?.status || '-', tag: true, color: 'processing' }, { label: '合同状态', value: currentProject.value?.contractStatus || '-', tag: true, color: 'green' }, { label: '计划开始', value: currentProject.value?.plannedStartDate || '-' }, { label: '计划结束', value: currentProject.value?.plannedEndDate || '-' }])
+const summaryItems = computed(() => [
+  { label: '项目名称', value: currentProject.value?.name || '-' },
+  { label: '项目类型', value: currentProject.value?.type || '管理类项目' },
+  { label: '项目经理', value: currentProject.value?.manager || '-' },
+  { label: '业务部门', value: currentProject.value?.department || '-' },
+  { label: '承建单位', value: currentProject.value?.contractor || '-' },
+  { label: '业务主管', value: currentProject.value?.supervisor || '-' },
+  { label: '项目阶段', value: currentProject.value?.stage || '-' },
+  { label: '项目状态', value: currentProject.value?.status || '-', tag: true, color: 'processing' },
+  { label: '合同状态', value: currentProject.value?.contractStatus || '-', tag: true, color: 'green' },
+  { label: '回款金额', value: currentProject.value?.amount ? `${currentProject.value.amount}万元` : '0万元' },
+  { label: '计划开始', value: currentProject.value?.plannedStartDate || '-' },
+  { label: '计划结束', value: currentProject.value?.plannedEndDate || '-' },
+])
 
 const getDictLabel = (type, value) => dictLabels[type]?.[value] || value || '-'
 const getUserName = id => managerOptions.value.find(item => item.value === id)?.label || (id ? `用户 ${id}` : '-')
-const isDemoProject = projectId => String(projectId) === demoProjectId
 const getStatusLabel = value => ganttStatusOptions.value.find(item => item.value === value)?.label || getDictLabel('taskStatus', value)
 const mapProject = project => ({
   ...project,
   manager: getUserName(project.managerId),
+  stage: getDictLabel('projectStage', project.stage),
+  stageCode: project.stage,
   status: getDictLabel('projectStatus', project.status),
   statusCode: project.status,
   contractStatus: getDictLabel('contractStatus', project.contractStatus),
   contractStatusCode: project.contractStatus,
-  type: '-',
-  department: '-',
-  contractor: '-',
-  supervisor: '-',
-  amount: 0,
+  type: project.type || projectTypeLabels[project.projectBusinessType] || project.projectBusinessType || '-',
+  department: project.department || project.businessDepartment || '-',
+  contractor: project.contractor || project.contractorUnit || '-',
+  supervisor: project.supervisor || project.businessSupervisor || '-',
+  amount: project.amount ?? project.receivableAmount ?? 0,
 })
 
-const applyDemoProjectData = async () => {
-  currentProject.value = { ...demoManagementProject }
-  Object.assign(ganttSummaryData, { total: 7, completed: 2, overdue: 1, dueSoon: 2, overallProgress: 52 })
-  ganttNodeRows.value = [
-    { id: 1, name: '商机跟进', planStart: '2025/05/01', planEnd: '2025/05/10', actualStart: '2025/05/01', actualEnd: '2025/05/08', status: '已完成', statusCode: 'COMPLETED', progress: 100 },
-    { id: 2, name: '可研批复', planStart: '2025/05/11', planEnd: '2025/05/31', actualStart: '2025/05/12', actualEnd: '2025/05/30', status: '已完成', statusCode: 'COMPLETED', progress: 100 },
-    { id: 3, name: '招标', planStart: '2025/06/01', planEnd: '2025/06/20', actualStart: '2025/06/02', actualEnd: '-', status: '进行中', statusCode: 'IN_PROGRESS', progress: 70 },
-    { id: 4, name: '合同签订', planStart: '2025/06/21', planEnd: '2025/07/10', actualStart: '-', actualEnd: '-', status: '即将到期', statusCode: 'DUE_SOON', progress: 35 },
-    { id: 5, name: '概设批复', planStart: '2025/07/11', planEnd: '2025/08/10', actualStart: '-', actualEnd: '-', status: '已逾期', statusCode: 'OVERDUE', progress: 20, isOverdue: true },
-    { id: 6, name: '开发', planStart: '2025/08/11', planEnd: '2025/10/20', actualStart: '-', actualEnd: '-', status: '未开始', statusCode: 'NOT_STARTED', progress: 0 },
-    { id: 7, name: '验收', planStart: '2025/10/21', planEnd: '2025/12/31', actualStart: '-', actualEnd: '-', status: '未开始', statusCode: 'NOT_STARTED', progress: 0 },
-  ]
-  taskRows.value = [
-    { id: 1, name: '项目章程编制', owner: '张三', priority: '高', status: '已完成', planStart: '2025-05-01', planEnd: '2025-05-08', actualStart: '2025-05-01', actualEnd: '2025-05-08' },
-    { id: 2, name: '供应商评审', owner: '李四', priority: '高', status: '进行中', planStart: '2025-06-01', planEnd: '2025-06-15', actualStart: '2025-06-02', actualEnd: '-' },
-    { id: 3, name: '合同条款确认', owner: '王五', priority: '中', status: '进行中', planStart: '2025-06-18', planEnd: '2025-07-05', actualStart: '-', actualEnd: '-' },
-  ]
-  bugRows.value = [
-    { id: 1, code: 'BUG-M-001', title: '里程碑进度同步异常', severity: '紧急', priorityCode: 'URGENT', status: '待修复', statusCode: 'PENDING_FIX', assignee: '张三', creator: '李四' },
-    { id: 2, code: 'BUG-M-002', title: '合同金额展示精度错误', severity: '一般', priorityCode: 'MEDIUM', status: '修复中', statusCode: 'FIXING', assignee: '王五', creator: '李四' },
-  ]
-  reportRows.value = [
-    { id: 1, title: '管理类项目周报', type: '周报', typeCode: 'WEEKLY', status: '准备中', statusCode: 'DRAFT', planTime: '2026-06-15', actualTime: '-', target: '管理层', place: '会议室A', description: '汇报项目整体进展。' },
-    { id: 2, title: '合同签订专项汇报', type: '专项汇报', typeCode: 'SPECIAL', status: '已完成', statusCode: 'COMPLETED', planTime: '2026-06-08', actualTime: '2026-06-08', target: '项目委员会', place: '线上会议', description: '汇报合同签订风险。' },
-  ]
-  documentRows.value = [
-    { id: 'demo-doc-1', name: '项目章程.docx', type: 'DOCX', size: '1.8MB', version: 'V1.0', uploader: '张三', category: '需求类', uploadTime: '2026-06-10' },
-    { id: 'demo-doc-2', name: '合同评审表.xlsx', type: 'XLSX', size: '860KB', version: 'V1.1', uploader: '李四', category: '合同类', uploadTime: '2026-06-12' },
-  ]
-  await renderGantt()
-}
+const mapProjectToForm = project => ({
+  name: project.name || '',
+  managerId: project.managerId,
+  department: project.department || project.businessDepartment || '',
+  contractor: project.contractor || project.contractorUnit || '',
+  supervisor: project.supervisor || project.businessSupervisor || '',
+  type: project.projectBusinessType || 'DIGITALIZATION',
+  nodes: Array.isArray(project.nodes) ? project.nodes : [],
+  stage: project.stage || 'BUSINESS_OPPORTUNITY',
+  status: project.statusCode || project.status || 'NOT_STARTED',
+  contractStatus: project.contractStatusCode || project.contractStatus || 'NOT_SIGNED',
+  amount: project.amount ?? project.receivableAmount ?? 0,
+  description: project.description || '',
+})
 
 const fetchReferenceData = async () => {
   try {
@@ -459,6 +442,8 @@ const fetchReferenceData = async () => {
     dictGroups.forEach(group => {
       dictLabels[group.type] = Object.fromEntries(group.items.map(item => [item.value, item.label]))
     })
+    projectTypeFormOptions.value = dictGroups.find(item => item.type === 'projectBusinessType')?.items || []
+    stageOptions.value = dictGroups.find(item => item.type === 'projectStage')?.items || []
     projectStatusOptions.value = dictGroups.find(item => item.type === 'projectStatus')?.items || []
     contractOptions.value = dictGroups.find(item => item.type === 'contractStatus')?.items || []
     taskStatusOptions.value = dictGroups.find(item => item.type === 'taskStatus')?.items || []
@@ -478,31 +463,28 @@ const fetchProjects = async () => {
   try {
     const result = await getProjectList({
       projectType: 'MANAGEMENT',
+      projectBusinessType: appliedQuery.type === '全部' ? undefined : appliedQuery.type,
       keyword: appliedQuery.keyword,
       managerId: appliedQuery.managerId === '全部' ? undefined : appliedQuery.managerId,
+      stage: appliedQuery.stage === '全部' ? undefined : appliedQuery.stage,
       contractStatus: appliedQuery.contractStatus === '全部' ? undefined : appliedQuery.contractStatus,
       status: appliedQuery.status === '全部' ? undefined : appliedQuery.status,
       pageNo: projectPagination.current,
       pageSize: projectPagination.pageSize,
     })
     const rows = result.records.map(mapProject)
-    projects.value = rows.length ? rows : [demoManagementProject]
-    projectPagination.total = result.total || projects.value.length
+    projects.value = rows
+    projectPagination.total = result.total
   } catch (error) {
-    projects.value = [demoManagementProject]
-    projectPagination.total = 1
-    message.warning('接口不可用，已展示Demo数据')
+    projects.value = []
+    projectPagination.total = 0
+    message.error(error.message)
   } finally {
     projectLoading.value = false
   }
 }
 
 const fetchProjectRelatedData = async projectId => {
-  if (isDemoProject(projectId)) {
-    await applyDemoProjectData()
-    return
-  }
-
   detailLoading.value = true
   taskLoading.value = true
   bugLoading.value = true
@@ -564,22 +546,11 @@ const syncRoute = async () => {
   if (viewMode.value === 'create') { Object.assign(formState, createDefaultForm()); editingId.value = null; return }
   if (viewMode.value === 'list') { await fetchProjects(); return }
   const projectId = route.params.id
-  if (isDemoProject(projectId)) {
-    if (viewMode.value === 'edit') {
-      message.warning('Demo数据无需编辑')
-      handleBack()
-      return
-    }
-    if (viewMode.value === 'detail') { activeTab.value = 'gantt'; await fetchProjectRelatedData(projectId) }
-    return
-  }
-
-  const numericProjectId = Number(projectId)
   if (viewMode.value === 'edit') {
     detailLoading.value = true
     try {
-      const project = await getProjectDetail(numericProjectId)
-      Object.assign(formState, createDefaultForm(), project)
+      const project = await getProjectDetail(projectId)
+      Object.assign(formState, createDefaultForm(), mapProjectToForm(project))
       editingId.value = project.id
     } catch (error) {
       message.error(error.message)
@@ -587,7 +558,7 @@ const syncRoute = async () => {
       detailLoading.value = false
     }
   }
-  if (viewMode.value === 'detail') { activeTab.value = 'gantt'; await fetchProjectRelatedData(numericProjectId) }
+  if (viewMode.value === 'detail') { activeTab.value = 'gantt'; await fetchProjectRelatedData(projectId) }
 }
 watch(() => [route.name, route.params.id], syncRoute)
 watch(activeTab, renderGantt)
@@ -620,44 +591,14 @@ const handleGanttRow = record => ({
     ganttEditVisible.value = true
   },
 })
-const refreshDemoGanttSummary = () => {
-  const rows = ganttNodeRows.value
-  const completed = rows.filter(node => node.statusCode === 'COMPLETED').length
-  const overdue = rows.filter(node => node.statusCode === 'OVERDUE').length
-  const dueSoon = rows.filter(node => node.statusCode === 'DUE_SOON').length
-  const overallProgress = rows.length ? Math.round(rows.reduce((total, node) => total + node.progress, 0) / rows.length) : 0
-  Object.assign(ganttSummaryData, { total: rows.length, completed, overdue, dueSoon, overallProgress })
-}
-const updateDemoGanttNode = async () => {
-  ganttNodeRows.value = ganttNodeRows.value.map(node => node.id === ganttForm.id ? {
-    ...node,
-    planStart: ganttForm.planStart.replaceAll('-', '/'),
-    planEnd: ganttForm.planEnd.replaceAll('-', '/'),
-    actualStart: ganttForm.actualStart?.replaceAll('-', '/') || '-',
-    actualEnd: ganttForm.actualEnd?.replaceAll('-', '/') || '-',
-    status: getStatusLabel(ganttForm.status),
-    statusCode: ganttForm.status,
-    progress: ganttForm.progress,
-    isOverdue: ganttForm.status === 'OVERDUE',
-  } : node)
-  refreshDemoGanttSummary()
-  ganttEditVisible.value = false
-  await renderGantt()
-  message.success('Demo节点更新成功')
-}
 const handleSaveGanttNode = async () => {
   if (ganttSubmitLoading.value) return
   await ganttFormRef.value?.validate()
   ganttSubmitLoading.value = true
   try {
-    if (isDemoProject(route.params.id)) {
-      await updateDemoGanttNode()
-      return
-    }
-
-    await updateGanttNode(Number(route.params.id), ganttForm.id, { nodeName: ganttForm.name, plannedStartDate: ganttForm.planStart, plannedEndDate: ganttForm.planEnd, actualStartDate: ganttForm.actualStart || null, actualEndDate: ganttForm.actualEnd || null, status: ganttForm.status, progressPercent: ganttForm.progress })
+    await updateGanttNode(route.params.id, ganttForm.id, { nodeName: ganttForm.name, plannedStartDate: ganttForm.planStart, plannedEndDate: ganttForm.planEnd, actualStartDate: ganttForm.actualStart || null, actualEndDate: ganttForm.actualEnd || null, status: ganttForm.status, progressPercent: ganttForm.progress })
     ganttEditVisible.value = false
-    await fetchProjectRelatedData(Number(route.params.id))
+    await fetchProjectRelatedData(route.params.id)
     message.success('节点更新成功')
   } catch (error) {
     message.error(error.message)
@@ -667,21 +608,11 @@ const handleSaveGanttNode = async () => {
 }
 const handleCreate = () => router.push({ name: 'ManagementProjectCreate' })
 const handleEdit = record => {
-  if (isDemoProject(record.id)) {
-    message.warning('Demo数据无需编辑')
-    return
-  }
-
   router.push({ name: 'ManagementProjectEdit', params: { id: record.id } })
 }
 const handleDetail = record => router.push({ name: 'ManagementProjectDetail', params: { id: record.id } })
 const handleBack = () => router.push({ name: 'ManagementProjects' })
 const handleDelete = async record => {
-  if (isDemoProject(record.id)) {
-    message.warning('Demo数据无需删除')
-    return
-  }
-
   try {
     await deleteProject(record.id)
     message.success('项目删除成功')
@@ -718,7 +649,7 @@ const handleStartUpload = async () => {
     message.success('文件上传成功')
     uploadVisible.value = false
     uploadFiles.value = []
-    await fetchProjectRelatedData(Number(route.params.id))
+    await fetchProjectRelatedData(route.params.id)
   } catch (error) {
     message.error(error.message)
   } finally { uploadLoading.value = false }
@@ -772,12 +703,12 @@ const handleSubmitReport = async () => {
   await reportFormRef.value?.validate()
   reportSubmitLoading.value = true
   try {
-    const reportData = { projectId: Number(route.params.id), title: reportForm.title, reportType: reportForm.type, status: reportForm.status, plannedDate: reportForm.planDate.format('YYYY-MM-DD'), actualDate: reportForm.actualDate?.format('YYYY-MM-DD') || null, targetAudience: reportForm.target, locationMethod: reportForm.place, description: reportForm.description }
+    const reportData = { projectId: route.params.id, title: reportForm.title, reportType: reportForm.type, status: reportForm.status, plannedDate: reportForm.planDate.format('YYYY-MM-DD'), actualDate: reportForm.actualDate?.format('YYYY-MM-DD') || null, targetAudience: reportForm.target, locationMethod: reportForm.place, description: reportForm.description }
     if (editingReportId.value) await updateProjectReport(editingReportId.value, reportData)
     else await createProjectReport(reportData)
     message.success(editingReportId.value ? '汇报编辑成功' : '汇报新建成功')
     reportVisible.value = false
-    await fetchProjectRelatedData(Number(route.params.id))
+    await fetchProjectRelatedData(route.params.id)
   } catch (error) {
     message.error(error.message)
   } finally { reportSubmitLoading.value = false }
@@ -787,11 +718,25 @@ const handleSubmit = async () => {
   await formRef.value?.validate()
   submitLoading.value = true
   try {
-    const projectData = { projectType: 'MANAGEMENT', name: formState.name, stage: formState.stage, status: formState.status, contractStatus: formState.contractStatus, managerId: formState.managerId, description: formState.description }
-    if (editingId.value) await updateProject(editingId.value, projectData)
-    else await createProject(projectData)
+    const projectData = {
+      projectType: 'MANAGEMENT',
+      projectBusinessType: formState.type,
+      name: formState.name,
+      stage: formState.stage,
+      status: formState.status,
+      contractStatus: formState.contractStatus,
+      managerId: formState.managerId,
+      businessDepartment: formState.department,
+      contractorUnit: formState.contractor,
+      businessSupervisor: formState.supervisor,
+      receivableAmount: formState.amount,
+      description: formState.description,
+    }
+    const savedProject = editingId.value
+      ? await updateProject(editingId.value, projectData)
+      : await createProject(projectData)
     message.success(editingId.value ? '项目编辑成功' : '项目新建成功')
-    handleBack()
+    router.push({ name: 'ManagementProjectDetail', params: { id: savedProject.id || editingId.value } })
   } catch (error) {
     message.error(error.message)
   } finally { submitLoading.value = false }

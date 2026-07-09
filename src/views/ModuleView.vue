@@ -498,6 +498,7 @@ import dayjs from 'dayjs'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { createDailyReport, fetchDailyReports } from '@/api/dailyReports'
+import { getDicts, getProjectList, getProjectTasks, getSystemUsers } from '@/api/managementProject'
 
 const route = useRoute()
 const router = useRouter()
@@ -513,6 +514,10 @@ const dailyLoading = ref(false)
 const dailyError = ref('')
 const dailyReports = ref([])
 const dailySubmitLoading = ref(false)
+const taskApiRows = ref([])
+const taskUsers = ref([])
+const taskProjects = ref([])
+const taskDictLabels = ref({ taskPriority: {}, taskStatus: {} })
 const dailyForm = ref({
   reportDate: dayjs(),
   content: '',
@@ -533,11 +538,22 @@ const isTaskModule = computed(() => taskModuleRouteNames.includes(route.name))
 const currentTaskRole = computed(() => (route.name === 'TestingTasks' ? '测试' : '开发'))
 const taskModalTitle = computed(() => (taskModalMode.value === 'create' ? '新建任务' : '编辑任务'))
 const visibleTasks = computed(() => {
-  if (route.name === 'TestingTasks') {
-    return personalTasks.map(task => ({ ...task, role: '测试' }))
+  if (!taskApiRows.value.length) {
+    if (route.name === 'TestingTasks') {
+      return personalTasks.map(task => ({ ...task, role: '测试' }))
+    }
+
+    return personalTasks
   }
 
-  return personalTasks
+  if (route.name === 'TestingTasks') {
+    return taskApiRows.value.filter(task => task.role === '测试')
+  }
+  if (route.name === 'DevelopmentTasks') {
+    return taskApiRows.value.filter(task => task.role !== '测试')
+  }
+
+  return taskApiRows.value
 })
 const selectedDailyDateText = computed(() => selectedDailyDate.value.format('YYYY-MM-DD'))
 const currentDailyReport = computed(() => dailyReports.value[0])
@@ -596,6 +612,88 @@ watch(
   },
   { immediate: true },
 )
+
+watch(
+  () => route.name,
+  name => {
+    if (name === 'PersonalTasks' || taskModuleRouteNames.includes(name)) {
+      fetchTaskModuleData()
+    }
+  },
+  { immediate: true },
+)
+
+function getTaskLabel(type, value) {
+  return taskDictLabels.value[type]?.[value] || value || '-'
+}
+
+function getTaskUserName(userId) {
+  return taskUsers.value.find(item => item.id === userId)?.realName || (userId ? `用户 ${userId}` : '-')
+}
+
+function getTaskProjectName(projectId) {
+  return taskProjects.value.find(item => item.id === projectId)?.name || (projectId ? `项目 ${projectId}` : '-')
+}
+
+function getTaskRoleName(task) {
+  const roleName = task.roleName || ''
+  if (roleName.includes('测试') || /test/i.test(roleName)) return '测试'
+  if (roleName.includes('开发') || /dev/i.test(roleName)) return '开发'
+  return route.name === 'TestingTasks' ? '测试' : '开发'
+}
+
+function getTaskProgress(status) {
+  if (status === 'COMPLETED') return 100
+  if (status === 'IN_PROGRESS') return 60
+  if (status === 'DUE_SOON') return 80
+  if (status === 'OVERDUE') return 70
+  return 0
+}
+
+async function fetchTaskModuleData() {
+  try {
+    const profile = JSON.parse(window.localStorage.getItem('authProfile') || '{}')
+    const [dicts, users, projects, tasks] = await Promise.all([
+      getDicts(),
+      getSystemUsers({ pageNo: 1, pageSize: 500, enabled: true }),
+      getProjectList({ pageNo: 1, pageSize: 500 }),
+      getProjectTasks({
+        pageNo: 1,
+        pageSize: 200,
+        assigneeId: route.name === 'PersonalTasks' ? profile.id : undefined,
+      }),
+    ])
+
+    taskUsers.value = users.records || []
+    taskProjects.value = projects.records || []
+    taskDictLabels.value = {
+      taskPriority: Object.fromEntries((dicts.find(item => item.type === 'taskPriority')?.items || []).map(item => [item.value, item.label])),
+      taskStatus: Object.fromEntries((dicts.find(item => item.type === 'taskStatus')?.items || []).map(item => [item.value, item.label])),
+    }
+    taskApiRows.value = (tasks.records || []).map((task, index) => ({
+      id: task.id,
+      index: index + 1,
+      name: task.name,
+      project: getTaskProjectName(task.projectId),
+      role: getTaskRoleName(task),
+      tag: task.tags || '-',
+      owner: getTaskUserName(task.assigneeId),
+      priority: getTaskLabel('taskPriority', task.priority),
+      status: getTaskLabel('taskStatus', task.status),
+      planStart: task.plannedStartDate || '-',
+      actualStart: task.actualStartDate || '-',
+      planEnd: task.plannedEndDate || '-',
+      actualEnd: task.actualEndDate || '-',
+      createdAt: task.createdAt || '-',
+      code: `TASK-${task.id}`,
+      deadline: task.plannedEndDate || '-',
+      progress: getTaskProgress(task.status),
+    }))
+  } catch (error) {
+    taskApiRows.value = []
+    message.error(error.message)
+  }
+}
 
 function disposeStatisticsCharts() {
   trendChart?.dispose()
