@@ -169,40 +169,51 @@
           <template #icon><LeftOutlined /></template>
           返回
         </a-button>
-        <a-card class="prototype-card bug-detail-card" :bordered="false">
-          <h2>基本信息</h2>
-          <div class="bug-info-grid">
-            <span>Bug编号</span><strong>BUG-2026-00102</strong>
-            <span>标题</span><strong>用户登录页面异常报错</strong>
-            <span>所属项目</span><strong>XX企业数字化管理系统</strong>
-            <span>严重等级</span><strong><a-tag color="red">严重</a-tag></strong>
-            <span>状态</span><strong><a-tag color="orange">已确认</a-tag></strong>
-            <span>指定人</span><strong>张三</strong>
-            <span>创建人</span><strong>李四</strong>
-            <span>创建时间</span><strong>2026-06-10</strong>
-          </div>
-          <div class="bug-text-block">
-            <h3>问题描述</h3>
-            <p>在 Chrome 浏览器下登录页面出现 500 错误，其他浏览器正常。</p>
-            <h3>重现步骤</h3>
-            <p>1. 打开登录页　2. 输入用户名密码　3. 点击登录按钮　&gt; 控制台报错 500</p>
-          </div>
-        </a-card>
+        <a-spin :spinning="bugDetailLoading">
+          <a-empty v-if="!selectedBugDetail" description="暂无详情" />
+          <a-card v-else class="prototype-card bug-detail-card" :bordered="false">
+            <h2>基本信息</h2>
+            <div class="bug-info-grid">
+              <span>Bug编号</span><strong>{{ selectedBugDetail.code }}</strong>
+              <span>标题</span><strong>{{ selectedBugDetail.title }}</strong>
+              <span>所属项目</span><strong>{{ selectedBugDetail.project }}</strong>
+              <span>严重等级</span><strong><a-tag :color="selectedBugDetail.levelColor">{{ selectedBugDetail.level }}</a-tag></strong>
+              <span>状态</span><strong><a-tag :color="selectedBugDetail.statusColor">{{ selectedBugDetail.status }}</a-tag></strong>
+              <span>指定人</span><strong>{{ selectedBugDetail.assignee }}</strong>
+              <span>创建人</span><strong>{{ selectedBugDetail.creator }}</strong>
+              <span>关闭时间</span><strong>{{ selectedBugDetail.closedAt ? String(selectedBugDetail.closedAt).slice(0, 10) : '-' }}</strong>
+            </div>
+            <div class="bug-text-block">
+              <h3>问题描述</h3>
+              <p>{{ selectedBugDetail.description || '-' }}</p>
+              <h3>重现步骤</h3>
+              <p>{{ selectedBugDetail.reproduceSteps || '-' }}</p>
+            </div>
+          </a-card>
+        </a-spin>
       </section>
 
       <section v-else class="personal-page">
         <a-card class="prototype-card filter-panel" :bordered="false">
           <a-form class="prototype-filter bug-filter" layout="inline">
-            <a-form-item label="搜索"><a-input /></a-form-item>
-            <a-form-item label="所属项目"><a-select value="全部" :options="selectOptions" /></a-form-item>
-            <a-form-item label="严重等级"><a-select value="全部" :options="selectOptions" /></a-form-item>
-            <a-form-item label="状态"><a-select value="全部" :options="selectOptions" /></a-form-item>
-            <a-form-item label="创建人"><a-select value="全部" :options="selectOptions" /></a-form-item>
-            <a-form-item label="指定人"><a-select value="全部" :options="selectOptions" /></a-form-item>
+            <a-form-item label="搜索"><a-input v-model:value="bugFilter.keyword" placeholder="请输入关键字" allow-clear /></a-form-item>
+            <a-form-item label="所属项目">
+              <a-select v-model:value="bugFilter.projectId" placeholder="全部" allow-clear :options="bugProjects.map(p => ({ label: p.name, value: p.id }))" style="width:160px" />
+            </a-form-item>
+            <a-form-item label="严重等级">
+              <a-select v-model:value="bugFilter.priority" placeholder="全部" allow-clear
+                :options="[{ label: '紧急', value: 'URGENT' }, { label: '高', value: 'HIGH' }, { label: '中', value: 'MEDIUM' }, { label: '低', value: 'LOW' }]"
+                style="width:120px" />
+            </a-form-item>
+            <a-form-item label="状态">
+              <a-select v-model:value="bugFilter.status" placeholder="全部" allow-clear
+                :options="Object.entries(BUG_STATUS_LABELS).map(([value, label]) => ({ label, value }))"
+                style="width:120px" />
+            </a-form-item>
             <a-form-item class="filter-buttons">
               <a-space>
-                <a-button type="primary">查询</a-button>
-                <a-button>重置</a-button>
+                <a-button type="primary" @click="handleBugSearch">查询</a-button>
+                <a-button @click="handleBugReset">重置</a-button>
               </a-space>
             </a-form-item>
           </a-form>
@@ -221,10 +232,10 @@
               <a-button>分组</a-button>
             </a-space>
           </div>
-          <a-table :columns="personalBugColumns" :data-source="personalBugs" :pagination="smallPagination" :scroll="{ x: 1320, y: 330 }" size="middle" row-key="id">
+          <a-table :columns="personalBugColumns" :data-source="visibleBugs" :pagination="{ pageSize: 20, showTotal: total => `共 ${total} 条` }" :scroll="{ x: 1320, y: 330 }" size="middle" row-key="id">
             <template #bodyCell="{ column, record, text }">
               <template v-if="column.dataIndex === 'title'">
-                <a-button type="link" class="cell-link bug-title" @click="handleBugDetail">
+                <a-button type="link" class="cell-link bug-title" @click="handleBugDetail(record)">
                   <BugOutlined />{{ text }}
                 </a-button>
               </template>
@@ -235,7 +246,7 @@
                 <a-tag :color="record.statusColor">{{ text }}</a-tag>
               </template>
               <template v-else-if="column.dataIndex === 'operation'">
-                <a-button type="link" size="small" @click="handleBugDetail">详情</a-button>
+                <a-button type="link" size="small" @click="handleBugDetail(record)">详情</a-button>
               </template>
               <template v-else>{{ text }}</template>
             </template>
@@ -336,11 +347,12 @@
     <template v-else-if="isPersonalStatistics">
       <section class="personal-page statistics-page">
         <a-card class="prototype-card statistics-shell" :bordered="false">
+          <a-spin :spinning="statsLoading">
           <div class="stats-title-row">
             <div class="prototype-heading prototype-heading--inline">
               <h1 class="prototype-title">我的统计</h1>
             </div>
-            <a-select class="daily-select" value="今天" :options="todayOptions" />
+            <a-select class="daily-select" v-model:value="statsPeriod" :options="STATS_PERIOD_OPTIONS" />
           </div>
           <section class="stat-cards">
             <article v-for="card in statCards" :key="card.label" class="stat-card">
@@ -358,24 +370,26 @@
                   <h3>项目分布</h3>
                   <div ref="projectChartRef" class="echart donut-chart"></div>
                   <ul class="chart-legend">
-                    <li><span class="legend-dot blue"></span>XX管理平台 <strong>60%</strong></li>
-                    <li><span class="legend-dot cyan"></span>XX电商平台 <strong>30%</strong></li>
-                    <li><span class="legend-dot gray"></span>其他项目 <strong>10%</strong></li>
+                    <li v-if="!projectLegendItems.length" class="muted">暂无数据</li>
+                    <li v-for="item in projectLegendItems" :key="item.name">
+                      <span class="legend-dot" :style="{ background: item.color }"></span>{{ item.name }} <strong>{{ item.pct }}</strong>
+                    </li>
                   </ul>
                 </div>
                 <div class="distribution-panel">
                   <h3>任务状态分布</h3>
                   <div ref="statusChartRef" class="echart donut-chart"></div>
                   <ul class="chart-legend">
-                    <li><span class="legend-dot green"></span>已完成 <strong>60%</strong></li>
-                    <li><span class="legend-dot blue"></span>进行中 <strong>25%</strong></li>
-                    <li><span class="legend-dot red"></span>逾期 <strong>10%</strong></li>
-                    <li><span class="legend-dot gray"></span>待开始 <strong>5%</strong></li>
+                    <li v-if="!statusLegendItems.length" class="muted">暂无数据</li>
+                    <li v-for="item in statusLegendItems" :key="item.name">
+                      <span class="legend-dot" :style="{ background: item.color }"></span>{{ item.name }} <strong>{{ item.pct }}</strong>
+                    </li>
                   </ul>
                 </div>
               </div>
             </a-card>
           </section>
+          </a-spin>
         </a-card>
       </section>
     </template>
@@ -445,7 +459,7 @@
       </template>
       <a-form class="prototype-modal-form daily-modal-form" layout="horizontal" :label-col="{ span: 4 }">
         <a-form-item label="日报日期">
-          <a-date-picker v-model:value="dailyForm.reportDate" :allow-clear="false" />
+          <a-date-picker v-model:value="dailyForm.reportDate" :allow-clear="false" :disabled-date="disabledDailyDate" />
         </a-form-item>
         <a-form-item label="工作内容">
           <a-textarea v-model:value="dailyForm.content" :rows="8" placeholder="请输入工作内容" />
@@ -509,7 +523,7 @@ import dayjs from 'dayjs'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { createDailyReport, fetchDailyReports } from '@/api/dailyReports'
-import { createTask, deleteTask, getDicts, getMyBugs, getProjectList, getProjectTasks, getSystemUsers, getTaskById, updateTask } from '@/api/managementProject'
+import { createTask, deleteTask, getDicts, getMyBugs, getMyStatistics, getProjectList, getProjectTasks, getSystemUsers, getTaskById, updateTask } from '@/api/managementProject'
 
 const route = useRoute()
 const router = useRouter()
@@ -562,6 +576,8 @@ const taskFormState = ref({
   status: undefined,
   plannedStartDate: undefined,
   plannedEndDate: undefined,
+  actualStartDate: undefined,
+  actualEndDate: undefined,
   description: '',
   tags: '',
 })
@@ -569,6 +585,9 @@ const dailyForm = ref({
   reportDate: dayjs(),
   content: '',
 })
+const statsPeriod = ref('week')
+const statsData = ref(null)
+const statsLoading = ref(false)
 const trendChartRef = ref(null)
 const projectChartRef = ref(null)
 const statusChartRef = ref(null)
@@ -583,7 +602,11 @@ const isPersonalStatistics = computed(() => route.name === 'PersonalStatistics')
 const taskModuleRouteNames = ['AllTasks', 'DevelopmentTasks', 'TestingTasks']
 const isTaskModule = computed(() => taskModuleRouteNames.includes(route.name))
 const currentTaskRole = computed(() => (route.name === 'TestingTasks' ? '测试' : '开发'))
-const taskModalTitle = computed(() => (taskModalMode.value === 'create' ? '新建任务' : '编辑任务'))
+const taskModalTitle = computed(() => {
+  if (taskModalMode.value === 'create') return '新建任务'
+  if (isPersonalTasks.value) return '更新进度'
+  return '编辑任务'
+})
 const visibleTasks = computed(() => {
   if (route.name === 'TestingTasks') {
     return taskApiRows.value.filter(task => task.role === '测试')
@@ -605,6 +628,16 @@ const taskPrioritySelectOptions = computed(() =>
 const taskStatusSelectOptions = computed(() =>
   Object.entries(taskDictLabels.value.taskStatus).map(([value, label]) => ({ label, value }))
 )
+const visibleBugs = computed(() => {
+  const f = bugFilter.value
+  return bugApiRows.value.filter(bug => {
+    if (f.keyword && !bug.title.includes(f.keyword)) return false
+    if (f.projectId && bug.projectId !== f.projectId) return false
+    if (f.priority && bug.priorityCode !== f.priority) return false
+    if (f.status && bug.statusCode !== f.status) return false
+    return true
+  })
+})
 const selectedDailyDateText = computed(() => selectedDailyDate.value.format('YYYY-MM-DD'))
 const currentDailyReport = computed(() => dailyReports.value[0])
 const dailyProjectText = computed(() => {
@@ -657,7 +690,7 @@ watch(
     }
 
     if (name === 'PersonalStatistics') {
-      nextTick(renderStatisticsCharts)
+      loadMyStatistics()
     }
   },
   { immediate: true },
@@ -766,6 +799,71 @@ async function loadTasks() {
   }
 }
 
+const BUG_STATUS_LABELS = { PENDING_FIX: '待修复', FIXING: '修复中', PENDING_VERIFY: '待验证', CLOSED: '已关闭' }
+const BUG_STATUS_COLORS = { PENDING_FIX: 'orange', FIXING: 'blue', PENDING_VERIFY: 'purple', CLOSED: 'green' }
+const BUG_PRIORITY_COLORS = { URGENT: 'red', HIGH: 'orange', MEDIUM: 'blue', LOW: 'default' }
+
+function getBugStatusLabel(status) { return BUG_STATUS_LABELS[status] || status || '-' }
+function getBugStatusColor(status) { return BUG_STATUS_COLORS[status] || 'default' }
+function getBugPriorityLabel(priority) { return taskDictLabels.value.taskPriority?.[priority] || priority || '-' }
+function getBugPriorityColor(priority) { return BUG_PRIORITY_COLORS[priority] || 'default' }
+function getBugUserName(userId) { return bugUsers.value.find(u => u.id === userId)?.realName || '-' }
+function getBugProjectName(projectId) { return bugProjects.value.find(p => p.id === projectId)?.name || '-' }
+
+async function fetchBugModuleData() {
+  try {
+    const [dicts, users, projects] = await Promise.all([
+      getDicts(),
+      getSystemUsers({ pageNo: 1, pageSize: 200, enabled: true }),
+      getProjectList({ pageNo: 1, pageSize: 200 }),
+    ])
+    bugUsers.value = users.records || []
+    bugProjects.value = projects.records || []
+    // reuse taskPriority dict for bug priority labels
+    const priorityItems = dicts.find(item => item.type === 'taskPriority')?.items || []
+    if (priorityItems.length && !Object.keys(taskDictLabels.value.taskPriority).length) {
+      taskDictLabels.value = {
+        ...taskDictLabels.value,
+        taskPriority: Object.fromEntries(priorityItems.map(item => [item.value, item.label])),
+      }
+    }
+    await loadMyBugs()
+  } catch (error) {
+    bugApiRows.value = []
+    message.error(error.message)
+  }
+}
+
+async function loadMyBugs() {
+  try {
+    const bugs = await getMyBugs()
+    bugApiRows.value = (bugs || []).map((bug, index) => ({
+      id: bug.id,
+      index: index + 1,
+      code: `#${bug.id}`,
+      title: bug.title,
+      project: getBugProjectName(bug.projectId),
+      projectId: bug.projectId,
+      level: getBugPriorityLabel(bug.priority),
+      levelColor: getBugPriorityColor(bug.priority),
+      priorityCode: bug.priority,
+      status: getBugStatusLabel(bug.status),
+      statusColor: getBugStatusColor(bug.status),
+      statusCode: bug.status,
+      assignee: getBugUserName(bug.assigneeId),
+      assigneeId: bug.assigneeId,
+      creator: getBugUserName(bug.creatorId),
+      creatorId: bug.creatorId,
+      description: bug.description || '',
+      reproduceSteps: bug.reproduceSteps || '',
+      closedAt: bug.closedAt || null,
+    }))
+  } catch (error) {
+    bugApiRows.value = []
+    message.error(error.message)
+  }
+}
+
 function disposeStatisticsCharts() {
   trendChart?.dispose()
   projectChart?.dispose()
@@ -800,31 +898,48 @@ function createDonutOption(data, colors) {
   }
 }
 
+async function loadMyStatistics() {
+  statsLoading.value = true
+  try {
+    statsData.value = await getMyStatistics(statsPeriod.value)
+    await nextTick()
+    renderStatisticsCharts()
+  } catch (error) {
+    message.error(error.message || '统计数据加载失败')
+  } finally {
+    statsLoading.value = false
+  }
+}
+
 function renderStatisticsCharts() {
   if (!trendChartRef.value || !projectChartRef.value || !statusChartRef.value) {
     return
   }
 
+  const stats = statsData.value
   disposeStatisticsCharts()
 
   trendChart = echarts.init(trendChartRef.value)
   projectChart = echarts.init(projectChartRef.value)
   statusChart = echarts.init(statusChartRef.value)
 
+  // 任务完成趋势
+  const trendPoints = stats?.completionTrend || []
+  const trendDates = trendPoints.map(p => dayjs(p.date).format('MM/DD'))
+  const trendValues = trendPoints.map(p => p.count)
+  const yMax = Math.max(...trendValues, 0) + 2
+
   trendChart.setOption({
     color: ['#2f80ed'],
     tooltip: {
       trigger: 'axis',
-      formatter: params => {
-        const item = params[0]
-        return `${item.axisValue}<br/>完成数：${item.value}`
-      },
+      formatter: params => `${params[0].axisValue}<br/>完成数：${params[0].value}`,
     },
     grid: { top: 28, right: 24, bottom: 34, left: 42 },
     xAxis: {
       type: 'category',
       boundaryGap: false,
-      data: ['06/01', '06/03', '06/05', '06/07', '06/09', '06/11', '06/13', '06/15', '06/17', '06/19', '06/21'],
+      data: trendDates.length ? trendDates : ['暂无数据'],
       axisLine: { lineStyle: { color: '#d8dee8' } },
       axisLabel: { color: '#6b7280', fontSize: 12 },
       axisTick: { show: false },
@@ -832,48 +947,47 @@ function renderStatisticsCharts() {
     yAxis: {
       type: 'value',
       min: 0,
-      max: 5,
+      max: yMax,
+      interval: 1,
       splitLine: { lineStyle: { color: '#eef2f7' } },
       axisLabel: { color: '#6b7280', fontSize: 12 },
     },
-    series: [
-      {
-        name: '完成数',
-        type: 'line',
-        smooth: false,
-        symbol: 'circle',
-        symbolSize: 8,
-        data: [1, 2, 1, 3, 2, 3, 1, 2, 3, 2, 4],
-        lineStyle: { width: 3, color: '#2f80ed' },
-        itemStyle: { color: '#fff', borderColor: '#2f80ed', borderWidth: 3 },
-        areaStyle: { color: 'rgba(47, 128, 237, 0.12)' },
-        label: {
-          show: true,
-          formatter: ({ value }) => value,
-          color: '#2f80ed',
-          fontWeight: 700,
-        },
-      },
-    ],
+    series: [{
+      name: '完成数',
+      type: 'line',
+      smooth: false,
+      symbol: 'circle',
+      symbolSize: 8,
+      data: trendValues,
+      lineStyle: { width: 3, color: '#2f80ed' },
+      itemStyle: { color: '#fff', borderColor: '#2f80ed', borderWidth: 3 },
+      areaStyle: { color: 'rgba(47, 128, 237, 0.12)' },
+      label: { show: true, formatter: ({ value }) => value || '', color: '#2f80ed', fontWeight: 700 },
+    }],
   })
 
+  // 项目分布
+  const projectDist = stats?.projectDistribution || {}
+  const projectData = Object.entries(projectDist).map(([name, value], i) => ({
+    value,
+    name,
+    itemStyle: { color: CHART_COLORS[i % CHART_COLORS.length] },
+  }))
   projectChart.setOption(createDonutOption(
-    [
-      { value: 60, name: 'XX管理平台' },
-      { value: 30, name: 'XX电商平台' },
-      { value: 10, name: '其他项目' },
-    ],
-    ['#1677ff', '#69b1ff', '#c8cfd9'],
+    projectData.length ? projectData : [{ value: 1, name: '暂无数据', itemStyle: { color: '#c8cfd9' } }],
+    CHART_COLORS,
   ))
 
+  // 任务状态分布
+  const statusDist = stats?.taskStatusDistribution || {}
+  const statusData = Object.entries(statusDist).map(([code, value]) => ({
+    value,
+    name: STATUS_LABEL_MAP[code] || code,
+    itemStyle: { color: STATUS_COLOR_MAP[code] || '#c8cfd9' },
+  }))
   statusChart.setOption(createDonutOption(
-    [
-      { value: 60, name: '已完成' },
-      { value: 25, name: '进行中' },
-      { value: 10, name: '逾期' },
-      { value: 5, name: '待开始' },
-    ],
-    ['#27c27a', '#1677ff', '#ff4d4f', '#c8cfd9'],
+    statusData.length ? statusData : [{ value: 1, name: '暂无数据', itemStyle: { color: '#c8cfd9' } }],
+    Object.values(STATUS_COLOR_MAP),
   ))
 }
 
@@ -948,6 +1062,8 @@ const openTaskModal = (mode, record) => {
       status: record.statusCode || undefined,
       plannedStartDate: record.planStart !== '-' ? dayjs(record.planStart) : undefined,
       plannedEndDate: record.planEnd !== '-' ? dayjs(record.planEnd) : undefined,
+      actualStartDate: record.actualStart !== '-' ? dayjs(record.actualStart) : undefined,
+      actualEndDate: record.actualEnd !== '-' ? dayjs(record.actualEnd) : undefined,
       description: record.description || '',
       tags: record.tags || '',
     }
@@ -1023,7 +1139,8 @@ const handleBackToTaskList = () => {
   updateDetailQuery()
 }
 
-const handleBugDetail = () => {
+const handleBugDetail = record => {
+  selectedBugDetail.value = record
   personalMode.value = 'bug-detail'
   updateDetailQuery('bug')
 }
@@ -1031,6 +1148,14 @@ const handleBugDetail = () => {
 const handleBackToBugList = () => {
   personalMode.value = 'bug-list'
   updateDetailQuery()
+}
+
+const handleBugSearch = () => {
+  // filter is reactive — visibleBugs recomputes automatically
+}
+
+const handleBugReset = () => {
+  bugFilter.value = { keyword: '', projectId: undefined, priority: undefined, status: undefined }
 }
 
 const selectDailyDate = date => {
@@ -1092,9 +1217,19 @@ const formatFileSize = size => {
   return `${(size / 1024 / 1024).toFixed(1)} MB`
 }
 
+const disabledDailyDate = date => {
+  const today = dayjs().startOf('day')
+  const yesterday = today.subtract(1, 'day')
+  return date.isBefore(yesterday) || date.isAfter(today)
+}
+
 const openDailyModal = () => {
+  const today = dayjs().startOf('day')
+  const yesterday = today.subtract(1, 'day')
+  const selected = selectedDailyDate.value?.startOf('day')
+  const defaultDate = selected && (selected.isSame(today) || selected.isSame(yesterday)) ? selected : today
   dailyForm.value = {
-    reportDate: selectedDailyDate.value || dayjs(),
+    reportDate: defaultDate,
     content: '',
   }
   dailyEditOpen.value = true
@@ -1157,6 +1292,10 @@ watch(
   { immediate: true },
 )
 
+watch(statsPeriod, () => {
+  if (isPersonalStatistics.value) loadMyStatistics()
+})
+
 const selectOptions = [
   { label: '全部', value: '全部' },
   { label: '张三', value: '张三' },
@@ -1214,13 +1353,6 @@ const personalBugColumns = [
   { title: '操作', dataIndex: 'operation', fixed: 'right', width: 90 },
 ]
 
-const personalBugs = [
-  { id: 1, index: 1, code: 'BUG-2026-00102', title: '用户登录页面异常报错', project: 'XX企业数字化管理系统', level: '严重', levelColor: 'red', status: '已提交', statusColor: 'orange', assignee: '张三', creator: '李四', createdAt: '2026-06-10' },
-  { id: 2, index: 2, code: 'BUG-2026-00105', title: '数据展示错误-订单金额计算', project: 'YY电子商务平台建设', level: '致命', levelColor: 'red', status: '已确认', statusColor: 'orange', assignee: '王五', creator: '李四', createdAt: '2026-06-11' },
-  { id: 3, index: 3, code: 'BUG-2026-00108', title: '报表导出功能失败', project: 'ZZ数据中台项目', level: '一般', levelColor: 'orange', status: '已完成', statusColor: 'purple', assignee: '李四', creator: '张三', createdAt: '2026-06-12' },
-  { id: 4, index: 4, code: 'BUG-2026-00110', title: '页面加载速度过慢', project: 'YY电子商务平台建设', level: '轻微', levelColor: 'blue', status: '已关闭', statusColor: 'green', assignee: '赵六', creator: '王五', createdAt: '2026-06-13' },
-  { id: 5, index: 5, code: 'BUG-2026-00110', title: '页面加载速度过慢', project: 'YY电子商务平台建设', level: '轻微', levelColor: 'blue', status: '已关闭', statusColor: 'green', assignee: '赵六', creator: '王五', createdAt: '2026-06-13' },
-]
 
 const attachmentColumns = [
   { title: '文件名', dataIndex: 'name' },
@@ -1261,13 +1393,47 @@ const uploadFiles = [
   { name: '系统架构图.drawio', size: '1.1MB', percent: 100 },
 ]
 
-const statCards = [
-  { label: '总任务', value: '12 个', icon: ScheduleOutlined, className: 'blue' },
-  { label: '进行中', value: '3 个', icon: PlayCircleOutlined, className: 'green' },
-  { label: '已完成', value: '8 个', icon: CheckCircleOutlined, className: 'cyan' },
-  { label: '逾期', value: '1 个', icon: ExclamationCircleOutlined, className: 'red' },
-  { label: '平均进度', value: '68%', icon: ScheduleOutlined, className: 'purple' },
+const STATS_PERIOD_OPTIONS = [
+  { label: '今天', value: 'today' },
+  { label: '本周', value: 'week' },
+  { label: '本月', value: 'month' },
+  { label: '全年', value: 'year' },
 ]
+
+const CHART_COLORS = ['#1677ff', '#69b1ff', '#27c27a', '#ff7a45', '#9254de', '#c8cfd9']
+const STATUS_LABEL_MAP = { COMPLETED: '已完成', IN_PROGRESS: '进行中', DUE_SOON: '即将到期', OVERDUE: '逾期', NOT_STARTED: '待开始', PAUSED: '暂停' }
+const STATUS_COLOR_MAP = { COMPLETED: '#27c27a', IN_PROGRESS: '#1677ff', DUE_SOON: '#ff7a45', OVERDUE: '#ff4d4f', NOT_STARTED: '#c8cfd9', PAUSED: '#9254de' }
+
+const statCards = computed(() => {
+  const s = statsData.value
+  return [
+    { label: '总任务', value: s ? `${s.myTaskTotal} 个` : '-', icon: ScheduleOutlined, className: 'blue' },
+    { label: '已完成', value: s ? `${s.myTaskCompleted} 个` : '-', icon: CheckCircleOutlined, className: 'cyan' },
+    { label: '逾期', value: s ? `${s.myTaskOverdue} 个` : '-', icon: ExclamationCircleOutlined, className: 'red' },
+    { label: '我的 Bug', value: s ? `${s.myBugTotal} 个` : '-', icon: BugOutlined, className: 'orange' },
+    { label: '未关闭 Bug', value: s ? `${s.myBugOpen} 个` : '-', icon: ExclamationCircleOutlined, className: 'purple' },
+  ]
+})
+
+const projectLegendItems = computed(() => {
+  const dist = statsData.value?.projectDistribution || {}
+  const total = Object.values(dist).reduce((a, b) => a + b, 0)
+  return Object.entries(dist).map(([name, value], i) => ({
+    name,
+    color: CHART_COLORS[i % CHART_COLORS.length],
+    pct: total ? Math.round(value / total * 100) + '%' : '0%',
+  }))
+})
+
+const statusLegendItems = computed(() => {
+  const dist = statsData.value?.taskStatusDistribution || {}
+  const total = Object.values(dist).reduce((a, b) => a + b, 0)
+  return Object.entries(dist).map(([code, value]) => ({
+    name: STATUS_LABEL_MAP[code] || code,
+    color: STATUS_COLOR_MAP[code] || '#c8cfd9',
+    pct: total ? Math.round(value / total * 100) + '%' : '0%',
+  }))
+})
 
 const trendPoints = [
   { day: '06/01', value: 1, left: '6%', bottom: '20%' },
