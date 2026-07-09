@@ -3,20 +3,20 @@
     <a-card class="prototype-card filter-panel" :bordered="false">
       <a-form class="user-filter" layout="inline">
         <a-form-item label="搜索">
-          <a-input v-model:value="queryParams.keyword" class="filter-input" placeholder="请输入姓名/手机号/邮箱" allow-clear />
+          <a-input v-model:value="queryParams.keyword" class="filter-input" placeholder="请输入姓名/账号" allow-clear />
         </a-form-item>
         <a-form-item label="所属部门">
-          <a-select v-model:value="queryParams.department" class="filter-select" :options="departmentOptions" />
+          <a-select v-model:value="queryParams.departmentId" class="filter-select" :options="departmentFilterOptions" />
         </a-form-item>
         <a-form-item label="角色">
-          <a-select v-model:value="queryParams.role" class="filter-select" :options="roleOptions" />
+          <a-select v-model:value="queryParams.roleId" class="filter-select" :options="roleFilterOptions" />
         </a-form-item>
         <a-form-item label="状态">
-          <a-select v-model:value="queryParams.status" class="filter-select" :options="statusOptions" />
+          <a-select v-model:value="queryParams.enabled" class="filter-select" :options="statusOptions" />
         </a-form-item>
         <a-form-item class="filter-actions">
           <a-space>
-            <a-button type="primary" @click="handleSearch">查询</a-button>
+            <a-button type="primary" :loading="tableLoading" @click="handleSearch">查询</a-button>
             <a-button @click="handleReset">重置</a-button>
           </a-space>
         </a-form-item>
@@ -25,13 +25,15 @@
 
     <div class="content-grid">
       <a-card class="prototype-card org-card" :bordered="false">
-        <a-tree
-          v-model:selectedKeys="selectedDepartmentKeys"
-          :tree-data="departmentTree"
-          default-expand-all
-          block-node
-          @select="handleDepartmentSelect"
-        />
+        <a-spin :spinning="deptLoading">
+          <a-tree
+            v-model:selectedKeys="selectedDepartmentKeys"
+            :tree-data="departmentTree"
+            default-expand-all
+            block-node
+            @select="handleDepartmentSelect"
+          />
+        </a-spin>
       </a-card>
 
       <a-card class="prototype-card list-card" :bordered="false">
@@ -45,32 +47,45 @@
         <a-table
           row-key="id"
           :columns="columns"
-          :data-source="filteredUsers"
+          :data-source="users"
+          :loading="tableLoading"
           :pagination="pagination"
           :scroll="{ x: 940 }"
+          @change="handleTableChange"
         >
-          <template #bodyCell="{ column, record, text }">
-            <template v-if="column.dataIndex === 'role'">
-              <a-tag color="blue">{{ text }}</a-tag>
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.dataIndex === 'roleNames'">
+              <a-tag v-for="name in record.roleNames" :key="name" color="blue">{{ name }}</a-tag>
             </template>
-            <template v-else-if="column.dataIndex === 'status'">
-              <a-switch :checked="record.status === '启用'" size="small" @change="checked => handleStatusChange(record, checked)" />
-              <span class="status-text">{{ record.status }}</span>
+            <template v-else-if="column.dataIndex === 'enabled'">
+              <a-switch
+                :checked="record.enabled"
+                size="small"
+                :loading="record._switching"
+                @change="checked => handleStatusChange(record, checked)"
+              />
+              <span :class="['status-text', { 'status-text--disabled': !record.enabled }]">
+                {{ record.enabled ? '启用' : '停用' }}
+              </span>
             </template>
             <template v-else-if="column.dataIndex === 'email'">
-              <a class="email-link">{{ text }}</a>
+              <a class="email-link">{{ record.email }}</a>
             </template>
-            <template v-else>
-              {{ text }}
+            <template v-else-if="column.dataIndex === 'actions'">
+              <a-space>
+                <a-button type="link" size="small" @click="handleEdit(record)">编辑</a-button>
+                <a-button type="link" size="small" @click="handleResetPassword(record)">重置密码</a-button>
+              </a-space>
             </template>
           </template>
         </a-table>
       </a-card>
     </div>
 
+    <!-- 新增/编辑用户弹窗 -->
     <a-modal
       v-model:open="userModalOpen"
-      title="新增用户"
+      :title="modalMode === 'create' ? '新增用户' : '编辑用户'"
       width="640px"
       :confirm-loading="submitLoading"
       ok-text="确认"
@@ -79,14 +94,22 @@
       @cancel="handleCancel"
     >
       <a-form ref="formRef" class="user-form" :model="formState" :rules="formRules" :label-col="{ span: 5 }" :wrapper-col="{ span: 17 }">
-        <a-form-item label="姓名" name="name">
-          <a-input v-model:value="formState.name" placeholder="请输入姓名" />
+        <a-form-item label="姓名" name="realName">
+          <a-input v-model:value="formState.realName" placeholder="请输入姓名" />
         </a-form-item>
-        <a-form-item label="所属部门" name="department">
-          <a-select v-model:value="formState.department" placeholder="请选择所属部门" :options="departmentOptionsWithoutAll" />
+        <a-form-item label="登录账号" name="username">
+          <a-input v-model:value="formState.username" placeholder="请输入登录账号" :disabled="modalMode === 'edit'" />
         </a-form-item>
-        <a-form-item label="角色" name="role">
-          <a-select v-model:value="formState.role" placeholder="请选择角色" :options="roleOptionsWithoutAll" />
+        <a-form-item label="所属部门" name="departmentId">
+          <a-select v-model:value="formState.departmentId" placeholder="请选择所属部门" :options="departmentSelectOptions" />
+        </a-form-item>
+        <a-form-item label="角色" name="roleIds">
+          <a-select
+            v-model:value="formState.roleIds"
+            mode="multiple"
+            placeholder="请选择角色"
+            :options="roleSelectOptions"
+          />
         </a-form-item>
         <a-form-item label="手机号" name="phone">
           <a-input v-model:value="formState.phone" placeholder="请输入手机号" />
@@ -94,11 +117,29 @@
         <a-form-item label="邮箱" name="email">
           <a-input v-model:value="formState.email" placeholder="请输入邮箱" />
         </a-form-item>
-        <a-form-item label="初始密码" name="password">
+        <a-form-item v-if="modalMode === 'create'" label="初始密码" name="password">
           <a-input-password v-model:value="formState.password" placeholder="请输入初始密码" />
         </a-form-item>
-        <a-form-item label="账号状态" name="status">
-          <a-switch v-model:checked="formState.status" checked-children="启用" un-checked-children="停用" />
+        <a-form-item label="账号状态" name="enabled">
+          <a-switch v-model:checked="formState.enabled" checked-children="启用" un-checked-children="停用" />
+        </a-form-item>
+      </a-form>
+    </a-modal>
+
+    <!-- 重置密码弹窗 -->
+    <a-modal
+      v-model:open="resetPwdModalOpen"
+      title="重置密码"
+      width="400px"
+      :confirm-loading="resetPwdLoading"
+      ok-text="确认"
+      cancel-text="取消"
+      @ok="handleConfirmResetPassword"
+      @cancel="resetPwdModalOpen = false"
+    >
+      <a-form :label-col="{ span: 6 }" :wrapper-col="{ span: 16 }" style="padding-top: 16px">
+        <a-form-item label="新密码">
+          <a-input-password v-model:value="newPassword" placeholder="请输入新密码" />
         </a-form-item>
       </a-form>
     </a-modal>
@@ -107,153 +148,236 @@
 
 <script setup>
 import { PlusOutlined } from '@ant-design/icons-vue'
-import { computed, reactive, ref } from 'vue'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+
+import {
+  assignUserRoles,
+  createUser,
+  getDepartments,
+  getRoleList,
+  getUserList,
+  resetUserPassword,
+  updateUser,
+  updateUserEnabled,
+} from '@/api/system'
 
 const columns = [
-  { title: '序号', dataIndex: 'index', key: 'index', width: 72 },
-  { title: '姓名', dataIndex: 'name', key: 'name', width: 100 },
-  { title: '所属部门', dataIndex: 'department', key: 'department', width: 180 },
-  { title: '角色', dataIndex: 'role', key: 'role', width: 120 },
-  { title: '账号状态', dataIndex: 'status', key: 'status', width: 120 },
+  { title: '序号', key: 'index', width: 72, customRender: ({ index }) => index + 1 },
+  { title: '姓名', dataIndex: 'realName', key: 'realName', width: 100 },
+  { title: '登录账号', dataIndex: 'username', key: 'username', width: 120 },
+  { title: '所属部门', dataIndex: 'departmentName', key: 'departmentName', width: 160 },
+  { title: '角色', dataIndex: 'roleNames', key: 'roleNames', width: 180 },
+  { title: '状态', dataIndex: 'enabled', key: 'enabled', width: 110 },
   { title: '手机号', dataIndex: 'phone', key: 'phone', width: 140 },
-  { title: '邮箱', dataIndex: 'email', key: 'email', width: 210 },
-]
-
-const departmentOptions = [
-  { label: '全部', value: '全部' },
-  { label: '总经办', value: '总经办' },
-  { label: '技术部/前端组', value: '技术部/前端组' },
-  { label: '技术部/后端组', value: '技术部/后端组' },
-  { label: '技术部/测试组', value: '技术部/测试组' },
-  { label: '市场部', value: '市场部' },
-]
-
-const roleOptions = [
-  { label: '全部', value: '全部' },
-  { label: '开发工程师', value: '开发工程师' },
-  { label: '测试工程师', value: '测试工程师' },
-  { label: '项目经理', value: '项目经理' },
-  { label: '商务人员', value: '商务人员' },
+  { title: '邮箱', dataIndex: 'email', key: 'email', width: 200 },
+  { title: '操作', dataIndex: 'actions', key: 'actions', width: 150, fixed: 'right' },
 ]
 
 const statusOptions = [
-  { label: '全部', value: '全部' },
-  { label: '启用', value: '启用' },
-  { label: '停用', value: '停用' },
+  { label: '全部', value: null },
+  { label: '启用', value: true },
+  { label: '停用', value: false },
 ]
 
-const departmentOptionsWithoutAll = departmentOptions.filter(item => item.value !== '全部')
-const roleOptionsWithoutAll = roleOptions.filter(item => item.value !== '全部')
-
-const departmentTree = [
-  {
-    title: 'XX科技有限公司',
-    key: '全部',
-    children: [
-      { title: '总经办', key: '总经办' },
-      { title: '市场部', key: '市场部' },
-      {
-        title: '技术部',
-        key: '技术部',
-        children: [
-          { title: '前端组', key: '技术部/前端组' },
-          { title: '后端组', key: '技术部/后端组' },
-          { title: '测试组', key: '技术部/测试组' },
-        ],
-      },
-    ],
-  },
-]
-
-const createDefaultFormState = () => ({
-  name: '',
-  department: undefined,
-  role: undefined,
-  phone: '',
-  email: '',
-  password: '',
-  status: true,
-})
-
-const queryParams = reactive({
-  keyword: '',
-  department: '全部',
-  role: '全部',
-  status: '启用',
-})
-const formRef = ref()
-const userModalOpen = ref(false)
-const submitLoading = ref(false)
+// 数据
+const users = ref([])
+const departments = ref([])
+const roles = ref([])
+const tableLoading = ref(false)
+const deptLoading = ref(false)
+const total = ref(0)
 const currentPage = ref(1)
-const selectedDepartmentKeys = ref(['全部'])
-const formState = reactive(createDefaultFormState())
-const users = ref([
-  { id: 1, index: 1, name: '张三', department: '技术部/前端组', role: '开发工程师', status: '启用', phone: '13800000001', email: 'zhangsan@example.com' },
-  { id: 2, index: 2, name: '李四', department: '技术部/后端组', role: '开发工程师', status: '启用', phone: '13800000002', email: 'lisi@example.com' },
-  { id: 3, index: 3, name: '王五', department: '技术部/测试组', role: '测试工程师', status: '启用', phone: '13800000003', email: 'wangwu@example.com' },
-  { id: 4, index: 4, name: '赵六', department: '技术部', role: '项目经理', status: '启用', phone: '13800000004', email: 'zhaoliu@example.com' },
-  { id: 5, index: 5, name: '孙七', department: '市场部', role: '商务人员', status: '启用', phone: '13800000005', email: 'sunqi@example.com' },
+const pageSize = ref(10)
+const selectedDepartmentKeys = ref([])
+const queryParams = reactive({ keyword: '', departmentId: null, roleId: null, enabled: null })
+
+// 部门树
+const buildTree = (list, parentId = null) =>
+  list
+    .filter(d => (parentId === null ? !d.parentId || d.parentId === 0 : d.parentId === parentId))
+    .map(d => {
+      const children = buildTree(list, d.id)
+      return { title: d.name, key: d.id, ...(children.length ? { children } : {}) }
+    })
+
+const departmentTree = computed(() => [{ title: '全部', key: null, children: buildTree(departments.value) }])
+
+const departmentFilterOptions = computed(() => [
+  { label: '全部', value: null },
+  ...departments.value.map(d => ({ label: d.name, value: d.id })),
 ])
 
-const formRules = {
-  name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
-  department: [{ required: true, message: '请选择所属部门', trigger: 'change' }],
-  role: [{ required: true, message: '请选择角色', trigger: 'change' }],
-  phone: [{ required: true, message: '请输入手机号', trigger: 'blur' }],
-  email: [{ required: true, message: '请输入邮箱', trigger: 'blur' }],
-  password: [{ required: true, message: '请输入初始密码', trigger: 'blur' }],
-}
+const departmentSelectOptions = computed(() =>
+  departments.value.map(d => ({ label: d.name, value: d.id }))
+)
 
-const filteredUsers = computed(() => {
-  return users.value.filter(user => {
-    const keywordMatched = !queryParams.keyword || [user.name, user.phone, user.email].some(value => value.includes(queryParams.keyword))
-    const departmentMatched = queryParams.department === '全部' || user.department === queryParams.department
-    const roleMatched = queryParams.role === '全部' || user.role === queryParams.role
-    const statusMatched = queryParams.status === '全部' || user.status === queryParams.status
+const roleFilterOptions = computed(() => [
+  { label: '全部', value: null },
+  ...roles.value.map(r => ({ label: r.name, value: r.id })),
+])
 
-    return keywordMatched && departmentMatched && roleMatched && statusMatched
-  })
-})
+const roleSelectOptions = computed(() =>
+  roles.value.map(r => ({ label: r.name, value: r.id }))
+)
 
 const pagination = computed(() => ({
   current: currentPage.value,
-  pageSize: 10,
-  total: filteredUsers.value.length,
-  showSizeChanger: false,
-  showTotal: total => `共 ${total} 条`,
-  onChange: handlePageChange,
+  pageSize: pageSize.value,
+  total: total.value,
+  showSizeChanger: true,
+  showTotal: t => `共 ${t} 条`,
 }))
 
-const handleDepartmentSelect = keys => {
-  const selectedKey = keys[0] || '全部'
-  selectedDepartmentKeys.value = [selectedKey]
-  queryParams.department = selectedKey === '技术部' ? '全部' : selectedKey
-  currentPage.value = 1
+// 加载
+const loadDepartments = async () => {
+  deptLoading.value = true
+  try {
+    departments.value = await getDepartments()
+  } catch {
+    message.error('加载部门失败')
+  } finally {
+    deptLoading.value = false
+  }
 }
 
+const loadRoles = async () => {
+  try {
+    roles.value = await getRoleList()
+  } catch {
+    message.error('加载角色失败')
+  }
+}
+
+const loadUsers = async () => {
+  tableLoading.value = true
+  try {
+    const params = {
+      pageNo: currentPage.value,
+      pageSize: pageSize.value,
+    }
+    if (queryParams.keyword) params.keyword = queryParams.keyword
+    if (queryParams.departmentId != null) params.departmentId = queryParams.departmentId
+    if (queryParams.roleId != null) params.roleId = queryParams.roleId
+    if (queryParams.enabled != null) params.enabled = queryParams.enabled
+
+    const result = await getUserList(params)
+    users.value = result.records
+    total.value = result.total
+  } catch (e) {
+    message.error(e.message || '加载用户列表失败')
+  } finally {
+    tableLoading.value = false
+  }
+}
+
+onMounted(() => {
+  loadDepartments()
+  loadRoles()
+  loadUsers()
+})
+
+// 查询
 const handleSearch = () => {
   currentPage.value = 1
-}
-
-const handlePageChange = page => {
-  currentPage.value = page
-}
-
-const handleStatusChange = (record, checked) => {
-  record.status = checked ? '启用' : '停用'
+  loadUsers()
 }
 
 const handleReset = () => {
   queryParams.keyword = ''
-  queryParams.department = '全部'
-  queryParams.role = '全部'
-  queryParams.status = '启用'
-  selectedDepartmentKeys.value = ['全部']
+  queryParams.departmentId = null
+  queryParams.roleId = null
+  queryParams.enabled = null
+  selectedDepartmentKeys.value = []
   currentPage.value = 1
+  loadUsers()
+}
+
+const handleTableChange = ({ current, pageSize: size }) => {
+  currentPage.value = current
+  pageSize.value = size
+  loadUsers()
+}
+
+const handleDepartmentSelect = keys => {
+  const key = keys[0] ?? null
+  selectedDepartmentKeys.value = key !== null ? [key] : []
+  queryParams.departmentId = key
+  currentPage.value = 1
+  loadUsers()
+}
+
+// 启用/禁用
+const handleStatusChange = async (record, checked) => {
+  record._switching = true
+  try {
+    await updateUserEnabled(record.id, checked)
+    record.enabled = checked
+    message.success(checked ? '已启用' : '已停用')
+  } catch (e) {
+    message.error(e.message || '操作失败')
+  } finally {
+    record._switching = false
+  }
+}
+
+// 表单
+const formRef = ref()
+const userModalOpen = ref(false)
+const submitLoading = ref(false)
+const modalMode = ref('create')
+const editingUserId = ref(null)
+const formState = reactive({
+  realName: '',
+  username: '',
+  departmentId: undefined,
+  roleIds: [],
+  phone: '',
+  email: '',
+  password: '',
+  enabled: true,
+})
+
+const formRules = {
+  realName: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
+  username: [{ required: true, message: '请输入登录账号', trigger: 'blur' }],
+  password: [{ required: true, message: '请输入初始密码', trigger: 'blur' }],
+}
+
+const resetForm = () => {
+  Object.assign(formState, {
+    realName: '',
+    username: '',
+    departmentId: undefined,
+    roleIds: [],
+    phone: '',
+    email: '',
+    password: '',
+    enabled: true,
+  })
+  formRef.value?.clearValidate()
 }
 
 const handleAdd = () => {
-  Object.assign(formState, createDefaultFormState())
+  modalMode.value = 'create'
+  editingUserId.value = null
+  resetForm()
+  userModalOpen.value = true
+}
+
+const handleEdit = record => {
+  modalMode.value = 'edit'
+  editingUserId.value = record.id
+  Object.assign(formState, {
+    realName: record.realName,
+    username: record.username,
+    departmentId: record.departmentId || undefined,
+    roleIds: record.roleIds || [],
+    phone: record.phone || '',
+    email: record.email || '',
+    password: '',
+    enabled: record.enabled,
+  })
   formRef.value?.clearValidate()
   userModalOpen.value = true
 }
@@ -263,29 +387,73 @@ const handleCancel = () => {
 }
 
 const handleSubmit = async () => {
-  if (submitLoading.value) {
-    return
-  }
-
+  if (submitLoading.value) return
   try {
     await formRef.value?.validate()
     submitLoading.value = true
-    users.value = [
-      ...users.value,
-      {
-        id: Date.now(),
-        index: users.value.length + 1,
-        name: formState.name,
-        department: formState.department,
-        role: formState.role,
-        status: formState.status ? '启用' : '停用',
+
+    if (modalMode.value === 'create') {
+      await createUser({
+        realName: formState.realName,
+        username: formState.username,
+        password: formState.password,
+        departmentId: formState.departmentId,
+        roleIds: formState.roleIds,
         phone: formState.phone,
         email: formState.email,
-      },
-    ]
+        enabled: formState.enabled,
+      })
+      message.success('用户创建成功')
+    } else {
+      await updateUser(editingUserId.value, {
+        realName: formState.realName,
+        departmentId: formState.departmentId,
+        phone: formState.phone,
+        email: formState.email,
+        enabled: formState.enabled,
+      })
+      if (formState.roleIds.length >= 0) {
+        await assignUserRoles(editingUserId.value, formState.roleIds)
+      }
+      message.success('用户更新成功')
+    }
+
     userModalOpen.value = false
+    loadUsers()
+  } catch (e) {
+    if (e?.errorFields) return
+    message.error(e.message || '操作失败')
   } finally {
     submitLoading.value = false
+  }
+}
+
+// 重置密码
+const resetPwdModalOpen = ref(false)
+const resetPwdLoading = ref(false)
+const newPassword = ref('')
+const resetPwdTargetId = ref(null)
+
+const handleResetPassword = record => {
+  resetPwdTargetId.value = record.id
+  newPassword.value = ''
+  resetPwdModalOpen.value = true
+}
+
+const handleConfirmResetPassword = async () => {
+  if (!newPassword.value) {
+    message.warning('请输入新密码')
+    return
+  }
+  resetPwdLoading.value = true
+  try {
+    await resetUserPassword(resetPwdTargetId.value, newPassword.value)
+    message.success('密码重置成功')
+    resetPwdModalOpen.value = false
+  } catch (e) {
+    message.error(e.message || '重置失败')
+  } finally {
+    resetPwdLoading.value = false
   }
 }
 </script>
@@ -356,6 +524,10 @@ const handleSubmit = async () => {
   color: #52c41a;
 }
 
+.status-text--disabled {
+  color: #8c8c8c;
+}
+
 .email-link {
   color: #1677ff;
 }
@@ -364,6 +536,3 @@ const handleSubmit = async () => {
   padding-top: 10px;
 }
 </style>
-
-
-
