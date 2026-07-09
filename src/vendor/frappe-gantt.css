@@ -1,0 +1,58 @@
+.gantt-container {
+  min-height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: #fff;
+}
+
+.today-button {
+  display: none;
+}
+
+.gantt-chart {
+  position: relative;
+  min-height: 360px;
+  padding-top: 12px;
+  background-image:
+    linear-gradient(to right, #eef2f7 1px, transparent 1px),
+    linear-gradient(to bottom, #f3f5f8 1px, transparent 1px);
+  background-size: 24px 42px;
+}
+
+.bar-wrapper {
+  position: absolute;
+  right: 0;
+  left: 0;
+  height: 42px;
+}
+
+.bar {
+  position: absolute;
+  top: 9px;
+  height: 24px;
+  overflow: hidden;
+  background: #d6eaff;
+  border: 1px solid #0a84ff;
+  border-radius: 12px;
+}
+
+.bar-progress {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: #0a84ff;
+}
+
+.bar-label {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  height: 100%;
+  padding: 0 10px;
+  overflow: hidden;
+  color: #fff;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

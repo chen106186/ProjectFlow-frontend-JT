@@ -116,6 +116,7 @@ const currentUserName = computed(() => {
 const selectedKeys = computed(() => {
   if (route.path.startsWith('/bugs')) return ['/bugs']
   if (route.path.startsWith('/projects/management')) return ['/projects/management']
+  if (route.path.startsWith('/projects/execution')) return ['/projects/execution']
   return [route.path]
 })
 const groupPathMap = {
@@ -135,7 +136,7 @@ const breadcrumbItems = computed(() => {
   }
 
   if (parentTitle && parentTitle !== title) {
-    items.push({ title: parentTitle, path: '/projects/management' })
+    items.push({ title: parentTitle, path: route.path.startsWith('/projects/execution') ? '/projects/execution' : '/projects/management' })
   }
 
   if (!group || group !== title) {
