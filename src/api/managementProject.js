@@ -25,5 +25,16 @@ export const downloadProjectFile = id => download(`/api/files/${id}/download`)
 
 export const getProjectStats = projectIds => request('/api/projects/stats', { params: { projectIds: projectIds.join(',') } })
 
+export const getTaskById = id => request(`/api/tasks/${id}`)
+export const createTask = data => request('/api/tasks', { method: 'POST', body: data })
+export const updateTask = (id, data) => request(`/api/tasks/${id}`, { method: 'PUT', body: data })
+export const deleteTask = id => request(`/api/tasks/${id}`, { method: 'DELETE' })
+
+export const getBugById = id => request(`/api/bugs/${id}`)
+export const createBug = data => request('/api/bugs', { method: 'POST', body: data })
+export const updateBug = (id, data) => request(`/api/bugs/${id}`, { method: 'PUT', body: data })
+export const deleteBug = id => request(`/api/bugs/${id}`, { method: 'DELETE' })
+export const getMyBugs = () => request('/api/bugs/my')
+
 export const getDicts = () => request('/api/dicts')
 export const getSystemUsers = params => request('/api/system/users', { params })

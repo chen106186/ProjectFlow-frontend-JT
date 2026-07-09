@@ -7,26 +7,34 @@
             <template #icon><LeftOutlined /></template>
             返回
           </a-button>
-          <a-tag color="blue">进行中</a-tag>
-          <a-tag color="red">高</a-tag>
+          <template v-if="selectedTaskDetail">
+            <a-tag :color="getTaskStatusColor(selectedTaskDetail.status)">{{ getTaskLabel('taskStatus', selectedTaskDetail.status) || selectedTaskDetail.status }}</a-tag>
+            <a-tag :color="getTaskPriorityColor(selectedTaskDetail.priority)">{{ getTaskLabel('taskPriority', selectedTaskDetail.priority) || selectedTaskDetail.priority }}</a-tag>
+          </template>
         </div>
 
         <a-card class="prototype-card task-info-card" :bordered="false">
-          <a-descriptions :column="4" size="small">
-            <a-descriptions-item label="任务名称">用户管理模块前端开发</a-descriptions-item>
-            <a-descriptions-item label="所属项目">XX企业数字化管理系统</a-descriptions-item>
-            <a-descriptions-item label="负责人">张三</a-descriptions-item>
-            <a-descriptions-item label="角色">{{ currentTaskRole }}</a-descriptions-item>
-            <a-descriptions-item label="创建时间">2026-06-01</a-descriptions-item>
-            <a-descriptions-item label="优先级"><a-tag color="orange">高</a-tag></a-descriptions-item>
-            <a-descriptions-item label="状态"><a-tag color="blue">进行中</a-tag></a-descriptions-item>
-            <a-descriptions-item label="计划开始日期">2026-06-15</a-descriptions-item>
-            <a-descriptions-item label="计划结束日期">2026-06-15</a-descriptions-item>
-            <a-descriptions-item label="实际开始日期">2026-06-15</a-descriptions-item>
-            <a-descriptions-item label="实际结束日期">2026-06-15</a-descriptions-item>
-            <a-descriptions-item label="任务描述" :span="3">完成用户管理模块的前端页面开发，包括用户列表、新增/编辑用户弹窗、角色分配等功能。需要与后端接口联调。</a-descriptions-item>
-            <a-descriptions-item label="标签">前端　算法</a-descriptions-item>
-          </a-descriptions>
+          <a-spin :spinning="taskDetailLoading">
+            <a-descriptions v-if="selectedTaskDetail" :column="4" size="small">
+              <a-descriptions-item label="任务名称">{{ selectedTaskDetail.name }}</a-descriptions-item>
+              <a-descriptions-item label="所属项目">{{ getTaskProjectName(selectedTaskDetail.projectId) }}</a-descriptions-item>
+              <a-descriptions-item label="负责人">{{ getTaskUserName(selectedTaskDetail.assigneeId) }}</a-descriptions-item>
+              <a-descriptions-item label="角色">{{ selectedTaskDetail.roleName || '-' }}</a-descriptions-item>
+              <a-descriptions-item label="优先级">
+                <a-tag :color="getTaskPriorityColor(selectedTaskDetail.priority)">{{ getTaskLabel('taskPriority', selectedTaskDetail.priority) || selectedTaskDetail.priority }}</a-tag>
+              </a-descriptions-item>
+              <a-descriptions-item label="状态">
+                <a-tag :color="getTaskStatusColor(selectedTaskDetail.status)">{{ getTaskLabel('taskStatus', selectedTaskDetail.status) || selectedTaskDetail.status }}</a-tag>
+              </a-descriptions-item>
+              <a-descriptions-item label="计划开始日期">{{ selectedTaskDetail.plannedStartDate || '-' }}</a-descriptions-item>
+              <a-descriptions-item label="计划结束日期">{{ selectedTaskDetail.plannedEndDate || '-' }}</a-descriptions-item>
+              <a-descriptions-item label="实际开始日期">{{ selectedTaskDetail.actualStartDate || '-' }}</a-descriptions-item>
+              <a-descriptions-item label="实际结束日期">{{ selectedTaskDetail.actualEndDate || '-' }}</a-descriptions-item>
+              <a-descriptions-item label="任务描述" :span="3">{{ selectedTaskDetail.description || '-' }}</a-descriptions-item>
+              <a-descriptions-item label="标签">{{ selectedTaskDetail.tags || '-' }}</a-descriptions-item>
+            </a-descriptions>
+            <a-empty v-else-if="!taskDetailLoading" description="暂无任务数据" />
+          </a-spin>
         </a-card>
 
         <section class="task-detail-grid">
@@ -86,16 +94,16 @@
       <section v-else class="personal-page">
         <a-card class="prototype-card filter-panel" :bordered="false">
           <a-form class="prototype-filter" layout="inline">
-            <a-form-item label="任务名称"><a-input /></a-form-item>
-            <a-form-item label="所属项目"><a-select value="全部" :options="selectOptions" /></a-form-item>
-            <a-form-item label="负责人"><a-select value="全部" :options="selectOptions" /></a-form-item>
-            <a-form-item label="优先级"><a-select value="全部" :options="selectOptions" /></a-form-item>
-            <a-form-item label="状态"><a-select value="全部" :options="selectOptions" /></a-form-item>
-            <a-form-item label="计划结束日期"><a-date-picker /></a-form-item>
+            <a-form-item label="任务名称"><a-input v-model:value="taskFilter.keyword" placeholder="请输入任务名称" /></a-form-item>
+            <a-form-item label="所属项目"><a-select v-model:value="taskFilter.projectId" allow-clear placeholder="全部" :options="taskProjectOptions" /></a-form-item>
+            <a-form-item v-if="!isPersonalTasks" label="负责人"><a-select v-model:value="taskFilter.assigneeId" allow-clear placeholder="全部" :options="taskUserOptions" /></a-form-item>
+            <a-form-item label="优先级"><a-select v-model:value="taskFilter.priority" allow-clear placeholder="全部" :options="taskPrioritySelectOptions" /></a-form-item>
+            <a-form-item label="状态"><a-select v-model:value="taskFilter.status" allow-clear placeholder="全部" :options="taskStatusSelectOptions" /></a-form-item>
+            <a-form-item label="计划结束日期"><a-date-picker v-model:value="taskFilter.plannedEndDate" /></a-form-item>
             <a-form-item class="filter-buttons">
               <a-space>
-                <a-button type="primary">查询</a-button>
-                <a-button>重置</a-button>
+                <a-button type="primary" @click="handleTaskSearch">查询</a-button>
+                <a-button @click="handleTaskReset">重置</a-button>
               </a-space>
             </a-form-item>
           </a-form>
@@ -125,7 +133,7 @@
               <tbody>
                 <tr v-for="record in visibleTasks" :key="record.id">
                   <td>{{ record.index }}</td>
-                  <td><button class="text-link" type="button" @click="handleTaskDetail">{{ record.name }}</button></td>
+                  <td><button class="text-link" type="button" @click="handleTaskDetail(record)">{{ record.name }}</button></td>
                   <td><button class="text-link" type="button">{{ record.project }}</button></td>
                   <td>{{ record.role }}</td>
                   <td>{{ record.tag }}</td>
@@ -136,18 +144,20 @@
                   <td>{{ record.actualStart }}</td>
                   <td>{{ record.planEnd }}</td>
                   <td>{{ record.actualEnd }}</td>
-                  <td>{{ record.createdAt }}</td>
-                  <td><button class="icon-link" type="button" title="编辑任务" @click="openTaskModal('edit')"><EditOutlined /></button></td>
+                  <td>
+                    <a-space :size="4">
+                      <button class="icon-link" type="button" title="编辑任务" @click="openTaskModal('edit', record)"><EditOutlined /></button>
+                      <a-popconfirm title="确认删除该任务?" ok-text="删除" cancel-text="取消" @confirm="handleDeleteTask(record)">
+                        <button class="icon-link danger" type="button" title="删除任务"><DeleteOutlined /></button>
+                      </a-popconfirm>
+                    </a-space>
+                  </td>
                 </tr>
               </tbody>
             </table>
           </div>
           <div class="prototype-pagination">
-            <span>共 6 条</span>
-            <a-pagination size="small" :current="1" :total="30" :page-size="10" />
-            <span>前往</span>
-            <a-input value="1" size="small" />
-            <span>页</span>
+            <span>共 {{ visibleTasks.length }} 条</span>
           </div>
         </a-card>
       </section>
@@ -392,19 +402,20 @@
       <template #footer>
         <a-space>
           <a-button @click="taskEditOpen = false">取消</a-button>
-          <a-button type="primary" @click="taskEditOpen = false">确认</a-button>
+          <a-button type="primary" :loading="taskSubmitLoading" @click="handleTaskSubmit">确认</a-button>
         </a-space>
       </template>
       <a-form class="prototype-modal-form" layout="horizontal" :label-col="{ span: 5 }">
-        <a-form-item label="任务名称"><a-input value="用户管理模块前端开发" /></a-form-item>
-        <a-form-item label="负责人"><a-select value="张三" :options="userOptions" /></a-form-item>
-        <a-form-item label="角色"><a-select :value="currentTaskRole" :options="roleOptions" /></a-form-item>
-        <a-form-item label="标签"><a-input value="测试" /></a-form-item>
-        <a-form-item label="状态"><a-select value="未开始" :options="statusOptions" /></a-form-item>
-        <a-form-item label="优先级"><a-select value="紧急" :options="priorityOptions" /></a-form-item>
-        <a-form-item label="计划开始时间"><a-date-picker /></a-form-item>
-        <a-form-item label="实际开始时间"><a-date-picker /></a-form-item>
-        <a-form-item label="任务描述"><a-textarea :rows="4" /></a-form-item>
+        <a-form-item label="所属项目"><a-select v-model:value="taskFormState.projectId" :options="taskProjectOptions" placeholder="请选择所属项目" /></a-form-item>
+        <a-form-item label="任务名称"><a-input v-model:value="taskFormState.name" placeholder="请输入任务名称" /></a-form-item>
+        <a-form-item label="负责人"><a-select v-model:value="taskFormState.assigneeId" :options="taskUserOptions" placeholder="请选择负责人" /></a-form-item>
+        <a-form-item label="角色"><a-select v-model:value="taskFormState.roleName" :options="roleOptions" allow-clear placeholder="请选择角色" /></a-form-item>
+        <a-form-item label="标签"><a-input v-model:value="taskFormState.tags" placeholder="多个标签用逗号分隔" /></a-form-item>
+        <a-form-item v-if="editingTaskId" label="状态"><a-select v-model:value="taskFormState.status" :options="taskStatusSelectOptions" placeholder="请选择状态" /></a-form-item>
+        <a-form-item label="优先级"><a-select v-model:value="taskFormState.priority" :options="taskPrioritySelectOptions" placeholder="请选择优先级" /></a-form-item>
+        <a-form-item label="计划开始时间"><a-date-picker v-model:value="taskFormState.plannedStartDate" style="width:100%" /></a-form-item>
+        <a-form-item label="计划结束时间"><a-date-picker v-model:value="taskFormState.plannedEndDate" style="width:100%" /></a-form-item>
+        <a-form-item label="任务描述"><a-textarea v-model:value="taskFormState.description" :rows="4" placeholder="请输入任务描述" /></a-form-item>
       </a-form>
     </a-modal>
 
@@ -498,7 +509,7 @@ import dayjs from 'dayjs'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { createDailyReport, fetchDailyReports } from '@/api/dailyReports'
-import { getDicts, getProjectList, getProjectTasks, getSystemUsers } from '@/api/managementProject'
+import { createTask, deleteTask, getDicts, getMyBugs, getProjectList, getProjectTasks, getSystemUsers, getTaskById, updateTask } from '@/api/managementProject'
 
 const route = useRoute()
 const router = useRouter()
@@ -518,6 +529,42 @@ const taskApiRows = ref([])
 const taskUsers = ref([])
 const taskProjects = ref([])
 const taskDictLabels = ref({ taskPriority: {}, taskStatus: {} })
+const taskPaginationTotal = ref(0)
+const taskSubmitLoading = ref(false)
+const taskDetailLoading = ref(false)
+const selectedTaskDetail = ref(null)
+const editingTaskId = ref(null)
+const bugApiRows = ref([])
+const bugUsers = ref([])
+const bugProjects = ref([])
+const bugFilter = ref({
+  keyword: '',
+  projectId: undefined,
+  priority: undefined,
+  status: undefined,
+})
+const selectedBugDetail = ref(null)
+const bugDetailLoading = ref(false)
+const taskFilter = ref({
+  keyword: '',
+  projectId: undefined,
+  assigneeId: undefined,
+  priority: undefined,
+  status: undefined,
+  plannedEndDate: undefined,
+})
+const taskFormState = ref({
+  projectId: undefined,
+  name: '',
+  roleName: undefined,
+  priority: undefined,
+  assigneeId: undefined,
+  status: undefined,
+  plannedStartDate: undefined,
+  plannedEndDate: undefined,
+  description: '',
+  tags: '',
+})
 const dailyForm = ref({
   reportDate: dayjs(),
   content: '',
@@ -538,23 +585,26 @@ const isTaskModule = computed(() => taskModuleRouteNames.includes(route.name))
 const currentTaskRole = computed(() => (route.name === 'TestingTasks' ? '测试' : '开发'))
 const taskModalTitle = computed(() => (taskModalMode.value === 'create' ? '新建任务' : '编辑任务'))
 const visibleTasks = computed(() => {
-  if (!taskApiRows.value.length) {
-    if (route.name === 'TestingTasks') {
-      return personalTasks.map(task => ({ ...task, role: '测试' }))
-    }
-
-    return personalTasks
-  }
-
   if (route.name === 'TestingTasks') {
     return taskApiRows.value.filter(task => task.role === '测试')
   }
   if (route.name === 'DevelopmentTasks') {
     return taskApiRows.value.filter(task => task.role !== '测试')
   }
-
   return taskApiRows.value
 })
+const taskProjectOptions = computed(() =>
+  taskProjects.value.map(p => ({ label: p.name, value: p.id }))
+)
+const taskUserOptions = computed(() =>
+  taskUsers.value.map(u => ({ label: u.realName, value: u.id }))
+)
+const taskPrioritySelectOptions = computed(() =>
+  Object.entries(taskDictLabels.value.taskPriority).map(([value, label]) => ({ label, value }))
+)
+const taskStatusSelectOptions = computed(() =>
+  Object.entries(taskDictLabels.value.taskStatus).map(([value, label]) => ({ label, value }))
+)
 const selectedDailyDateText = computed(() => selectedDailyDate.value.format('YYYY-MM-DD'))
 const currentDailyReport = computed(() => dailyReports.value[0])
 const dailyProjectText = computed(() => {
@@ -652,42 +702,60 @@ function getTaskProgress(status) {
 
 async function fetchTaskModuleData() {
   try {
-    const profile = JSON.parse(window.localStorage.getItem('authProfile') || '{}')
-    const [dicts, users, projects, tasks] = await Promise.all([
+    const [dicts, users, projects] = await Promise.all([
       getDicts(),
-      getSystemUsers({ pageNo: 1, pageSize: 500, enabled: true }),
-      getProjectList({ pageNo: 1, pageSize: 500 }),
-      getProjectTasks({
-        pageNo: 1,
-        pageSize: 200,
-        assigneeId: route.name === 'PersonalTasks' ? profile.id : undefined,
-      }),
+      getSystemUsers({ pageNo: 1, pageSize: 200, enabled: true }),
+      getProjectList({ pageNo: 1, pageSize: 200 }),
     ])
-
     taskUsers.value = users.records || []
     taskProjects.value = projects.records || []
     taskDictLabels.value = {
       taskPriority: Object.fromEntries((dicts.find(item => item.type === 'taskPriority')?.items || []).map(item => [item.value, item.label])),
       taskStatus: Object.fromEntries((dicts.find(item => item.type === 'taskStatus')?.items || []).map(item => [item.value, item.label])),
     }
-    taskApiRows.value = (tasks.records || []).map((task, index) => ({
+    await loadTasks()
+  } catch (error) {
+    taskApiRows.value = []
+    message.error(error.message)
+  }
+}
+
+async function loadTasks() {
+  try {
+    const profile = JSON.parse(window.localStorage.getItem('authProfile') || '{}')
+    const f = taskFilter.value
+    const result = await getProjectTasks({
+      pageNo: 1,
+      pageSize: 200,
+      keyword: f.keyword || undefined,
+      projectId: f.projectId || undefined,
+      assigneeId: route.name === 'PersonalTasks' ? profile.id : (f.assigneeId || undefined),
+      priority: f.priority || undefined,
+      status: f.status || undefined,
+      plannedEndDate: f.plannedEndDate ? f.plannedEndDate.format('YYYY-MM-DD') : undefined,
+    })
+    taskPaginationTotal.value = result.total || 0
+    taskApiRows.value = (result.records || []).map((task, index) => ({
       id: task.id,
       index: index + 1,
       name: task.name,
       project: getTaskProjectName(task.projectId),
+      projectId: task.projectId,
       role: getTaskRoleName(task),
+      roleName: task.roleName || '',
       tag: task.tags || '-',
       owner: getTaskUserName(task.assigneeId),
+      assigneeId: task.assigneeId,
       priority: getTaskLabel('taskPriority', task.priority),
+      priorityCode: task.priority,
       status: getTaskLabel('taskStatus', task.status),
-      planStart: task.plannedStartDate || '-',
-      actualStart: task.actualStartDate || '-',
-      planEnd: task.plannedEndDate || '-',
-      actualEnd: task.actualEndDate || '-',
-      createdAt: task.createdAt || '-',
-      code: `TASK-${task.id}`,
-      deadline: task.plannedEndDate || '-',
-      progress: getTaskProgress(task.status),
+      statusCode: task.status,
+      planStart: task.plannedStartDate ? String(task.plannedStartDate) : '-',
+      actualStart: task.actualStartDate ? String(task.actualStartDate) : '-',
+      planEnd: task.plannedEndDate ? String(task.plannedEndDate) : '-',
+      actualEnd: task.actualEndDate ? String(task.actualEndDate) : '-',
+      description: task.description || '',
+      tags: task.tags || '',
     }))
   } catch (error) {
     taskApiRows.value = []
@@ -826,14 +894,125 @@ const updateDetailQuery = detail => {
   })
 }
 
-const handleTaskDetail = () => {
+const handleTaskDetail = async record => {
+  selectedTaskDetail.value = null
   personalMode.value = 'task-detail'
   updateDetailQuery('task')
+  taskDetailLoading.value = true
+  try {
+    selectedTaskDetail.value = await getTaskById(record.id)
+  } catch (error) {
+    message.error(error.message || '任务详情加载失败')
+  } finally {
+    taskDetailLoading.value = false
+  }
 }
 
-const openTaskModal = mode => {
+function getTaskStatusColor(status) {
+  const map = { NOT_STARTED: 'default', IN_PROGRESS: 'blue', DUE_SOON: 'orange', OVERDUE: 'red', COMPLETED: 'green', PAUSED: 'purple' }
+  return map[status] || 'default'
+}
+
+function getTaskPriorityColor(priority) {
+  const map = { URGENT: 'red', HIGH: 'orange', MEDIUM: 'blue', LOW: 'default' }
+  return map[priority] || 'default'
+}
+
+const openTaskModal = (mode, record) => {
   taskModalMode.value = mode
+  if (mode === 'create') {
+    editingTaskId.value = null
+    taskFormState.value = {
+      projectId: undefined,
+      name: '',
+      roleName: route.name === 'TestingTasks' ? '测试' : (route.name === 'DevelopmentTasks' ? '开发' : undefined),
+      priority: undefined,
+      assigneeId: undefined,
+      status: undefined,
+      plannedStartDate: undefined,
+      plannedEndDate: undefined,
+      description: '',
+      tags: '',
+    }
+  } else {
+    editingTaskId.value = record.id
+    taskFormState.value = {
+      projectId: record.projectId,
+      name: record.name,
+      roleName: record.roleName || undefined,
+      priority: record.priorityCode || undefined,
+      assigneeId: record.assigneeId || undefined,
+      status: record.statusCode || undefined,
+      plannedStartDate: record.planStart !== '-' ? dayjs(record.planStart) : undefined,
+      plannedEndDate: record.planEnd !== '-' ? dayjs(record.planEnd) : undefined,
+      description: record.description || '',
+      tags: record.tags || '',
+    }
+  }
   taskEditOpen.value = true
+}
+
+const handleTaskSearch = () => {
+  loadTasks()
+}
+
+const handleTaskReset = () => {
+  taskFilter.value = {
+    keyword: '',
+    projectId: undefined,
+    assigneeId: undefined,
+    priority: undefined,
+    status: undefined,
+    plannedEndDate: undefined,
+  }
+  loadTasks()
+}
+
+const handleTaskSubmit = async () => {
+  const fs = taskFormState.value
+  if (!fs.name) { message.warning('请输入任务名称'); return }
+  if (!fs.projectId) { message.warning('请选择所属项目'); return }
+  if (!fs.assigneeId) { message.warning('请选择负责人'); return }
+  if (!fs.priority) { message.warning('请选择优先级'); return }
+
+  taskSubmitLoading.value = true
+  try {
+    const body = {
+      projectId: fs.projectId,
+      name: fs.name,
+      roleName: fs.roleName || undefined,
+      priority: fs.priority,
+      assigneeId: fs.assigneeId,
+      status: fs.status || undefined,
+      plannedStartDate: fs.plannedStartDate ? fs.plannedStartDate.format('YYYY-MM-DD') : undefined,
+      plannedEndDate: fs.plannedEndDate ? fs.plannedEndDate.format('YYYY-MM-DD') : undefined,
+      description: fs.description || undefined,
+      tags: fs.tags || undefined,
+    }
+    if (editingTaskId.value) {
+      await updateTask(editingTaskId.value, body)
+      message.success('任务更新成功')
+    } else {
+      await createTask(body)
+      message.success('任务创建成功')
+    }
+    taskEditOpen.value = false
+    await loadTasks()
+  } catch (error) {
+    message.error(error.message || (editingTaskId.value ? '任务更新失败' : '任务创建失败'))
+  } finally {
+    taskSubmitLoading.value = false
+  }
+}
+
+const handleDeleteTask = async record => {
+  try {
+    await deleteTask(record.id)
+    message.success('任务删除成功')
+    await loadTasks()
+  } catch (error) {
+    message.error(error.message || '任务删除失败')
+  }
 }
 
 const handleBackToTaskList = () => {
@@ -1016,26 +1195,8 @@ const personalTaskColumns = [
   { title: '实际开始日期', dataIndex: 'actualStart', width: 125 },
   { title: '计划完成日期', dataIndex: 'planEnd', width: 125 },
   { title: '实际完成日期', dataIndex: 'actualEnd', width: 125 },
-  { title: '创建时间', dataIndex: 'createdAt', width: 120 },
-  { title: '操作', dataIndex: 'operation', fixed: 'right', width: 80 },
+  { title: '操作', dataIndex: 'operation', fixed: 'right', width: 100 },
 ]
-
-const personalTasks = Array.from({ length: 6 }).map((_, index) => ({
-  id: index + 1,
-  index: 1,
-  name: '用户管理模块前端开发',
-  project: 'XX企业数字化管理系统',
-  role: '开发',
-  tag: '登录',
-  owner: '张三',
-  priority: '中',
-  status: '进行中',
-  planStart: '2026-06-15',
-  actualStart: '2026-06-15',
-  planEnd: '2026-06-15',
-  actualEnd: '2026-06-01',
-  createdAt: '2026-06-01',
-}))
 
 const personalBugColumns = [
   { title: '序号', dataIndex: 'index', width: 70 },
@@ -1325,6 +1486,10 @@ const trendPoints = [
   justify-content: center;
   width: 28px;
   height: 28px;
+}
+
+.icon-link.danger {
+  color: #ff4d4f;
 }
 
 .tag-soft {
