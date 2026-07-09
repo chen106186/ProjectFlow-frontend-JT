@@ -58,7 +58,7 @@
       </div>
 
       <div v-show="activeTab === 'tasks'" class="execution-tab-panel">
-        <div class="panel-title"><WarningOutlined />全局风险预警</div>
+        <h3>全局风险预警</h3>
         <div class="risk-grid">
           <div v-for="risk in risks" :key="risk.label" class="semantic-card" :class="risk.class">
             <span class="semantic-card__icon"><component :is="risk.icon" /></span>
@@ -66,7 +66,7 @@
           </div>
         </div>
         <div class="section-heading">
-          <h3><ProfileOutlined />任务列表</h3>
+          <h3>任务列表</h3>
           <a-space><a-select value="全部状态" :options="taskStatusFilters" /><a-select value="全部负责人" :options="personFilterOptions" /></a-space>
         </div>
         <a-table row-key="id" :columns="taskColumns" :data-source="taskRows" :loading="taskLoading" :pagination="pagination" size="small" :scroll="{ x: 950 }">
@@ -78,7 +78,7 @@
       </div>
 
       <div v-show="activeTab === 'bugs'" class="execution-tab-panel">
-        <div class="panel-title"><BugOutlined />BUG 总览</div>
+        <h3>Bug 总览</h3>
         <div class="bug-summary">
           <div v-for="item in bugSummary" :key="item.label" class="semantic-card" :class="item.class">
             <span class="semantic-card__icon"><component :is="item.icon" /></span>
@@ -86,7 +86,7 @@
           </div>
         </div>
         <div class="section-heading">
-          <h3><BugOutlined />Bug 列表 <small>（共 {{ bugRows.length }} 个）</small></h3>
+          <h3>Bug 列表</h3>
           <a-space><a-select value="全部状态" :options="bugStatusFilters" /><a-select value="全部指定人" :options="personFilterOptions" /></a-space>
         </div>
         <a-table row-key="id" :columns="bugColumns" :data-source="bugRows" :loading="bugLoading" :pagination="pagination" size="small" :scroll="{ x: 900 }">
@@ -103,9 +103,9 @@
           <a-button type="primary"><PlusOutlined />新建汇报</a-button>
         </div>
         <a-form class="report-filter" layout="inline">
-          <a-form-item><a-input placeholder="搜索汇报标题 / 汇报对象 / 地点/方式 / 描述" /></a-form-item>
-          <a-form-item label="状态"><a-select value="全部" :options="reportStatusFilters" /></a-form-item>
-          <a-form-item label="计划时间"><a-range-picker /></a-form-item>
+          <a-form-item><a-input placeholder="搜索汇报标题 / 汇报对象 / 地点方式" /></a-form-item>
+          <a-form-item><a-select value="全部" :options="reportStatusFilters" /></a-form-item>
+          <a-form-item><a-range-picker /></a-form-item>
           <a-button>重置</a-button>
         </a-form>
         <a-table row-key="id" :columns="reportColumns" :data-source="reportRows" :loading="reportLoading" :pagination="pagination" :scroll="{ x: 900 }">
@@ -120,6 +120,7 @@
         <div class="document-toolbar">
           <a-space>
             <a-button type="primary" @click="handleOpenUploadModal"><UploadOutlined />上传文件</a-button>
+            <a-button><FolderAddOutlined />新建文件夹</a-button>
             <a-button><DownloadOutlined />批量下载</a-button>
             <a-popconfirm title="确定删除选中的文件吗？" @confirm="handleDeleteDocuments"><a-button danger :disabled="selectedDocumentIds.length === 0"><DeleteOutlined />批量删除</a-button></a-popconfirm>
           </a-space>
@@ -208,6 +209,7 @@ import {
   FileTextOutlined,
   FireOutlined,
   FlagOutlined,
+  FolderAddOutlined,
   FolderOpenOutlined,
   InboxOutlined,
   PlusOutlined,
@@ -714,26 +716,27 @@ onMounted(async () => {
 .summary-metrics strong { font-size: 18px; }
 .summary-metrics .danger { color: #ff4d4f; }
 .execution-detail-card { min-height: 560px; overflow: hidden; background: #fff; }
-.execution-tabs { display: flex; gap: 72px; height: 58px; padding: 0 20px; background: #fafafa; border-bottom: 1px solid #edf0f3; }
-.execution-tabs button { display: inline-flex; gap: 8px; align-items: center; height: 58px; padding: 0 8px; color: #1f1f1f; font-size: 18px; background: transparent; border: 0; border-bottom: 4px solid transparent; cursor: pointer; }
+.execution-tabs { display: flex; gap: 44px; height: 44px; padding-left: 8px; }
+.execution-tabs button { display: inline-flex; gap: 7px; align-items: center; height: 44px; padding: 0 7px; color: #1f1f1f; background: transparent; border: 0; border-bottom: 3px solid transparent; cursor: pointer; }
 .execution-tabs button.active { color: #1677ff; border-bottom-color: #1677ff; }
-.execution-tab-panel { min-height: 520px; padding: 20px; overflow: auto; }
-.panel-title { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; font-size: 16px; font-weight: 600; }
-.execution-stat-row, .risk-grid, .bug-summary, .document-categories { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 22px; }
+.execution-tab-panel { min-height: 530px; padding: 14px; overflow: auto; }
+.execution-tab-panel h3 { margin: 0 0 12px; }
+.gantt-panel { padding: 12px; }
+.execution-stat-row, .risk-grid, .bug-summary, .document-categories { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 22px; }
 .execution-stat-row { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 16px; }
 .semantic-card { display: flex; gap: 14px; align-items: center; min-height: 86px; padding: 16px 18px; border: 1px solid #edf0f3; border-radius: 6px; }
-.execution-stat-row .semantic-card { gap: 12px; width: 100%; height: 86px; min-height: 0; padding: 14px 15px; text-align: left; border: 1px solid rgb(0 0 0 / 5%); border-radius: 16px; box-shadow: 0 4px 16px rgb(0 0 0 / 5%); transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.28s ease; }
-.execution-stat-row .semantic-card:hover { box-shadow: 0 14px 28px rgb(0 0 0 / 10%); transform: translateY(-4px); }
-.semantic-card__icon { display: inline-flex; flex: 0 0 38px; align-items: center; justify-content: center; width: 38px; height: 38px; font-size: 20px; background: rgb(255 255 255 / 80%); border-radius: 8px; }
+.execution-stat-row .semantic-card, .risk-grid .semantic-card, .bug-summary .semantic-card { gap: 12px; width: 100%; height: 86px; min-height: 0; padding: 14px 15px; text-align: left; border: 1px solid rgb(0 0 0 / 5%); border-radius: 16px; box-shadow: 0 4px 16px rgb(0 0 0 / 5%); transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.28s ease; }
+.execution-stat-row .semantic-card:hover, .risk-grid .semantic-card:hover, .bug-summary .semantic-card:hover, .document-categories button:hover { box-shadow: 0 14px 28px rgb(0 0 0 / 10%); transform: translateY(-4px); }
+.semantic-card__icon { display: inline-flex; flex: 0 0 36px; align-items: center; justify-content: center; width: 36px; height: 36px; font-size: 20px; background: rgb(255 255 255 / 78%); border-radius: 11px; box-shadow: 0 4px 12px rgb(0 0 0 / 6%); }
 .semantic-card__content { min-width: 0; }
 .semantic-card__content > span, .semantic-card__content strong, .semantic-card__content small { display: block; }
 .semantic-card__content > span { color: #6e6e73; font-size: 13px; }
-.semantic-card__content strong { margin: 4px 0; color: #1d1d1f; font-size: 24px; }
-.semantic-card__content small { color: #697386; font-size: 13px; }
+.semantic-card__content strong { margin: 3px 0; color: #1d1d1f; font-size: 19px; }
+.semantic-card__content small { overflow: hidden; color: #86868b; text-overflow: ellipsis; white-space: nowrap; }
 .gantt-progress, .risk-due, .bug-confirmed { color: #0066cc; background: linear-gradient(135deg, #fff 0%, #edf6ff 100%); }
-.risk-high, .bug-severe { color: #ff4d4f; background: #fff1f0; }
-.risk-medium, .bug-submitted { color: #fa8c16; background: #fff7e6; }
-.risk-normal, .bug-closed { color: #21a66a; background: #f0fff7; }
+.risk-high, .bug-severe { color: #d70015; background: linear-gradient(135deg, #fff 0%, #fff0f1 100%); }
+.risk-medium, .bug-submitted { color: #c93400; background: linear-gradient(135deg, #fff 0%, #fff5e8 100%); }
+.risk-normal, .bug-closed { color: #248a3d; background: linear-gradient(135deg, #fff 0%, #eefbf2 100%); }
 .gantt-workspace { display: grid; min-height: 430px; overflow: hidden; border: 1px solid #edf0f3; }
 .gantt-node-table { width: 100%; border-right: 1px solid #edf0f3; }
 .gantt-node-table :deep(.ant-table-thead > tr > th) { height: 85px; padding: 8px 6px; text-align: center; white-space: nowrap; }
@@ -758,23 +761,29 @@ onMounted(async () => {
 .gantt-scroll :deep(.gantt-overdue .bar), .gantt-scroll :deep(.gantt-overdue .bar-progress) { fill: #ff453a; stroke: #d70015; }
 .gantt-scroll :deep(.gantt-completed .bar-label), .gantt-scroll :deep(.gantt-overdue .bar-label), .gantt-scroll :deep(.gantt-in-progress .bar-label), .gantt-scroll :deep(.gantt-milestone .bar-label) { fill: #fff; }
 .gantt-scroll :deep(.gantt-due-soon .bar-label), .gantt-scroll :deep(.gantt-not-started .bar-label) { fill: #1d1d1f; }
-.section-heading, .document-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
-.section-heading h2, .section-heading h3 { display: flex; gap: 8px; align-items: center; margin: 0; }
+.section-heading, .document-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+.section-heading h2, .section-heading h3 { margin: 0; }
 .section-heading small { color: #8c8c8c; font-weight: 400; }
-.report-filter { display: flex; gap: 12px; margin-bottom: 18px; }
-.report-filter :deep(.ant-input) { width: 360px; }
-.document-toolbar :deep(.ant-input-group-wrapper) { width: 420px; }
-.document-categories { display: grid; grid-auto-columns: minmax(220px, 1fr); grid-auto-flow: column; grid-template-columns: none; overflow-x: auto; padding-bottom: 4px; }
-.document-categories button { display: grid; grid-template-columns: 46px minmax(0, 1fr); gap: 2px 14px; align-items: center; min-height: 92px; padding: 16px; text-align: left; background: #fff; border: 1px solid #edf0f3; border-radius: 6px; cursor: pointer; }
-.document-categories button:first-child { border-color: #1677ff; box-shadow: 0 0 0 1px #1677ff inset; }
-.document-category__icon { display: inline-flex; grid-row: 1 / 3; align-items: center; justify-content: center; width: 42px; height: 42px; font-size: 22px; border-radius: 8px; }
-.document-categories strong { font-size: 18px; }
-.category-all .document-category__icon { color: #1677ff; background: #e6f4ff; }
-.category-contract .document-category__icon { color: #21a66a; background: #eafaf1; }
-.category-requirement .document-category__icon { color: #faad14; background: #fff7e6; }
-.category-design .document-category__icon { color: #722ed1; background: #f4edff; }
-.category-development .document-category__icon { color: #fa8c16; background: #fff7e6; }
-.category-acceptance .document-category__icon { color: #13c2c2; background: #e6fffb; }
+.report-filter { margin-bottom: 18px; }
+.report-filter :deep(.ant-input) { width: 280px; }
+.document-toolbar :deep(.ant-input-group-wrapper) { width: 300px; }
+.document-categories { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.document-categories button { display: grid; grid-template-columns: 42px 1fr; padding: 15px; color: #1d1d1f; text-align: left; background: #fff; border: 1px solid rgb(0 0 0 / 5%); border-radius: 16px; box-shadow: 0 4px 16px rgb(0 0 0 / 5%); cursor: pointer; transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.28s ease; }
+.document-categories button:first-child { border-color: #1677ff; }
+.document-category__icon { display: inline-flex; grid-row: 1 / 3; align-self: center; align-items: center; justify-content: center; width: 36px; height: 36px; font-size: 20px; border-radius: 11px; }
+.document-categories strong { font-size: 17px; }
+.category-all { background: linear-gradient(135deg, #fff 0%, #edf6ff 100%); }
+.category-all .document-category__icon { color: #0066cc; background: #e5f2ff; }
+.category-contract { background: linear-gradient(135deg, #fff 0%, #eefbf2 100%); }
+.category-contract .document-category__icon { color: #248a3d; background: #e5f8eb; }
+.category-requirement { background: linear-gradient(135deg, #fff 0%, #fff5e8 100%); }
+.category-requirement .document-category__icon { color: #c93400; background: #ffecd6; }
+.category-design { background: linear-gradient(135deg, #fff 0%, #f5efff 100%); }
+.category-design .document-category__icon { color: #7d3fc1; background: #eee2ff; }
+.category-development { background: linear-gradient(135deg, #fff 0%, #fff7e8 100%); }
+.category-development .document-category__icon { color: #b25d00; background: #ffedcf; }
+.category-acceptance { background: linear-gradient(135deg, #fff 0%, #eafbf7 100%); }
+.category-acceptance .document-category__icon { color: #00856a; background: #dff8f1; }
 .upload-drag-icon { margin: 0 0 8px; color: #1677ff; font-size: 40px; text-align: center; }
 .upload-drag-title, .upload-drag-hint { margin: 0; text-align: center; }
 .upload-drag-title span { color: #1677ff; }
@@ -788,6 +797,7 @@ onMounted(async () => {
 .upload-form__row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .upload-modal-actions, .gantt-edit-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 8px; }
 @media (max-width: 1280px) {
+  .execution-tabs { gap: 20px; }
   .execution-summary { grid-template-columns: 1fr; }
   .execution-summary__progress { padding: 16px 0 0; border-top: 1px solid #edf0f3; border-left: 0; }
   .execution-summary dl { grid-template-columns: repeat(2, max-content minmax(120px, 1fr)); }

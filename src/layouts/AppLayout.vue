@@ -66,6 +66,13 @@
             <BugOutlined />
             <span>Bug 列表</span>
           </a-menu-item>
+
+          <a-sub-menu key="settings">
+            <template #icon><SettingOutlined /></template>
+            <template #title>系统设置</template>
+            <a-menu-item key="/settings/users" @click="handleNavigate('/settings/users')">用户管理</a-menu-item>
+            <a-menu-item key="/settings/roles" @click="handleNavigate('/settings/roles')">角色管理</a-menu-item>
+          </a-sub-menu>
         </a-menu>
       </a-layout-sider>
 
@@ -94,6 +101,7 @@ import {
   HomeOutlined,
   LogoutOutlined,
   ProjectOutlined,
+  SettingOutlined,
   UnorderedListOutlined,
   UsergroupAddOutlined,
   UserOutlined,
@@ -124,6 +132,7 @@ const groupPathMap = {
   '项目清单': '/projects/management',
   '任务列表': '/tasks/all',
   'Bug 列表': '/bugs',
+  '系统设置': '/settings/users',
 }
 const breadcrumbItems = computed(() => {
   const items = []
@@ -162,6 +171,7 @@ const routeGroupMap = {
   '/personal': 'personal',
   '/projects': 'projects',
   '/tasks': 'tasks',
+  '/settings': 'settings',
 }
 
 const syncOpenKeys = path => {
@@ -321,3 +331,4 @@ const handleUserMenuClick = ({ key }) => {
   overflow: hidden;
 }
 </style>
+

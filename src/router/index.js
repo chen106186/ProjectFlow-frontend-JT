@@ -8,6 +8,8 @@ import HomeView from '@/views/HomeView.vue'
 import LoginView from '@/views/LoginView.vue'
 import ManagementProject from '@/views/management-project/index.vue'
 import ModuleView from '@/views/ModuleView.vue'
+import RoleManagement from '@/views/system-settings/RoleManagement.vue'
+import UserManagement from '@/views/system-settings/UserManagement.vue'
 
 const moduleRoutes = [
   { path: 'personal/tasks', name: 'PersonalTasks', title: '我的任务', group: '个人工作' },
@@ -92,6 +94,24 @@ const router = createRouter({
             isProjectPage: true,
           },
         },
+        {
+          path: 'settings/users',
+          name: 'UserManagement',
+          component: UserManagement,
+          meta: {
+            title: '用户管理',
+            group: '系统设置',
+          },
+        },
+        {
+          path: 'settings/roles',
+          name: 'RoleManagement',
+          component: RoleManagement,
+          meta: {
+            title: '角色管理',
+            group: '系统设置',
+          },
+        },
         ...moduleRoutes.map(route => ({
           path: route.path,
           name: route.name,
@@ -111,3 +131,4 @@ router.afterEach(to => {
 })
 
 export default router
+
