@@ -15,7 +15,7 @@
         <a-dropdown>
           <a-button class="app-user" type="text">
             <a-avatar :size="34"><UserOutlined /></a-avatar>
-            <span>管理员</span>
+            <span>{{ currentUserName }}</span>
             <DownOutlined class="app-user__arrow" />
           </a-button>
           <template #overlay>
@@ -105,6 +105,14 @@ const route = useRoute()
 const router = useRouter()
 const isSiderCollapsed = ref(false)
 const openKeys = ref([])
+const currentUserName = computed(() => {
+  try {
+    const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+    return userInfo.realName || '管理员'
+  } catch {
+    return '管理员'
+  }
+})
 const selectedKeys = computed(() => {
   if (route.path.startsWith('/bugs')) return ['/bugs']
   if (route.path.startsWith('/projects/management')) return ['/projects/management']
@@ -172,6 +180,8 @@ const handleNavigate = path => {
 
 const handleUserMenuClick = ({ key }) => {
   if (key === 'logout') {
+    localStorage.removeItem('token')
+    localStorage.removeItem('userInfo')
     router.push('/login')
   }
 }

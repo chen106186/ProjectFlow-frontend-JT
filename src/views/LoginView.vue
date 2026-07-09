@@ -39,7 +39,7 @@
           </a-button>
         </a-form>
 
-        <a-alert class="login-form-card__notice" type="info" show-icon message="认证接口尚未提供，当前页面仅完成前端初始化。" />
+        <a-alert class="login-form-card__notice" type="info" show-icon message="登录成功后将进入项目与开发管理系统。" />
       </div>
     </section>
   </main>
@@ -48,8 +48,11 @@
 <script setup>
 import { LockOutlined, UserOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
-import { reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { login } from '@/api/auth'
 
+const router = useRouter()
 const submitLoading = ref(false)
 const formState = reactive({
   username: '',
@@ -62,6 +65,14 @@ const formRules = {
   password: [{ required: true, message: '请输入登录密码', trigger: 'blur' }],
 }
 
+onMounted(() => {
+  const rememberedUsername = localStorage.getItem('rememberedUsername')
+  if (rememberedUsername) {
+    formState.username = rememberedUsername
+    formState.remember = true
+  }
+})
+
 const handleSubmit = async () => {
   if (submitLoading.value) {
     return
@@ -70,7 +81,27 @@ const handleSubmit = async () => {
   submitLoading.value = true
 
   try {
-    message.info('认证接口尚未提供，暂时无法登录')
+    const user = await login({
+      username: formState.username,
+      password: formState.password,
+    })
+
+    localStorage.setItem('token', user.token)
+    localStorage.setItem('userInfo', JSON.stringify({
+      userId: user.userId,
+      realName: user.realName,
+    }))
+
+    if (formState.remember) {
+      localStorage.setItem('rememberedUsername', formState.username)
+    } else {
+      localStorage.removeItem('rememberedUsername')
+    }
+
+    message.success('登录成功')
+    router.push('/')
+  } catch (error) {
+    message.error(error.message || '登录失败，请检查账号或密码')
   } finally {
     submitLoading.value = false
   }

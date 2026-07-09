@@ -200,10 +200,10 @@
 
         <a-card class="prototype-card list-card bug-list-card" :bordered="false">
           <div class="list-toolbar">
-            <a-button type="primary" @click="bugEditOpen = true">
+            <!-- <a-button type="primary" @click="bugEditOpen = true">
               <template #icon><PlusOutlined /></template>
               新增Bug
-            </a-button>
+            </a-button> -->
             <a-space>
               <span class="muted">分组条件：</span>
               <a-select class="group-select" value="所属项目" :options="projectGroupOptions" />
@@ -241,11 +241,11 @@
             <h1 class="prototype-title">日报</h1>
           </div>
           <a-space>
-            <a-select class="daily-select" value="全部" :options="selectOptions" />
-            <a-input-search class="daily-search" placeholder="请搜索或选择人员" />
-            <a-button type="primary" @click="dailyEditOpen = true">
+            <!-- <a-select class="daily-select" value="全部" :options="selectOptions" />
+            <a-input-search class="daily-search" placeholder="请搜索或选择人员" /> -->
+            <a-button type="primary" @click="openDailyModal">
               <template #icon><PlusOutlined /></template>
-              记录工作
+              新建日报
             </a-button>
           </a-space>
         </div>
@@ -280,41 +280,44 @@
             </button>
           </a-card>
           <a-card class="daily-content-card" :bordered="false">
-            <template v-if="dailyHasRecord">
-              <div class="daily-record-head">
-                <span>所属项目：国网XX项目</span>
-                <span>提交人：张三</span>
-              </div>
-              <div class="daily-record-body">
-                <label>工作内容：</label>
-                <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean euismod bibendum laoreet. Proin gravida dolor sit amet lacus accumsan et viverra justo commodo.</p>
-              </div>
-              <h3>已上传附件（2）</h3>
-              <div class="daily-files">
-                <article v-for="file in dailyFiles" :key="file.name" class="daily-file">
-                  <span class="daily-file-icon" :class="file.type">
-                    <component :is="file.icon" />
-                  </span>
-                  <div>
-                    <strong>{{ file.name }}</strong>
-                    <p>{{ file.size }}　{{ file.time }}　张三</p>
-                    <a-space :size="6">
-                      <a-tooltip title="预览">
-                        <a-button class="file-action-button" type="text" size="small" aria-label="预览"><EyeOutlined /></a-button>
-                      </a-tooltip>
-                      <a-tooltip title="下载">
-                        <a-button class="file-action-button" type="text" size="small" aria-label="下载"><DownloadOutlined /></a-button>
-                      </a-tooltip>
-                      <a-tooltip title="删除">
-                        <a-button class="file-action-button danger" type="text" size="small" aria-label="删除"><DeleteOutlined /></a-button>
-                      </a-tooltip>
-                    </a-space>
-                  </div>
-                </article>
-              </div>
-              <span class="daily-time">{{ dailySubmitTime }}</span>
-            </template>
-            <a-empty v-else description="今天还没有工作记录" />
+            <a-spin :spinning="dailyLoading">
+              <template v-if="dailyHasRecord">
+                <!-- <div class="daily-record-head">
+                  <span>所属项目：{{ dailyProjectText }}</span>
+                  <span>提交人：{{ dailyReporterText }}</span>
+                </div> -->
+                <div class="daily-record-body">
+                  <label>工作内容：</label>
+                  <p>{{ dailyContentText }}</p>
+                </div>
+                <!-- <h3>已上传附件（{{ dailyFiles.length }}）</h3>
+                <div v-if="dailyFiles.length" class="daily-files">
+                  <article v-for="file in dailyFiles" :key="file.id || file.name" class="daily-file">
+                    <span class="daily-file-icon" :class="file.type">
+                      <component :is="file.icon" />
+                    </span>
+                    <div>
+                      <strong>{{ file.name }}</strong>
+                      <p>{{ file.size }}　{{ file.time }}　{{ file.user }}</p>
+                      <a-space :size="6">
+                        <a-tooltip title="预览">
+                          <a-button class="file-action-button" type="text" size="small" aria-label="预览"><EyeOutlined /></a-button>
+                        </a-tooltip>
+                        <a-tooltip title="下载">
+                          <a-button class="file-action-button" type="text" size="small" aria-label="下载"><DownloadOutlined /></a-button>
+                        </a-tooltip>
+                        <a-tooltip title="删除">
+                          <a-button class="file-action-button danger" type="text" size="small" aria-label="删除"><DeleteOutlined /></a-button>
+                        </a-tooltip>
+                      </a-space>
+                    </div>
+                  </article>
+                </div>
+                <a-empty v-else class="daily-file-empty" description="暂无附件" /> -->
+                <span class="daily-time">{{ dailySubmitTime }}</span>
+              </template>
+              <a-empty v-else :description="dailyError || `${selectedDailyDateText} 没有工作记录`" />
+            </a-spin>
           </a-card>
         </section>
       </section>
@@ -422,67 +425,20 @@
       </a-form>
     </a-modal>
 
-    <a-modal v-model:open="dailyEditOpen" width="720px" title="记录工作" centered>
+    <a-modal v-model:open="dailyEditOpen" width="720px" title="新建日报" centered>
       <template #footer>
         <a-space>
           <a-button @click="dailyEditOpen = false">取消</a-button>
-          <a-button type="primary" @click="dailyEditOpen = false">确认</a-button>
+          <a-button type="primary" :loading="dailySubmitLoading" @click="handleCreateDailyReport">确认</a-button>
         </a-space>
       </template>
-      <p class="modal-note">功能说明：可上传文档、图片</p>
       <a-form class="prototype-modal-form daily-modal-form" layout="horizontal" :label-col="{ span: 4 }">
-        <a-form-item label="工作内容">
-          <div class="editor-box">
-            <div class="editor-tools">
-              <a-tooltip title="插入图片">
-                <PictureOutlined />
-              </a-tooltip>
-              <a-tooltip title="插入链接">
-                <LinkOutlined />
-              </a-tooltip>
-              <a-tooltip title="撤销">
-                <UndoOutlined />
-              </a-tooltip>
-              <a-tooltip title="重做">
-                <RedoOutlined />
-              </a-tooltip>
-              <a-upload
-                class="daily-upload"
-                :file-list="dailyUploadFiles"
-                :before-upload="handleDailyBeforeUpload"
-                :on-remove="handleDailyUploadRemove"
-                :show-upload-list="false"
-                accept=".doc,.docx,.pdf,.xls,.xlsx,.png,.jpg,.jpeg"
-                multiple
-              >
-                <a-button type="primary" size="small">
-                  <template #icon><UploadOutlined /></template>
-                  上传
-                </a-button>
-              </a-upload>
-            </div>
-            <a-textarea :rows="7" />
-            <div v-if="dailyUploadFiles.length" class="daily-upload-list">
-              <article v-for="file in dailyUploadFiles" :key="file.uid" class="daily-upload-item">
-                <span class="daily-upload-icon" :class="getDailyUploadType(file.name)">
-                  <component :is="getDailyUploadIcon(file.name)" />
-                </span>
-                <div>
-                  <strong>{{ file.name }}</strong>
-                  <p>{{ formatFileSize(file.size) }}</p>
-                </div>
-                <a-tooltip title="移除">
-                  <a-button class="file-action-button danger" type="text" size="small" aria-label="移除" @click="handleDailyUploadRemove(file)">
-                    <DeleteOutlined />
-                  </a-button>
-                </a-tooltip>
-              </article>
-            </div>
-          </div>
+        <a-form-item label="日报日期">
+          <a-date-picker v-model:value="dailyForm.reportDate" :allow-clear="false" />
         </a-form-item>
-        <a-form-item label="所属项目"><a-select :options="projectOptions" /></a-form-item>
-        <a-form-item label="关联任务"><a-select :options="taskOptions" /></a-form-item>
-        <p class="form-tip">功能说明:选择关联任务后,文件自动展示在任务详情附件下</p>
+        <a-form-item label="工作内容">
+          <a-textarea v-model:value="dailyForm.content" :rows="8" placeholder="请输入工作内容" />
+        </a-form-item>
       </a-form>
     </a-modal>
 
@@ -529,21 +485,19 @@ import {
   FileWordOutlined,
   InboxOutlined,
   LeftOutlined,
-  LinkOutlined,
   PaperClipOutlined,
   PictureOutlined,
   PlayCircleOutlined,
   PlusOutlined,
-  RedoOutlined,
   RightOutlined,
   ScheduleOutlined,
-  UndoOutlined,
-  UploadOutlined,
 } from '@ant-design/icons-vue'
+import { message } from 'ant-design-vue'
 import * as echarts from 'echarts'
 import dayjs from 'dayjs'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { createDailyReport, fetchDailyReports } from '@/api/dailyReports'
 
 const route = useRoute()
 const router = useRouter()
@@ -555,7 +509,14 @@ const dailyEditOpen = ref(false)
 const uploadOpen = ref(false)
 const dailyHasRecord = ref(true)
 const selectedDailyDate = ref(dayjs())
-const dailyUploadFiles = ref([])
+const dailyLoading = ref(false)
+const dailyError = ref('')
+const dailyReports = ref([])
+const dailySubmitLoading = ref(false)
+const dailyForm = ref({
+  reportDate: dayjs(),
+  content: '',
+})
 const trendChartRef = ref(null)
 const projectChartRef = ref(null)
 const statusChartRef = ref(null)
@@ -579,6 +540,16 @@ const visibleTasks = computed(() => {
   return personalTasks
 })
 const selectedDailyDateText = computed(() => selectedDailyDate.value.format('YYYY-MM-DD'))
+const currentDailyReport = computed(() => dailyReports.value[0])
+const dailyProjectText = computed(() => {
+  const report = currentDailyReport.value
+  return report?.projectName || report?.project?.name || (report?.projectId ? `项目ID：${report.projectId}` : '-')
+})
+const dailyReporterText = computed(() => {
+  const report = currentDailyReport.value
+  return report?.reporterName || report?.reporter?.name || report?.createdByName || report?.creatorName || (report?.reporterId ? `用户ID：${report.reporterId}` : '-')
+})
+const dailyContentText = computed(() => currentDailyReport.value?.content || '')
 const weekStart = computed(() => selectedDailyDate.value.subtract((selectedDailyDate.value.day() + 6) % 7, 'day'))
 const weekEnd = computed(() => weekStart.value.add(6, 'day'))
 const weekTitle = computed(() => {
@@ -603,7 +574,10 @@ const weekDays = computed(() => {
     }
   })
 })
-const dailySubmitTime = computed(() => `${selectedDailyDate.value.format('YYYY-MM-DD')} 18:00`)
+const dailySubmitTime = computed(() => {
+  const report = currentDailyReport.value
+  return report?.updatedAt || report?.createdAt || `${selectedDailyDate.value.format('YYYY-MM-DD')} 18:00`
+})
 
 watch(
   () => [route.name, route.query.detail],
@@ -615,8 +589,6 @@ watch(
     } else {
       personalMode.value = name === 'PersonalBugs' ? 'bug-list' : 'task-list'
     }
-
-    dailyHasRecord.value = true
 
     if (name === 'PersonalStatistics') {
       nextTick(renderStatisticsCharts)
@@ -816,30 +788,94 @@ const getDailyUploadIcon = name => {
   return FileTextOutlined
 }
 
+const normalizeDailyFile = file => {
+  const name = file.name || file.fileName || file.originalName || file.url || '未命名附件'
+  return {
+    id: file.id || file.fileId || name,
+    name,
+    type: getDailyUploadType(name),
+    icon: getDailyUploadIcon(name),
+    size: file.sizeText || file.fileSizeText || formatFileSize(file.size || file.fileSize),
+    time: file.uploadTime || file.createdAt || file.updatedAt || '-',
+    user: file.uploaderName || file.createdByName || file.user || '-',
+    url: file.url || file.fileUrl || file.downloadUrl,
+  }
+}
+
+const getDailyReportFiles = report => report?.files || report?.attachments || report?.documents || report?.fileList || []
+
+const dailyFiles = computed(() => getDailyReportFiles(currentDailyReport.value).map(normalizeDailyFile))
+
 const formatFileSize = size => {
   if (!size) return '0 KB'
   if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`
   return `${(size / 1024 / 1024).toFixed(1)} MB`
 }
 
-const handleDailyBeforeUpload = file => {
-  dailyUploadFiles.value = [
-    ...dailyUploadFiles.value,
-    {
-      uid: file.uid,
-      name: file.name,
-      size: file.size,
-      status: 'done',
-      originFileObj: file,
-    },
-  ]
-
-  return false
+const openDailyModal = () => {
+  dailyForm.value = {
+    reportDate: selectedDailyDate.value || dayjs(),
+    content: '',
+  }
+  dailyEditOpen.value = true
 }
 
-const handleDailyUploadRemove = file => {
-  dailyUploadFiles.value = dailyUploadFiles.value.filter(item => item.uid !== file.uid)
+const loadDailyReports = async () => {
+  if (!isPersonalDaily.value) return
+
+  dailyLoading.value = true
+  dailyError.value = ''
+
+  try {
+    const result = await fetchDailyReports({
+      pageNo: 1,
+      pageSize: 200,
+      dateFrom: selectedDailyDateText.value,
+      dateTo: selectedDailyDateText.value,
+    })
+    const records = Array.isArray(result?.records) ? result.records : Array.isArray(result) ? result : []
+    dailyReports.value = records
+    dailyHasRecord.value = records.length > 0
+  } catch (error) {
+    dailyReports.value = []
+    dailyHasRecord.value = false
+    dailyError.value = error.message || '日报加载失败'
+  } finally {
+    dailyLoading.value = false
+  }
 }
+
+const handleCreateDailyReport = async () => {
+  if (dailySubmitLoading.value) return
+
+  const content = dailyForm.value.content.trim()
+  if (!content) {
+    message.warning('请输入工作内容')
+    return
+  }
+
+  dailySubmitLoading.value = true
+  try {
+    await createDailyReport({
+      reportDate: dailyForm.value.reportDate.format('YYYY-MM-DD'),
+      content,
+    })
+    dailyEditOpen.value = false
+    selectedDailyDate.value = dailyForm.value.reportDate
+    await loadDailyReports()
+    message.success('日报新建成功')
+  } catch (error) {
+    message.error(error.message || '日报新建失败')
+  } finally {
+    dailySubmitLoading.value = false
+  }
+}
+
+watch(
+  () => [route.name, selectedDailyDateText.value],
+  loadDailyReports,
+  { immediate: true },
+)
 
 const selectOptions = [
   { label: '全部', value: '全部' },
@@ -956,11 +992,6 @@ const taskLogs = [
   { time: '2026-06-10 16:00', user: '张三', text: '完成新增/编辑用户弹窗组件开发，对接后端接口' },
   { time: '2026-06-09 09:30', user: '张三', text: '搭建页面基础框架，引入Ant Design组件库' },
   { time: '2026-06-01 10:00', user: '张三', text: '任务创建，开始需求分析' },
-]
-
-const dailyFiles = [
-  { name: '银行流水.pdf', type: 'pdf', icon: FilePdfOutlined, size: '2.34 MB', time: '2024-05-16 14:32' },
-  { name: '银行流水说明.docx', type: 'docx', icon: FileWordOutlined, size: '1.12 MB', time: '2024-05-16 14:28' },
 ]
 
 const uploadFiles = [
