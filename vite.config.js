@@ -15,8 +15,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
-      'frappe-gantt': fileURLToPath(new URL('./src/vendor/frappe-gantt.js', import.meta.url)),
-      'frappe-gantt-css': fileURLToPath(new URL('./src/vendor/frappe-gantt.css', import.meta.url)),
+      // 'frappe-gantt': fileURLToPath(new URL('./src/vendor/frappe-gantt.js', import.meta.url)),
+      // 'frappe-gantt-css': fileURLToPath(new URL('./src/vendor/frappe-gantt.css', import.meta.url)),
     },
   },
 })
