@@ -227,6 +227,8 @@ const handleSaveRole = async () => {
 
     roleModalOpen.value = false
     await fetchRoles()
+  } catch (error) {
+    message.error(error.message || '操作失败')
   } finally {
     submitLoading.value = false
   }

@@ -147,7 +147,7 @@
                   <td>
                     <a-space :size="4">
                       <button class="icon-link" type="button" title="编辑任务" @click="openTaskModal('edit', record)"><EditOutlined /></button>
-                      <a-popconfirm title="确认删除该任务?" ok-text="删除" cancel-text="取消" @confirm="handleDeleteTask(record)">
+                      <a-popconfirm v-if="!isPersonalTasks" title="确认删除该任务?" ok-text="删除" cancel-text="取消" @confirm="handleDeleteTask(record)">
                         <button class="icon-link danger" type="button" title="删除任务"><DeleteOutlined /></button>
                       </a-popconfirm>
                     </a-space>
@@ -188,6 +188,12 @@
               <p>{{ selectedBugDetail.description || '-' }}</p>
               <h3>重现步骤</h3>
               <p>{{ selectedBugDetail.reproduceSteps || '-' }}</p>
+              <template v-if="selectedBugDetail.fixAnalysis || selectedBugDetail.fixDetail">
+                <h3>问题分析</h3>
+                <p>{{ selectedBugDetail.fixAnalysis || '-' }}</p>
+                <h3>修复细节</h3>
+                <p>{{ selectedBugDetail.fixDetail || '-' }}</p>
+              </template>
             </div>
           </a-card>
         </a-spin>
@@ -221,10 +227,10 @@
 
         <a-card class="prototype-card list-card bug-list-card" :bordered="false">
           <div class="list-toolbar">
-            <!-- <a-button type="primary" @click="bugEditOpen = true">
+            <a-button type="primary" @click="handleOpenBugModal('create')">
               <template #icon><PlusOutlined /></template>
               新增Bug
-            </a-button> -->
+            </a-button>
             <a-space>
               <span class="muted">分组条件：</span>
               <a-select class="group-select" value="所属项目" :options="projectGroupOptions" />
@@ -246,7 +252,21 @@
                 <a-tag :color="record.statusColor">{{ text }}</a-tag>
               </template>
               <template v-else-if="column.dataIndex === 'operation'">
-                <a-button type="link" size="small" @click="handleBugDetail(record)">详情</a-button>
+                <a-space :size="2" wrap>
+                  <a-button type="link" size="small" @click="handleBugDetail(record)">详情</a-button>
+                  <template v-if="record.creatorId === currentUserId">
+                    <a-button type="link" size="small" @click="handleOpenBugModal('edit', record)">编辑</a-button>
+                    <a-popconfirm title="确认删除该Bug?" ok-text="删除" cancel-text="取消" @confirm="handleDeleteBug(record)">
+                      <a-button type="link" size="small" danger>删除</a-button>
+                    </a-popconfirm>
+                    <a-button v-if="record.statusCode === 'PENDING_VERIFY'" type="link" size="small" style="color:#52c41a" :loading="bugVerifyLoading" @click="handleVerifyBug(record)">
+                      <CheckOutlined />验证通过
+                    </a-button>
+                  </template>
+                  <a-button v-if="record.assigneeId === currentUserId && record.statusCode !== 'CLOSED'" type="link" size="small" @click="handleOpenFixModal(record)">
+                    <ToolOutlined />填写修复
+                  </a-button>
+                </a-space>
               </template>
               <template v-else>{{ text }}</template>
             </template>
@@ -420,33 +440,55 @@
         </a-space>
       </template>
       <a-form class="prototype-modal-form" layout="horizontal" :label-col="{ span: 5 }">
-        <a-form-item label="所属项目"><a-select v-model:value="taskFormState.projectId" :options="taskProjectOptions" placeholder="请选择所属项目" /></a-form-item>
-        <a-form-item label="任务名称"><a-input v-model:value="taskFormState.name" placeholder="请输入任务名称" /></a-form-item>
-        <a-form-item label="负责人"><a-select v-model:value="taskFormState.assigneeId" :options="taskUserOptions" placeholder="请选择负责人" /></a-form-item>
-        <a-form-item label="角色"><a-select v-model:value="taskFormState.roleName" :options="roleOptions" allow-clear placeholder="请选择角色" /></a-form-item>
-        <a-form-item label="标签"><a-input v-model:value="taskFormState.tags" placeholder="多个标签用逗号分隔" /></a-form-item>
-        <a-form-item v-if="editingTaskId" label="状态"><a-select v-model:value="taskFormState.status" :options="taskStatusSelectOptions" placeholder="请选择状态" /></a-form-item>
-        <a-form-item label="优先级"><a-select v-model:value="taskFormState.priority" :options="taskPrioritySelectOptions" placeholder="请选择优先级" /></a-form-item>
-        <a-form-item label="计划开始时间"><a-date-picker v-model:value="taskFormState.plannedStartDate" style="width:100%" /></a-form-item>
-        <a-form-item label="计划结束时间"><a-date-picker v-model:value="taskFormState.plannedEndDate" style="width:100%" /></a-form-item>
-        <a-form-item label="任务描述"><a-textarea v-model:value="taskFormState.description" :rows="4" placeholder="请输入任务描述" /></a-form-item>
+        <template v-if="!isPersonalTasks">
+          <a-form-item label="所属项目"><a-select v-model:value="taskFormState.projectId" :options="taskProjectOptions" placeholder="请选择所属项目" /></a-form-item>
+          <a-form-item label="任务名称"><a-input v-model:value="taskFormState.name" placeholder="请输入任务名称" /></a-form-item>
+          <a-form-item label="负责人"><a-select v-model:value="taskFormState.assigneeId" :options="taskUserOptions" placeholder="请选择负责人" /></a-form-item>
+          <a-form-item label="角色"><a-select v-model:value="taskFormState.roleName" :options="roleOptions" allow-clear placeholder="请选择角色" /></a-form-item>
+          <a-form-item label="标签"><a-input v-model:value="taskFormState.tags" placeholder="多个标签用逗号分隔" /></a-form-item>
+          <a-form-item v-if="editingTaskId" label="状态"><a-select v-model:value="taskFormState.status" :options="taskStatusSelectOptions" placeholder="请选择状态" /></a-form-item>
+          <a-form-item label="优先级"><a-select v-model:value="taskFormState.priority" :options="taskPrioritySelectOptions" placeholder="请选择优先级" /></a-form-item>
+          <a-form-item label="计划开始时间"><a-date-picker v-model:value="taskFormState.plannedStartDate" style="width:100%" /></a-form-item>
+          <a-form-item label="计划结束时间"><a-date-picker v-model:value="taskFormState.plannedEndDate" style="width:100%" /></a-form-item>
+          <a-form-item label="任务描述"><a-textarea v-model:value="taskFormState.description" :rows="4" placeholder="请输入任务描述" /></a-form-item>
+        </template>
+        <template v-if="isPersonalTasks && editingTaskId">
+          <a-form-item label="实际开始时间"><a-date-picker v-model:value="taskFormState.actualStartDate" style="width:100%" /></a-form-item>
+          <a-form-item label="实际完成时间"><a-date-picker v-model:value="taskFormState.actualEndDate" style="width:100%" /></a-form-item>
+        </template>
       </a-form>
     </a-modal>
 
-    <a-modal v-model:open="bugEditOpen" width="640px" title="新增Bug" centered>
+    <a-modal v-model:open="bugEditOpen" width="640px" :title="bugFormMode === 'edit' ? '编辑Bug' : '新增Bug'" centered>
       <template #footer>
         <a-space>
           <a-button @click="bugEditOpen = false">取消</a-button>
-          <a-button type="primary" @click="bugEditOpen = false">确认</a-button>
+          <a-button type="primary" :loading="bugSubmitLoading" @click="handleBugSubmit">确认</a-button>
         </a-space>
       </template>
       <a-form class="prototype-modal-form" layout="horizontal" :label-col="{ span: 5 }">
-        <a-form-item label="Bug标题"><a-input value="用户登录页面异常报错" /></a-form-item>
-        <a-form-item label="所属项目"><a-select value="XX企业数字化管理系统" :options="projectOptions" /></a-form-item>
-        <a-form-item label="严重等级"><a-select value="严重" :options="bugLevelOptions" /></a-form-item>
-        <a-form-item label="指定人"><a-select value="张三" :options="userOptions" /></a-form-item>
-        <a-form-item label="问题描述"><a-textarea :rows="3" value="在Chrome浏览器下登录页面出现500错误。" /></a-form-item>
-        <a-form-item label="重现步骤"><a-textarea :rows="3" value="打开登录页，输入用户名密码，点击登录按钮。" /></a-form-item>
+        <a-form-item label="Bug标题"><a-input v-model:value="bugForm.title" placeholder="请输入Bug标题" /></a-form-item>
+        <a-form-item label="所属项目"><a-select v-model:value="bugForm.projectId" allow-clear placeholder="请选择项目" :options="bugProjects.map(p => ({ label: p.name, value: p.id }))" /></a-form-item>
+        <a-form-item label="严重等级">
+          <a-select v-model:value="bugForm.priority" allow-clear placeholder="请选择"
+            :options="[{ label: '紧急', value: 'URGENT' }, { label: '高', value: 'HIGH' }, { label: '中', value: 'MEDIUM' }, { label: '低', value: 'LOW' }]" />
+        </a-form-item>
+        <a-form-item label="指定人"><a-select v-model:value="bugForm.assigneeId" allow-clear placeholder="请选择负责人" :options="bugUsers.map(u => ({ label: u.realName, value: u.id }))" /></a-form-item>
+        <a-form-item label="问题描述"><a-textarea v-model:value="bugForm.description" :rows="3" placeholder="请描述问题现象" /></a-form-item>
+        <a-form-item label="重现步骤"><a-textarea v-model:value="bugForm.reproduceSteps" :rows="3" placeholder="请描述复现步骤" /></a-form-item>
+      </a-form>
+    </a-modal>
+
+    <a-modal v-model:open="bugFixOpen" width="600px" title="填写修复详情" centered>
+      <template #footer>
+        <a-space>
+          <a-button @click="bugFixOpen = false">取消</a-button>
+          <a-button type="primary" :loading="bugFixLoading" @click="handleFixSubmit">提交（变更为待验证）</a-button>
+        </a-space>
+      </template>
+      <a-form class="prototype-modal-form" layout="horizontal" :label-col="{ span: 5 }">
+        <a-form-item label="问题分析"><a-textarea v-model:value="bugFixForm.fixAnalysis" :rows="4" placeholder="请分析问题根因" /></a-form-item>
+        <a-form-item label="修复细节"><a-textarea v-model:value="bugFixForm.fixDetail" :rows="4" placeholder="请描述修复方案和改动点" /></a-form-item>
       </a-form>
     </a-modal>
 
@@ -500,6 +542,7 @@
 import {
   BugOutlined,
   CheckCircleOutlined,
+  CheckOutlined,
   DeleteOutlined,
   DownloadOutlined,
   EditOutlined,
@@ -516,6 +559,7 @@ import {
   PlusOutlined,
   RightOutlined,
   ScheduleOutlined,
+  ToolOutlined,
 } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import * as echarts from 'echarts'
@@ -523,7 +567,7 @@ import dayjs from 'dayjs'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { createDailyReport, fetchDailyReports } from '@/api/dailyReports'
-import { createTask, deleteTask, getDicts, getMyBugs, getMyStatistics, getProjectList, getProjectTasks, getSystemUsers, getTaskById, updateTask } from '@/api/managementProject'
+import { closeBug, createBug, createTask, deleteBug, deleteTask, fixBug, getDicts, getMyBugs, getMyStatistics, getProjectList, getProjectTasks, getSystemUsers, getTaskById, updateBug, updateTask } from '@/api/managementProject'
 
 const route = useRoute()
 const router = useRouter()
@@ -531,6 +575,20 @@ const personalMode = ref('task-list')
 const taskEditOpen = ref(false)
 const taskModalMode = ref('edit')
 const bugEditOpen = ref(false)
+const bugFormMode = ref('create')
+const bugForm = ref({ projectId: undefined, title: '', priority: undefined, assigneeId: undefined, description: '', reproduceSteps: '' })
+const bugEditingId = ref(null)
+const bugSubmitLoading = ref(false)
+const bugFixOpen = ref(false)
+const bugFixBugId = ref(null)
+const bugFixForm = ref({ fixAnalysis: '', fixDetail: '' })
+const bugFixLoading = ref(false)
+const bugVerifyLoading = ref(false)
+
+const currentUserId = computed(() => {
+  try { return JSON.parse(localStorage.getItem('userInfo') || '{}').userId || null } catch { return null }
+})
+
 const dailyEditOpen = ref(false)
 const uploadOpen = ref(false)
 const dailyHasRecord = ref(true)
@@ -856,7 +914,10 @@ async function loadMyBugs() {
       creatorId: bug.creatorId,
       description: bug.description || '',
       reproduceSteps: bug.reproduceSteps || '',
+      fixAnalysis: bug.fixAnalysis || '',
+      fixDetail: bug.fixDetail || '',
       closedAt: bug.closedAt || null,
+      createdAt: bug.createdAt ? String(bug.createdAt).slice(0, 10) : '-',
     }))
   } catch (error) {
     bugApiRows.value = []
@@ -1089,24 +1150,34 @@ const handleTaskReset = () => {
 
 const handleTaskSubmit = async () => {
   const fs = taskFormState.value
-  if (!fs.name) { message.warning('请输入任务名称'); return }
-  if (!fs.projectId) { message.warning('请选择所属项目'); return }
-  if (!fs.assigneeId) { message.warning('请选择负责人'); return }
-  if (!fs.priority) { message.warning('请选择优先级'); return }
 
   taskSubmitLoading.value = true
   try {
-    const body = {
-      projectId: fs.projectId,
-      name: fs.name,
-      roleName: fs.roleName || undefined,
-      priority: fs.priority,
-      assigneeId: fs.assigneeId,
-      status: fs.status || undefined,
-      plannedStartDate: fs.plannedStartDate ? fs.plannedStartDate.format('YYYY-MM-DD') : undefined,
-      plannedEndDate: fs.plannedEndDate ? fs.plannedEndDate.format('YYYY-MM-DD') : undefined,
-      description: fs.description || undefined,
-      tags: fs.tags || undefined,
+    let body
+    if (isPersonalTasks.value && editingTaskId.value) {
+      body = {
+        actualStartDate: fs.actualStartDate ? fs.actualStartDate.format('YYYY-MM-DD') : undefined,
+        actualEndDate: fs.actualEndDate ? fs.actualEndDate.format('YYYY-MM-DD') : undefined,
+      }
+    } else {
+      if (!fs.name) { message.warning('请输入任务名称'); taskSubmitLoading.value = false; return }
+      if (!fs.projectId) { message.warning('请选择所属项目'); taskSubmitLoading.value = false; return }
+      if (!fs.assigneeId) { message.warning('请选择负责人'); taskSubmitLoading.value = false; return }
+      if (!fs.priority) { message.warning('请选择优先级'); taskSubmitLoading.value = false; return }
+      body = {
+        projectId: fs.projectId,
+        name: fs.name,
+        roleName: fs.roleName || undefined,
+        priority: fs.priority,
+        assigneeId: fs.assigneeId,
+        status: fs.status || undefined,
+        plannedStartDate: fs.plannedStartDate ? fs.plannedStartDate.format('YYYY-MM-DD') : undefined,
+        plannedEndDate: fs.plannedEndDate ? fs.plannedEndDate.format('YYYY-MM-DD') : undefined,
+        actualStartDate: fs.actualStartDate ? fs.actualStartDate.format('YYYY-MM-DD') : undefined,
+        actualEndDate: fs.actualEndDate ? fs.actualEndDate.format('YYYY-MM-DD') : undefined,
+        description: fs.description || undefined,
+        tags: fs.tags || undefined,
+      }
     }
     if (editingTaskId.value) {
       await updateTask(editingTaskId.value, body)
@@ -1148,6 +1219,100 @@ const handleBugDetail = record => {
 const handleBackToBugList = () => {
   personalMode.value = 'bug-list'
   updateDetailQuery()
+}
+
+const handleOpenBugModal = (mode, record) => {
+  bugFormMode.value = mode
+  if (mode === 'edit' && record) {
+    bugEditingId.value = record.id
+    bugForm.value = {
+      projectId: record.projectId,
+      title: record.title,
+      priority: record.priorityCode || undefined,
+      assigneeId: record.assigneeId || undefined,
+      description: record.description || '',
+      reproduceSteps: record.reproduceSteps || '',
+    }
+  } else {
+    bugEditingId.value = null
+    bugForm.value = { projectId: undefined, title: '', priority: undefined, assigneeId: undefined, description: '', reproduceSteps: '' }
+  }
+  bugEditOpen.value = true
+}
+
+const handleBugSubmit = async () => {
+  const f = bugForm.value
+  if (!f.title) { message.warning('请输入Bug标题'); return }
+  bugSubmitLoading.value = true
+  try {
+    const body = {
+      projectId: f.projectId || undefined,
+      title: f.title,
+      priority: f.priority || undefined,
+      assigneeId: f.assigneeId || undefined,
+      description: f.description || undefined,
+      reproduceSteps: f.reproduceSteps || undefined,
+    }
+    if (bugEditingId.value) {
+      await updateBug(bugEditingId.value, body)
+      message.success('Bug更新成功')
+    } else {
+      await createBug(body)
+      message.success('Bug提交成功')
+    }
+    bugEditOpen.value = false
+    await loadMyBugs()
+  } catch (error) {
+    message.error(error.message || (bugEditingId.value ? 'Bug更新失败' : 'Bug提交失败'))
+  } finally {
+    bugSubmitLoading.value = false
+  }
+}
+
+const handleDeleteBug = async record => {
+  try {
+    await deleteBug(record.id)
+    message.success('Bug已删除')
+    await loadMyBugs()
+  } catch (error) {
+    message.error(error.message || '删除失败')
+  }
+}
+
+const handleVerifyBug = async record => {
+  bugVerifyLoading.value = true
+  try {
+    await closeBug(record.id)
+    message.success('验证通过，Bug已关闭')
+    await loadMyBugs()
+    if (selectedBugDetail.value?.id === record.id) {
+      selectedBugDetail.value = { ...selectedBugDetail.value, statusCode: 'CLOSED', status: '已关闭', statusColor: 'green' }
+    }
+  } catch (error) {
+    message.error(error.message || '操作失败')
+  } finally {
+    bugVerifyLoading.value = false
+  }
+}
+
+const handleOpenFixModal = record => {
+  bugFixBugId.value = record.id
+  bugFixForm.value = { fixAnalysis: record.fixAnalysis || '', fixDetail: record.fixDetail || '' }
+  bugFixOpen.value = true
+}
+
+const handleFixSubmit = async () => {
+  bugFixLoading.value = true
+  try {
+    await fixBug(bugFixBugId.value, bugFixForm.value)
+    message.success('修复详情已提交，Bug状态变为待验证')
+    bugFixOpen.value = false
+    await loadMyBugs()
+  } catch (error) {
+    message.error(error.message || '提交失败')
+  } finally {
+    bugFixLoading.value = false
+  }
 }
 
 const handleBugSearch = () => {
@@ -1350,7 +1515,7 @@ const personalBugColumns = [
   { title: '指定人', dataIndex: 'assignee', width: 100 },
   { title: '创建人', dataIndex: 'creator', width: 100 },
   { title: '创建日期', dataIndex: 'createdAt', width: 130 },
-  { title: '操作', dataIndex: 'operation', fixed: 'right', width: 90 },
+  { title: '操作', dataIndex: 'operation', fixed: 'right', width: 220 },
 ]
 
 

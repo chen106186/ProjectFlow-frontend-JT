@@ -1,10 +1,12 @@
 import { request } from '@/utils/request'
 
 export const getSystemUsers = params => request('/api/system/users', { params })
+export const getSystemUser = id => request(`/api/system/users/${id}`)
 export const createSystemUser = data => request('/api/system/users', { method: 'POST', body: data })
 export const updateSystemUser = (id, data) => request(`/api/system/users/${id}`, { method: 'PUT', body: data })
 export const updateSystemUserEnabled = (id, enabled) => request(`/api/system/users/${id}/enabled`, { method: 'PATCH', body: { enabled } })
 export const assignSystemUserRoles = (id, roleIds) => request(`/api/system/users/${id}/roles`, { method: 'PUT', body: { roleIds } })
+export const resetSystemUserPassword = (id, password) => request(`/api/system/users/${id}/password`, { method: 'PATCH', body: { password } })
 
 export const getSystemDepartments = () => request('/api/system/departments')
 export const createSystemDepartment = data => request('/api/system/departments', { method: 'POST', body: data })

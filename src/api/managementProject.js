@@ -35,6 +35,8 @@ export const createBug = data => request('/api/bugs', { method: 'POST', body: da
 export const updateBug = (id, data) => request(`/api/bugs/${id}`, { method: 'PUT', body: data })
 export const deleteBug = id => request(`/api/bugs/${id}`, { method: 'DELETE' })
 export const getMyBugs = () => request('/api/bugs/my')
+export const closeBug = id => request(`/api/bugs/${id}/close`, { method: 'PATCH' })
+export const fixBug = (id, data) => request(`/api/bugs/${id}/fix`, { method: 'POST', body: data })
 
 export const getMyStatistics = period => request('/api/dashboard/my-statistics', { params: { period } })
 
