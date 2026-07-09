@@ -211,6 +211,8 @@ const handleSubmit = async () => {
       name: formState.name,
       businessDepartment: formState.department,
       managerId: formState.managerId,
+      participantIds: formState.participantIds,
+      managementProjectId: formState.managementProjectId || null,
       stage: formState.stage,
       status: formState.status,
       description: formState.description,
