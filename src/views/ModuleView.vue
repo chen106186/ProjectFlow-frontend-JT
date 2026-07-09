@@ -669,6 +669,9 @@ watch(
     if (name === 'PersonalTasks' || taskModuleRouteNames.includes(name)) {
       fetchTaskModuleData()
     }
+    if (name === 'PersonalBugs') {
+      fetchBugModuleData()
+    }
   },
   { immediate: true },
 )
