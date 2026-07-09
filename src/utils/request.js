@@ -15,6 +15,7 @@ export const setToken = token => {
 export const removeToken = () => {
   localStorage.removeItem(TOKEN_KEY)
   localStorage.removeItem('userInfo')
+  localStorage.removeItem('authProfile')
 }
 
 const getGatewayPathPrefix = () => {
@@ -43,9 +44,25 @@ const normalizeUrl = url => {
   return url
 }
 
-const getResponseMessage = payload => {
-  return payload?.message || payload?.msg || '请求失败'
+const getRequestPath = config => {
+  const requestUrl = config?.url || ''
+
+  if (!requestUrl) {
+    return ''
+  }
+
+  if (/^https?:\/\//.test(requestUrl)) {
+    return new URL(requestUrl).pathname
+  }
+
+  return requestUrl.startsWith('/') ? requestUrl : `/${requestUrl}`
 }
+
+const getResponseMessage = payload => payload?.message || payload?.msg || '请求失败'
+
+const isLoginRequest = config => getRequestPath(config).endsWith('/auth/login')
+
+const shouldHandleUnauthorizedAsExpired = config => Boolean(getToken()) && !isLoginRequest(config)
 
 const getFileName = response => {
   const disposition = response.headers?.['content-disposition'] || ''
@@ -87,7 +104,7 @@ service.interceptors.response.use(
         return payload.data
       }
 
-      if (payload.code === 401) {
+      if (payload.code === 401 && shouldHandleUnauthorizedAsExpired(response.config)) {
         removeToken()
         router.replace('/login')
       }
@@ -98,14 +115,18 @@ service.interceptors.response.use(
     return payload
   },
   error => {
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && shouldHandleUnauthorizedAsExpired(error.config)) {
       removeToken()
       message.error('登录已过期，请重新登录')
       router.replace('/login')
-      return Promise.reject(error)
     }
 
-    const errorMessage = error.response?.data?.message || error.response?.data?.msg || error.message || '网络异常，请稍后重试'
+    const errorMessage =
+      error.response?.data?.message ||
+      error.response?.data?.msg ||
+      error.message ||
+      '网络异常，请稍后重试'
+
     return Promise.reject(new Error(errorMessage))
   }
 )
@@ -165,5 +186,3 @@ function triggerDownload(blob, filename) {
 }
 
 export default service
-
-

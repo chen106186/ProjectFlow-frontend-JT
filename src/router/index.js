@@ -19,6 +19,13 @@ const moduleRoutes = [
   { path: 'tasks/all', name: 'AllTasks', title: '全部任务', group: '任务列表' },
   { path: 'tasks/development', name: 'DevelopmentTasks', title: '开发任务', group: '任务列表' },
   { path: 'tasks/testing', name: 'TestingTasks', title: '测试任务', group: '任务列表' },
+  { path: 'requirements', name: 'RequirementManagement', title: '需求管理', group: '需求管理' },
+  { path: 'files', name: 'FileManagement', title: '文件管理', group: '文件管理' },
+  { path: 'daily-reports', name: 'DailyReportManagement', title: '日报管理', group: '日报管理' },
+  { path: 'project-reports', name: 'ProjectReportManagement', title: '项目汇报管理', group: '项目汇报管理' },
+  { path: 'settings/departments', name: 'DepartmentManagement', title: '部门管理', group: '系统设置' },
+  { path: 'settings/menus', name: 'MenuManagement', title: '菜单管理', group: '系统设置' },
+  { path: 'settings/logs', name: 'OperationLogManagement', title: '操作日志', group: '系统设置' },
 ]
 
 const bugRoutes = [
@@ -131,4 +138,3 @@ router.afterEach(to => {
 })
 
 export default router
-
