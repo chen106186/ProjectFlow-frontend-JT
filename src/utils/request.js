@@ -1,31 +1,61 @@
 import axios from 'axios'
-import { API_CONFIG } from '@/api/config'
+import { message } from 'ant-design-vue'
 
-const getToken = () => localStorage.getItem('token')
+import { API_CONFIG } from '@/api/config'
+import router from '@/router'
+
+const TOKEN_KEY = 'token'
+
+export const getToken = () => localStorage.getItem(TOKEN_KEY)
+
+export const setToken = token => {
+  localStorage.setItem(TOKEN_KEY, token)
+}
+
+export const removeToken = () => {
+  localStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem('userInfo')
+}
 
 const getGatewayPathPrefix = () => {
   if (!API_CONFIG.baseURL) {
     return ''
   }
 
-  if (!/^https?:\/\//i.test(API_CONFIG.baseURL)) {
-    return API_CONFIG.baseURL
+  if (!/^https?:\/\//.test(API_CONFIG.baseURL)) {
+    return API_CONFIG.baseURL.replace(/\/+$/, '')
   }
 
   return new URL(API_CONFIG.baseURL).pathname.replace(/\/+$/, '')
 }
 
 const normalizeUrl = url => {
-  if (/^https?:\/\//i.test(url)) {
+  if (/^https?:\/\//.test(url)) {
     return url
   }
 
   const prefix = getGatewayPathPrefix()
-  if (prefix && url.startsWith(`${prefix}/`)) {
+
+  if (prefix && prefix !== '/' && url.startsWith(`${prefix}/`)) {
     return url.slice(prefix.length)
   }
 
   return url
+}
+
+const getResponseMessage = payload => {
+  return payload?.message || payload?.msg || '请求失败'
+}
+
+const getFileName = response => {
+  const disposition = response.headers?.['content-disposition'] || ''
+  const match = disposition.match(/filename\*?=(?:UTF-8'')?([^;]+)/i)
+
+  if (!match) {
+    return 'download'
+  }
+
+  return decodeURIComponent(match[1].replace(/"/g, '').trim())
 }
 
 const service = axios.create({
@@ -37,6 +67,7 @@ service.interceptors.request.use(config => {
   const token = getToken()
 
   if (token) {
+    config.headers = config.headers || {}
     config.headers.Authorization = `Bearer ${token}`
   }
 
@@ -49,39 +80,90 @@ service.interceptors.response.use(
       return response
     }
 
-    const result = response.data
+    const payload = response.data
 
-    if (result?.code !== 0) {
-      return Promise.reject(new Error(result?.message || result?.msg || '请求失败'))
+    if (payload && typeof payload === 'object' && Object.prototype.hasOwnProperty.call(payload, 'code')) {
+      if (payload.code === 200 || payload.code === 0) {
+        return payload.data
+      }
+
+      if (payload.code === 401) {
+        removeToken()
+        router.replace('/login')
+      }
+
+      return Promise.reject(new Error(getResponseMessage(payload)))
     }
 
-    return result.data
+    return payload
   },
-  error => Promise.reject(new Error(error.response?.data?.message || error.response?.data?.msg || error.message || '请求失败')),
+  error => {
+    if (error.response?.status === 401) {
+      removeToken()
+      message.error('登录已过期，请重新登录')
+      router.replace('/login')
+      return Promise.reject(error)
+    }
+
+    const errorMessage = error.response?.data?.message || error.response?.data?.msg || error.message || '网络异常，请稍后重试'
+    return Promise.reject(new Error(errorMessage))
+  }
 )
 
 export const request = (url, options = {}) => {
-  const { body, data, headers, ...config } = options
+  const { method = 'GET', params, body, data, ...restOptions } = options
 
   return service({
     url: normalizeUrl(url),
-    ...config,
-    headers,
+    method,
+    params,
     data: body ?? data,
+    ...restOptions,
   })
 }
 
-export const download = async url => {
-  const response = await service({
-    url: normalizeUrl(url),
+export const get = (url, params) => request(url, { params })
+
+export const post = (url, data) => request(url, { method: 'POST', body: data })
+
+export const download = async (url, options = {}) => {
+  const response = await request(url, {
     method: 'GET',
     responseType: 'blob',
+    ...options,
   })
-  const disposition = response.headers?.['content-disposition'] || ''
-  const encodedName = disposition.match(/filename\*=UTF-8''([^;]+)/)?.[1]
 
   return {
     blob: response.data,
-    fileName: encodedName ? decodeURIComponent(encodedName) : 'download',
+    fileName: getFileName(response),
   }
 }
+
+export const downloadPost = async (url, data, filename = 'export.xlsx') => {
+  const result = await download(url, {
+    method: 'POST',
+    body: data,
+  })
+
+  triggerDownload(result.blob, result.fileName || filename)
+}
+
+export const downloadGet = async (url, filename = 'export') => {
+  const result = await download(url)
+
+  triggerDownload(result.blob, result.fileName || filename)
+}
+
+function triggerDownload(blob, filename) {
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(blob)
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(link.href)
+}
+
+export default service
+
+
