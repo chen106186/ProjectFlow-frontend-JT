@@ -1629,7 +1629,7 @@ const trendPoints = [
 }
 
 .statistics-page {
-  
+
 }
 
 .prototype-title {
@@ -2467,12 +2467,19 @@ const trendPoints = [
 
 .chart-legend {
   display: grid;
+  justify-items: center; /* 水平居中 */
+  align-items: center;   /* 垂直居中 */
   gap: 8px;
   width: min(100%, 168px);
   margin: 12px auto 0;
   padding: 0;
   color: #5f6673;
   list-style: none;
+
+  .muted {
+   grid-template-columns: 1fr 0;
+
+  }
 }
 
 .chart-legend li {
