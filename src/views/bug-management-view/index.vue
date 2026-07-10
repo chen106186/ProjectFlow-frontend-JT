@@ -54,8 +54,9 @@
               <template v-else-if="column.dataIndex === 'createdAt'">{{ text ? text.slice(0, 10) : '-' }}</template>
               <template v-else-if="column.dataIndex === 'operation'">
                 <a-space>
-                  <a-button type="link" size="small" @click="handleDetail(record)">查看</a-button>
-                  <a-button type="link" size="small" @click="handleEdit(record)">编辑</a-button>
+                  <a-button type="link" size="small" @click="handleDetail(record)">详情</a-button>
+                  <a-button v-if="record.status !== 'CLOSED'" type="link" size="small" @click="handleEdit(record)">编辑</a-button>
+                  <a-button v-if="record.status !== 'CLOSED'" type="link" size="small" danger @click="handleDeleteBug(record)">删除</a-button>
                 </a-space>
               </template>
             </template>
@@ -87,8 +88,9 @@
                 <template v-else-if="column.dataIndex === 'createdAt'">{{ text ? text.slice(0, 10) : '-' }}</template>
                 <template v-else-if="column.dataIndex === 'operation'">
                   <a-space>
-                    <a-button type="link" size="small" @click="handleDetail(record)">查看</a-button>
-                    <a-button type="link" size="small" @click="handleEdit(record)">编辑</a-button>
+                    <a-button type="link" size="small" @click="handleDetail(record)">详情</a-button>
+                    <a-button v-if="record.status !== 'CLOSED'" type="link" size="small" @click="handleEdit(record)">编辑</a-button>
+                    <a-button v-if="record.status !== 'CLOSED'" type="link" size="small" danger @click="handleDeleteBug(record)">删除</a-button>
                   </a-space>
                 </template>
               </template>
@@ -163,16 +165,19 @@
                   <div v-if="!comments.length" style="padding: 12px; color: #999; text-align: center;">暂无评论</div>
                 </div>
               </a-spin>
-              <div class="comment-rich-editor">
-                <Toolbar :editor="commentEditorRef" :default-config="toolbarConfig" mode="default" />
-                <Editor v-model="commentContent" :default-config="commentEditorConfig" mode="default" @on-created="handleCommentEditorCreated" />
-              </div>
-              <div class="send-row"><a-button type="primary" :loading="commentLoading" @click="handleSendComment">发送</a-button></div>
+              <template v-if="selectedBug.status !== 'CLOSED'">
+                <div class="comment-rich-editor">
+                  <Toolbar :editor="commentEditorRef" :default-config="toolbarConfig" mode="default" />
+                  <Editor v-model="commentContent" :default-config="commentEditorConfig" mode="default" @on-created="handleCommentEditorCreated" />
+                </div>
+                <div class="send-row"><a-button type="primary" :loading="commentLoading" @click="handleSendComment">发送</a-button></div>
+              </template>
             </section>
 
-            <div class="detail-actions">
-              <a-button type="primary" @click="assignVisible = true">指派</a-button>
-              <a-button danger :loading="closeLoading" :disabled="selectedBug.status === 'CLOSED'" @click="handleCloseBug">关闭Bug</a-button>
+            <div v-if="selectedBug.status !== 'CLOSED'" class="detail-actions">
+              <a-button type="primary" @click="handleEditFromDetail">编辑</a-button>
+              <a-button @click="assignVisible = true">指派</a-button>
+              <a-button danger :loading="closeLoading" @click="handleCloseBug">关闭Bug</a-button>
             </div>
           </div>
         </a-spin>
@@ -196,7 +201,7 @@ import '@wangeditor/editor/dist/css/style.css'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  getProjectBugs, getBugById, createBug, updateBug, closeBug, assignBug,
+  getProjectBugs, getBugById, createBug, updateBug, deleteBug, closeBug, assignBug,
   addBugComment, listBugComments, getProjectList, getSystemUsers,
 } from '@/api/managementProject'
 
@@ -409,7 +414,18 @@ const handleSubmit = async () => {
 const handleCreate = () => router.push({ name: 'BugCreate' })
 const handleEdit = record => router.push({ name: 'BugEdit', params: { id: record.id } })
 const handleDetail = record => router.push({ name: 'BugDetail', params: { id: record.id } })
+const handleEditFromDetail = () => router.push({ name: 'BugEdit', params: { id: selectedBug.value.id } })
 const handleBack = () => router.push({ name: 'BugList' })
+
+const handleDeleteBug = async record => {
+  try {
+    await deleteBug(record.id)
+    message.success('删除成功')
+    loadBugs()
+  } catch (e) {
+    message.error(e.message || '删除失败')
+  }
+}
 
 const syncRouteState = async () => {
   if (viewMode.value === 'list') { loadBugs(); return }
@@ -423,6 +439,11 @@ const syncRouteState = async () => {
     editingId.value = id
     try {
       const bug = await getBugById(id)
+      if (bug.status === 'CLOSED') {
+        message.warning('已关闭的Bug不可编辑')
+        router.replace({ name: 'BugDetail', params: { id } })
+        return
+      }
       formState.title = bug.title || ''
       formState.projectId = bug.projectId
       formState.assigneeId = bug.assigneeId
