@@ -32,6 +32,12 @@ importers:
       frappe-gantt:
         specifier: ^1.2.2
         version: 1.2.2
+      normalize.css:
+        specifier: ^8.0.1
+        version: 8.0.1
+      postcss-pxtorem:
+        specifier: ^6.1.0
+        version: 6.1.0(postcss@8.5.16)
       vue:
         specifier: ^3.5.13
         version: 3.5.39
@@ -829,12 +835,20 @@ packages:
   next-tick@1.1.0:
     resolution: {integrity: sha512-CXdUiJembsNjuToQvxayPZF9Vqht7hewsvy2sOWafLvi2awflj9mOC6bHIg50orX8IJvWKY9wYQ/zB2kogPslQ==}
 
+  normalize.css@8.0.1:
+    resolution: {integrity: sha512-qizSNPO93t1YUuUhP22btGOo3chcvDFqFaj2TRybP0DMxkHOCTYwp3n34fel4a31ORXy4m1Xq0Gyqpb5m33qIg==}
+
   picocolors@1.1.1:
     resolution: {integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==}
 
   picomatch@4.0.5:
     resolution: {integrity: sha512-RvwwcruNjI1ncT5xRakeyS9Lf8lcItv34KD+aif+VH9kduAyfYBipGh12274xtenIPZ119/R9BdTBa8gAwSh0A==}
     engines: {node: '>=12'}
+
+  postcss-pxtorem@6.1.0:
+    resolution: {integrity: sha512-ROODSNci9ADal3zUcPHOF/K83TiCgNSPXQFSbwyPHNV8ioHIE4SaC+FPOufd8jsr5jV2uIz29v1Uqy1c4ov42g==}
+    peerDependencies:
+      postcss: ^8.0.0
 
   postcss@8.5.16:
     resolution: {integrity: sha512-vuwillviilfKZsg0VGj5R/YwwcHx4SLsIOI/7K6mQkWx+l5cUHTjj5g0AasTBcyXsbfTgrwsUNmVUb5xVwyPwg==}
@@ -1683,9 +1697,15 @@ snapshots:
 
   next-tick@1.1.0: {}
 
+  normalize.css@8.0.1: {}
+
   picocolors@1.1.1: {}
 
   picomatch@4.0.5: {}
+
+  postcss-pxtorem@6.1.0(postcss@8.5.16):
+    dependencies:
+      postcss: 8.5.16
 
   postcss@8.5.16:
     dependencies:
