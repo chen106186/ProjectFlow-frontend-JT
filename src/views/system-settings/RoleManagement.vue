@@ -163,6 +163,8 @@ const fetchMenus = async () => {
 
   try {
     menus.value = await getSystemMenus()
+  } catch (error) {
+    message.error(error.message || '菜单加载失败')
   } finally {
     menuLoading.value = false
   }
@@ -173,6 +175,9 @@ const fetchRoleMenus = async roleId => {
 
   try {
     checkedPermissionKeys.value = await getSystemRoleMenus(roleId)
+  } catch (error) {
+    message.error(error.message || '权限加载失败')
+    checkedPermissionKeys.value = []
   } finally {
     permissionLoading.value = false
   }
@@ -242,8 +247,13 @@ const handleSavePermissions = async () => {
   permissionSaving.value = true
 
   try {
-    await assignSystemRoleMenus(currentRoleId.value, checkedPermissionKeys.value)
+    const savedIds = await assignSystemRoleMenus(currentRoleId.value, checkedPermissionKeys.value)
+    if (Array.isArray(savedIds)) {
+      checkedPermissionKeys.value = savedIds
+    }
     message.success('权限已保存')
+  } catch (error) {
+    message.error(error.message || '保存失败')
   } finally {
     permissionSaving.value = false
   }

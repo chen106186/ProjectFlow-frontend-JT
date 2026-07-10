@@ -221,8 +221,6 @@ const navigationItems = [
     children: [
       { key: '/settings/users', path: '/settings/users', label: '用户管理', accessCodes: ['system:user'], matches: [path => path === '/settings/users'] },
       { key: '/settings/roles', path: '/settings/roles', label: '角色管理', accessCodes: ['system:role'], matches: [path => path === '/settings/roles'] },
-      { key: '/settings/departments', path: '/settings/departments', label: '部门管理', accessCodes: ['system:department'], matches: [path => path === '/settings/departments'] },
-      { key: '/settings/menus', path: '/settings/menus', label: '菜单管理', accessCodes: ['system:menu'], matches: [path => path === '/settings/menus'] },
       { key: '/settings/logs', path: '/settings/logs', label: '操作日志', accessCodes: ['system:log'], matches: [path => path === '/settings/logs'] },
     ],
   },
