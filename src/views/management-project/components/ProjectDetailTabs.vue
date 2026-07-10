@@ -15,12 +15,20 @@
               <span class="semantic-card__content"><span>{{ item.label }}</span><strong>{{ item.value }}</strong><small>{{ item.desc }}</small></span>
             </div>
           </div>
-          <div class="gantt-workspace" :style="{ gridTemplateColumns: `${ganttTableWidth}px minmax(0, 1fr)` }">
+          <div class="gantt-workspace" :style="{ gridTemplateColumns: `${ganttTableWidth}px minmax(0, 1fr)`, height: `${ganttWorkspaceHeight}px` }">
             <a-table class="gantt-node-table" row-key="id" :columns="ganttNodeColumns" :data-source="ganttNodeRows" :loading="detailLoading" :pagination="false" :custom-row="ganttCustomRow" size="small" table-layout="fixed">
               <template #bodyCell="{ column, record, text }">
                 <template v-if="column.dataIndex === 'status'"><a-tag :color="ganttStatusColors[text]">{{ text }}</a-tag></template>
                 <template v-else-if="column.dataIndex === 'progress'"><a-progress :percent="text" size="small" /></template>
-                <template v-else-if="column.dataIndex === 'actualEnd'"><span :class="{ 'date-overdue': record.isOverdue }">{{ text }}</span></template>
+                <template v-else-if="column.dataIndex === 'planTime' || column.dataIndex === 'actualTime'">
+                  <span class="date-range" :class="{ 'date-overdue': column.dataIndex === 'actualTime' && record.isOverdue }">
+                    <template v-if="text === '-'">-</template>
+                    <template v-else>
+                      <span>{{ text.split(' ~ ')[0] }}</span>
+                      <span>{{ text.split(' ~ ')[1] }}</span>
+                    </template>
+                  </span>
+                </template>
               </template>
             </a-table>
             <div ref="ganttRef" class="gantt-scroll"></div>
@@ -81,6 +89,7 @@ defineProps({
   tabs: { type: Array, required: true },
   ganttSummary: { type: Array, required: true },
   ganttTableWidth: { type: Number, required: true },
+  ganttWorkspaceHeight: { type: Number, required: true },
   ganttNodeColumns: { type: Array, required: true },
   ganttNodeRows: { type: Array, required: true },
   ganttStatusColors: { type: Object, required: true },
@@ -131,22 +140,26 @@ defineExpose({
 .project-stat-row .semantic-card, .risk-grid .semantic-card, .bug-summary .semantic-card { display: flex; gap: 12px; align-items: center; width: 100%; height: 86px; padding: 14px 15px; text-align: left; border: 1px solid rgb(0 0 0 / 5%); border-radius: 16px; box-shadow: 0 4px 16px rgb(0 0 0 / 5%); transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.28s ease; }
 .project-stat-row .semantic-card:hover, .risk-grid .semantic-card:hover, .bug-summary .semantic-card:hover, .document-categories button:hover { box-shadow: 0 14px 28px rgb(0 0 0 / 10%); transform: translateY(-4px); }
 .gantt-progress, .risk-due, .bug-confirmed { color: #0066cc; background: linear-gradient(135deg, #fff 0%, #edf6ff 100%); }
-.gantt-workspace { display: grid; min-height: 430px; overflow: hidden; border: 1px solid #edf0f3; }
+.gantt-workspace { display: grid; min-height: 0; overflow: hidden; border: 1px solid #edf0f3; }
 .gantt-node-table { width: 100%; border-right: 1px solid #edf0f3; }
-.gantt-node-table :deep(.ant-table-thead > tr > th) { height: 85px; padding: 8px 6px; text-align: center; white-space: nowrap; }
-.gantt-node-table :deep(.ant-table-tbody > tr > td) { height: 48px; padding: 7px 6px; text-align: center; white-space: nowrap; }
+.gantt-node-table :deep(.ant-table-container), .gantt-node-table :deep(.ant-table), .gantt-node-table :deep(.ant-table-content) { height: 100%; }
+.gantt-node-table :deep(.ant-table-thead > tr > th) { height: 86PX; padding: 8PX 6PX; text-align: center; white-space: nowrap; }
+.gantt-node-table :deep(.ant-table-tbody > tr > td) { height: 72PX; padding: 6PX; text-align: center; white-space: nowrap; }
 .gantt-node-table :deep(.ant-table-tbody > tr) { cursor: pointer; }
 .gantt-node-table :deep(.ant-table-tbody > tr:hover > td) { background: #edf6ff; }
 .gantt-node-table :deep(.ant-progress) { min-width: 76px; }
+.date-range { display: inline-flex; flex-direction: column; gap: 4PX; align-items: center; justify-content: center; height: 48PX; line-height: 20PX; }
 .date-overdue { color: #ff4d4f; }
-.gantt-scroll { width: 100%; min-width: 0; min-height: 430px; overflow: hidden; }
-.gantt-scroll :deep(.gantt-container) { overflow-x: auto; overflow-y: hidden; border-radius: 0; }
+.gantt-scroll { width: 100%; min-width: 0; height: 100%; min-height: 0; overflow: hidden; }
+.gantt-scroll :deep(.gantt-container) { height: 100%; overflow-x: auto; overflow-y: hidden; border-radius: 0; }
+.gantt-scroll :deep(.gantt) { display: block; height: 100%; }
 .gantt-scroll :deep(.popup-wrapper) { padding: 14px 16px; border: 1px solid rgb(0 0 0 / 6%); border-radius: 12px; box-shadow: 0 12px 32px rgb(0 0 0 / 14%); }
 .gantt-scroll :deep(.popup-wrapper .title) { margin-bottom: 10px; font-size: 14px; }
 .gantt-scroll :deep(.gantt-popup__dates) { display: grid; grid-template-columns: 64px 92px; gap: 7px 14px; align-items: center; font-size: 12px; }
 .gantt-scroll :deep(.gantt-popup__dates span) { color: #86868b; }
 .gantt-scroll :deep(.gantt-popup__dates strong) { color: #1d1d1f; font-weight: 500; }
 .gantt-scroll :deep(.bar-wrapper) { cursor: default; }
+.gantt-scroll :deep(.bar-wrapper.gantt-empty-row), .gantt-scroll :deep(.gantt-empty-row .bar-wrapper), .gantt-scroll :deep(.gantt-empty-row .bar-group), .gantt-scroll :deep(.gantt-empty-row .bar-label) { visibility: hidden; }
 .gantt-scroll :deep(.gantt-not-started .bar), .gantt-scroll :deep(.gantt-not-started .bar-progress) { fill: #aeaeb2; stroke: #aeaeb2; }
 .gantt-scroll :deep(.gantt-in-progress .bar) { fill: #d6eaff; stroke: #0a84ff; }.gantt-scroll :deep(.gantt-in-progress .bar-progress) { fill: #0a84ff; }
 .gantt-scroll :deep(.gantt-due-soon .bar), .gantt-scroll :deep(.gantt-due-soon .bar-progress) { fill: #ffd60a; stroke: #d6a600; }
