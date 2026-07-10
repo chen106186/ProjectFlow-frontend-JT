@@ -57,7 +57,7 @@
         </a-menu>
       </a-layout-sider>
 
-      <a-layout-content class="app-content">
+      <a-layout-content :class="['app-content', { 'app-content--home': route.name === 'Home' }]">
         <header v-if="profileReady && route.name !== 'Home'" class="app-content__header">
           <a-breadcrumb>
             <a-breadcrumb-item v-for="(item, index) in breadcrumbItems" :key="item.title">
@@ -556,25 +556,38 @@ const handleUserMenuClick = ({ key }) => {
 }
 
 .app-content {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
-  padding: 18px 18px 22px;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .app-content__header {
-  padding: 14px 18px;
-  margin-bottom: 14px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  flex: 0 0 52px;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
   background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgb(15 23 42 / 6%);
+  box-shadow: 0 1px 6px rgb(15 23 42 / 6%);
 }
 
 .app-content__spin {
+  flex: 1;
+  min-height: 0;
   width: 100%;
+  overflow: auto;
 }
 
 .app-content__body {
-  min-height: calc(100vh - 68px - 54px - 18px - 22px);
+  min-height: calc(100vh - 68px - 52px);
+  padding: 18px 18px 22px;
+}
+
+.app-content--home .app-content__body {
+  min-height: calc(100vh - 68px);
 }
 
 .app-content__body--fixed {

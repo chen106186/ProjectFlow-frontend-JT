@@ -1619,7 +1619,6 @@ const trendPoints = [
 .personal-page,
 .module-fallback {
   width: 100%;
-  max-width: 1440px;
   min-width: 0;
   margin: 0 auto;
 }
@@ -1630,7 +1629,7 @@ const trendPoints = [
 }
 
 .statistics-page {
-  max-width: 1280px;
+  
 }
 
 .prototype-title {
@@ -1781,8 +1780,7 @@ const trendPoints = [
 }
 
 .prototype-table {
-  width: max-content;
-  min-width: 1580px;
+  width: 100%;
   border-collapse: collapse;
   background: #fff;
 }

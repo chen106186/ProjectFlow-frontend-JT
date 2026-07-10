@@ -544,9 +544,19 @@ const renderGantt = async () => {
   if (todayButton) todayButton.textContent = '今天'
 }
 
+const syncQueryFromRoute = () => {
+  if (viewMode.value !== 'list') return
+  const status = route.query.status
+  if (typeof status === 'string' && status) {
+    query.status = status
+    appliedQuery.status = status
+    projectPagination.current = 1
+  }
+}
+
 const syncRoute = async () => {
   if (viewMode.value === 'create') { Object.assign(formState, createDefaultForm()); editingId.value = null; return }
-  if (viewMode.value === 'list') { await fetchProjects(); return }
+  if (viewMode.value === 'list') { syncQueryFromRoute(); await fetchProjects(); return }
   const projectId = route.params.id
   if (viewMode.value === 'edit') {
     detailLoading.value = true
@@ -562,7 +572,7 @@ const syncRoute = async () => {
   }
   if (viewMode.value === 'detail') { activeTab.value = 'gantt'; await fetchProjectRelatedData(projectId) }
 }
-watch(() => [route.name, route.params.id], syncRoute)
+watch(() => [route.name, route.params.id, route.query.status], syncRoute)
 watch(activeTab, renderGantt)
 watch(groupField, () => { collapsedGroups.value = [] })
 onBeforeUnmount(() => { ganttInstance = null })

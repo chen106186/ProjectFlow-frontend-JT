@@ -114,8 +114,8 @@ const todos = ref([])
 const metrics = computed(() => [
   { title: '管理类项目', path: '/projects/management', icon: FolderOpenOutlined, iconClass: 'metric-card__icon--blue', value: summary.value.managementProjectCount },
   { title: '执行类项目', path: '/projects/execution', icon: CheckCircleOutlined, iconClass: 'metric-card__icon--green', value: summary.value.executionProjectCount },
-  { title: '进行中项目', path: '/projects/execution', icon: ClockCircleOutlined, iconClass: 'metric-card__icon--orange', value: summary.value.inProgressProjectCount },
-  { title: '已完成项目', path: '/projects/execution', icon: CheckCircleOutlined, iconClass: 'metric-card__icon--purple', value: summary.value.completedProjectCount },
+  { title: '进行中项目', path: { path: '/projects/management', query: { status: 'IN_PROGRESS' } }, icon: ClockCircleOutlined, iconClass: 'metric-card__icon--orange', value: summary.value.inProgressProjectCount },
+  { title: '已完成项目', path: { path: '/projects/management', query: { status: 'COMPLETED' } }, icon: CheckCircleOutlined, iconClass: 'metric-card__icon--purple', value: summary.value.completedProjectCount },
 ])
 
 const filteredTodos = computed(() => {
