@@ -45,12 +45,20 @@
             <span class="semantic-card__content"><span>{{ item.label }}</span><strong>{{ item.value }}</strong><small>{{ item.desc }}</small></span>
           </div>
         </div>
-        <div class="gantt-workspace" :style="{ gridTemplateColumns: `${ganttTableWidth}px minmax(0, 1fr)` }">
+        <div class="gantt-workspace" :style="{ gridTemplateColumns: `${ganttTableWidth}px minmax(0, 1fr)`, height: `${ganttWorkspaceHeight}px` }">
           <a-table class="gantt-node-table" row-key="id" :columns="ganttNodeColumns" :data-source="ganttNodeRows" :loading="detailLoading" :pagination="false" :custom-row="handleGanttRow" size="small" table-layout="fixed">
             <template #bodyCell="{ column, record, text }">
               <template v-if="column.dataIndex === 'status'"><a-tag :color="ganttStatusColors[text]">{{ text }}</a-tag></template>
               <template v-else-if="column.dataIndex === 'progress'"><a-progress :percent="text" size="small" /></template>
-              <template v-else-if="column.dataIndex === 'actualEnd'"><span :class="{ 'date-overdue': record.isOverdue }">{{ text }}</span></template>
+              <template v-else-if="column.dataIndex === 'planTime' || column.dataIndex === 'actualTime'">
+                <span class="date-range" :class="{ 'date-overdue': column.dataIndex === 'actualTime' && record.isOverdue }">
+                  <template v-if="text === '-'">-</template>
+                  <template v-else>
+                    <span>{{ text.split(' ~ ')[0] }}</span>
+                    <span>{{ text.split(' ~ ')[1] }}</span>
+                  </template>
+                </span>
+              </template>
             </template>
           </a-table>
           <div ref="ganttRef" class="gantt-scroll"></div>
@@ -288,30 +296,47 @@ const ganttStatusOptions = computed(() => taskStatusOptions.value.length ? taskS
   { label: '已完成', value: 'COMPLETED' },
   { label: '已逾期', value: 'OVERDUE' },
 ])
+
 const ganttNodeColumns = [
   { title: '节点名称', dataIndex: 'name', width: 160 },
-  { title: '计划开始', dataIndex: 'planStart', width: 120 },
-  { title: '计划结束', dataIndex: 'planEnd', width: 120 },
-  { title: '实际开始', dataIndex: 'actualStart', width: 120 },
-  { title: '实际结束', dataIndex: 'actualEnd', width: 120 },
+  { title: '计划时间', dataIndex: 'planTime', width: 120 },
+  { title: '实际时间', dataIndex: 'actualTime', width: 120 },
   { title: '状态', dataIndex: 'status', width: 90 },
   { title: '进度', dataIndex: 'progress', width: 160 },
 ]
 const ganttTableWidth = ganttNodeColumns.reduce((total, column) => total + column.width, 0)
 const ganttNodeRows = ref([])
-const ganttTasks = computed(() => ganttNodeRows.value.filter(node => node.planStart !== '-' && node.planEnd !== '-').map((node, index, rows) => ({
-  id: String(node.id),
-  name: node.name,
-  start: node.planStart.replaceAll('/', '-'),
-  end: node.status === '里程碑' ? dayjs(node.planEnd.replaceAll('/', '-')).add(1, 'day').format('YYYY-MM-DD') : node.planEnd.replaceAll('/', '-'),
-  planStart: node.planStart,
-  actualStart: node.actualStart,
-  planEnd: node.planEnd,
-  actualEnd: node.actualEnd,
-  progress: node.progress,
-  dependencies: index ? String(rows[index - 1].id) : undefined,
-  custom_class: ganttStatusClasses[node.status],
-})))
+const ganttWorkspaceHeight = computed(() => 86 + ganttNodeRows.value.length * 72)
+const formatDateRange = (start, end) => start === '-' && end === '-' ? '-' : `${start} ~ ${end}`
+const normalizeGanttEnd = (start, end, status) => {
+  const startDate = dayjs(start)
+  const endDate = dayjs(end)
+  return status === '里程碑' || !endDate.isAfter(startDate) ? endDate.add(1, 'day').format('YYYY-MM-DD') : end
+}
+const ganttTasks = computed(() => {
+  const validRows = ganttNodeRows.value.filter(node => node.planStart !== '-' && node.planEnd !== '-')
+  const fallbackStart = validRows[0]?.planStart?.replaceAll('/', '-') || dayjs().format('YYYY-MM-DD')
+  let previousVisibleTaskId
+  return ganttNodeRows.value.map(node => {
+    const hasPlanTime = node.planStart !== '-' && node.planEnd !== '-'
+    const taskId = String(node.id)
+    const task = {
+      id: taskId,
+      name: node.name,
+      start: hasPlanTime ? node.planStart.replaceAll('/', '-') : fallbackStart,
+      end: hasPlanTime ? normalizeGanttEnd(node.planStart.replaceAll('/', '-'), node.planEnd.replaceAll('/', '-'), node.status) : dayjs(fallbackStart).add(1, 'day').format('YYYY-MM-DD'),
+      planStart: node.planStart,
+      actualStart: node.actualStart,
+      planEnd: node.planEnd,
+      actualEnd: node.actualEnd,
+      progress: hasPlanTime ? node.progress : 0,
+      dependencies: hasPlanTime && previousVisibleTaskId ? previousVisibleTaskId : undefined,
+      custom_class: hasPlanTime ? ganttStatusClasses[node.status] : 'gantt-empty-row',
+    }
+    if (hasPlanTime) previousVisibleTaskId = taskId
+    return task
+  })
+})
 const ganttFormRef = ref()
 const ganttForm = reactive({ id: null, name: '', planStart: undefined, planEnd: undefined, actualStart: undefined, actualEnd: undefined, status: undefined, progress: 0 })
 const ganttFormRules = {
@@ -377,7 +402,11 @@ const mapProject = project => ({
 })
 const handleBack = () => router.push({ name: 'ExecutionProjects' })
 const formatFileSize = size => size >= 1024 * 1024 ? `${(size / 1024 / 1024).toFixed(1)}MB` : `${Math.ceil((size || 0) / 1024)}KB`
-const formatNodeDate = value => value === '-' ? undefined : value?.replaceAll('/', '-')
+const formatNodeDate = value => {
+  if (!value || value === '-') return undefined
+  const date = dayjs(String(value).replaceAll('/', '-'))
+  return date.isValid() ? date.format('YYYY-MM-DD') : undefined
+}
 const getStatusLabel = value => ganttStatusOptions.value.find(item => item.value === value)?.label || getDictLabel('taskStatus', value)
 
 const fetchReferenceData = async () => {
@@ -415,7 +444,13 @@ const fetchProjectRelatedData = async projectId => {
     ])
     currentProject.value = mapProject(project)
     Object.assign(ganttSummaryData, ganttResult)
-    ganttNodeRows.value = nodes.map(node => ({ id: node.id, name: node.nodeName, planStart: node.plannedStartDate?.replaceAll('-', '/') || '-', planEnd: node.plannedEndDate?.replaceAll('-', '/') || '-', actualStart: node.actualStartDate?.replaceAll('-', '/') || '-', actualEnd: node.actualEndDate?.replaceAll('-', '/') || '-', status: getDictLabel('taskStatus', node.status), statusCode: node.status, progress: node.progressPercent || 0, isOverdue: node.status === 'OVERDUE' }))
+    ganttNodeRows.value = nodes.map(node => {
+      const planStart = node.plannedStartDate?.replaceAll('-', '/') || '-'
+      const planEnd = node.plannedEndDate?.replaceAll('-', '/') || '-'
+      const actualStart = node.actualStartDate?.replaceAll('-', '/') || '-'
+      const actualEnd = node.actualEndDate?.replaceAll('-', '/') || '-'
+      return { id: node.id, name: node.nodeName, planStart, planEnd, planTime: formatDateRange(planStart, planEnd), actualStart, actualEnd, actualTime: formatDateRange(actualStart, actualEnd), status: getDictLabel('taskStatus', node.status), statusCode: node.status, progress: node.progressPercent || 0, isOverdue: node.status === 'OVERDUE' }
+    })
     taskRows.value = taskResult.records.map(task => ({ id: task.id, name: task.name, owner: getUserName(task.assigneeId), priority: getDictLabel('taskPriority', task.priority), priorityCode: task.priority, status: getDictLabel('taskStatus', task.status), planStart: task.plannedStartDate || '-', planEnd: task.plannedEndDate || '-', actualStart: task.actualStartDate || '-', actualEnd: task.actualEndDate || '-' }))
     bugRows.value = bugResult.records.map(bug => ({ id: bug.id, code: `BUG-${bug.id}`, title: bug.title, severity: getDictLabel('bugPriority', bug.priority), priorityCode: bug.priority, status: getDictLabel('bugStatus', bug.status), statusCode: bug.status, assignee: getUserName(bug.assigneeId), creator: getUserName(bug.creatorId) }))
     reportRows.value = reportResult.records.map(report => ({ id: report.id, title: report.title, type: getDictLabel('reportType', report.reportType), status: getDictLabel('reportStatus', report.status), planTime: report.plannedDate, actualTime: report.actualDate || '-', target: report.targetAudience, place: report.locationMethod }))
@@ -444,6 +479,15 @@ const renderGantt = async () => {
     readonly: true,
     language: 'zh',
     popup_on: 'hover',
+    upper_header_height: 44,
+    lower_header_height: 32,
+    bar_height: 30,
+    padding: 42,
+    popup: ({ task, set_title, set_subtitle, set_details }) => {
+      set_title('计划与实际时间')
+      set_subtitle('')
+      set_details(`<div class="gantt-popup__dates"><span>计划开始</span><strong>${task.planStart}</strong><span>实际开始</span><strong>${task.actualStart === '-' ? '未填写' : task.actualStart}</strong><span>计划结束</span><strong>${task.planEnd}</strong><span>实际结束</span><strong>${task.actualEnd === '-' ? '未填写' : task.actualEnd}</strong></div>`)
+    },
     scroll_to: 'start',
   })
   const todayButton = ganttElement.querySelector('.today-button')
@@ -466,6 +510,7 @@ const handleGanttRow = record => ({
       status: record.statusCode,
       progress: record.progress,
     })
+    ganttFormRef.value?.clearValidate()
     ganttEditVisible.value = true
   },
 })
@@ -625,22 +670,26 @@ onMounted(async () => {
 .risk-high, .bug-severe { color: #d70015; background: linear-gradient(135deg, #fff 0%, #fff0f1 100%); }
 .risk-medium, .bug-submitted { color: #c93400; background: linear-gradient(135deg, #fff 0%, #fff5e8 100%); }
 .risk-normal, .bug-closed { color: #248a3d; background: linear-gradient(135deg, #fff 0%, #eefbf2 100%); }
-.gantt-workspace { display: grid; min-height: 430px; overflow: hidden; border: 1px solid #edf0f3; }
+.gantt-workspace { display: grid; min-height: 0; overflow: hidden; border: 1px solid #edf0f3; }
 .gantt-node-table { width: 100%; border-right: 1px solid #edf0f3; }
-.gantt-node-table :deep(.ant-table-thead > tr > th) { height: 85px; padding: 8px 6px; text-align: center; white-space: nowrap; }
-.gantt-node-table :deep(.ant-table-tbody > tr > td) { height: 48px; padding: 7px 6px; text-align: center; white-space: nowrap; }
+.gantt-node-table :deep(.ant-table-container), .gantt-node-table :deep(.ant-table), .gantt-node-table :deep(.ant-table-content) { height: 100%; }
+.gantt-node-table :deep(.ant-table-thead > tr > th) { height: 86PX; padding: 8PX 6PX; text-align: center; white-space: nowrap; }
+.gantt-node-table :deep(.ant-table-tbody > tr > td) { height: 72PX; padding: 6PX; text-align: center; white-space: nowrap; }
 .gantt-node-table :deep(.ant-table-tbody > tr) { cursor: pointer; }
 .gantt-node-table :deep(.ant-table-tbody > tr:hover > td) { background: #edf6ff; }
 .gantt-node-table :deep(.ant-progress) { min-width: 76px; }
+.date-range { display: inline-flex; flex-direction: column; gap: 4PX; align-items: center; justify-content: center; height: 48PX; line-height: 20PX; }
 .date-overdue { color: #ff4d4f; }
-.gantt-scroll { width: 100%; min-width: 0; min-height: 430px; overflow: hidden; }
-.gantt-scroll :deep(.gantt-container) { overflow-x: auto; overflow-y: hidden; border-radius: 0; }
+.gantt-scroll { width: 100%; min-width: 0; height: 100%; min-height: 0; overflow: hidden; }
+.gantt-scroll :deep(.gantt-container) { height: 100%; overflow-x: auto; overflow-y: hidden; border-radius: 0; }
+.gantt-scroll :deep(.gantt) { display: block; height: 100%; }
 .gantt-scroll :deep(.popup-wrapper) { padding: 14px 16px; border: 1px solid rgb(0 0 0 / 6%); border-radius: 12px; box-shadow: 0 12px 32px rgb(0 0 0 / 14%); }
 .gantt-scroll :deep(.popup-wrapper .title) { margin-bottom: 10px; font-size: 14px; }
 .gantt-scroll :deep(.gantt-popup__dates) { display: grid; grid-template-columns: 64px 92px; gap: 7px 14px; align-items: center; font-size: 12px; }
 .gantt-scroll :deep(.gantt-popup__dates span) { color: #86868b; }
 .gantt-scroll :deep(.gantt-popup__dates strong) { color: #1d1d1f; font-weight: 500; }
 .gantt-scroll :deep(.bar-wrapper) { cursor: default; }
+.gantt-scroll :deep(.bar-wrapper.gantt-empty-row), .gantt-scroll :deep(.gantt-empty-row .bar-wrapper), .gantt-scroll :deep(.gantt-empty-row .bar-group), .gantt-scroll :deep(.gantt-empty-row .bar-label) { visibility: hidden; }
 .gantt-scroll :deep(.gantt-not-started .bar), .gantt-scroll :deep(.gantt-not-started .bar-progress) { fill: #aeaeb2; stroke: #aeaeb2; }
 .gantt-scroll :deep(.gantt-in-progress .bar) { fill: #d6eaff; stroke: #0a84ff; }
 .gantt-scroll :deep(.gantt-in-progress .bar-progress) { fill: #0a84ff; }
