@@ -376,7 +376,7 @@
           </div>
           <section class="stat-cards">
             <article v-for="card in statCards" :key="card.label" class="stat-card">
-              <span class="stat-icon" :class="card.className"><component :is="card.icon" /></span>
+              <span class="stat-icon" :class="card.className"><svg class="stat-icon__svg" viewBox="0 0 48 48" aria-hidden="true"><path v-for="path in card.paths" :key="path" :d="path" /></svg></span>
               <div><span>{{ card.label }}</span><strong>{{ card.value }}</strong></div>
             </article>
           </section>
@@ -1507,7 +1507,7 @@ const personalTaskColumns = [
 
 const personalBugColumns = [
   { title: '序号', dataIndex: 'index', width: 70 },
-  { title: 'Bug编号', dataIndex: 'code', width: 130 },
+  { title: 'Bug编号', dataIndex: 'code', width: 160 },
   { title: 'Bug标题', dataIndex: 'title', width: 240 },
   { title: '所属项目', dataIndex: 'project', width: 220 },
   { title: '严重等级', dataIndex: 'level', width: 110 },
@@ -1572,11 +1572,11 @@ const STATUS_COLOR_MAP = { COMPLETED: '#27c27a', IN_PROGRESS: '#1677ff', DUE_SOO
 const statCards = computed(() => {
   const s = statsData.value
   return [
-    { label: '总任务', value: s ? `${s.myTaskTotal} 个` : '-', icon: ScheduleOutlined, className: 'blue' },
-    { label: '已完成', value: s ? `${s.myTaskCompleted} 个` : '-', icon: CheckCircleOutlined, className: 'cyan' },
-    { label: '逾期', value: s ? `${s.myTaskOverdue} 个` : '-', icon: ExclamationCircleOutlined, className: 'red' },
-    { label: '我的 Bug', value: s ? `${s.myBugTotal} 个` : '-', icon: BugOutlined, className: 'orange' },
-    { label: '未关闭 Bug', value: s ? `${s.myBugOpen} 个` : '-', icon: ExclamationCircleOutlined, className: 'purple' },
+    { label: '总任务', value: s ? String(s.myTaskTotal) + ' 个' : '-', className: 'blue', paths: ['M13 9h16l6 6v24H13z', 'M29 9v7h6', 'M18 22h12M18 29h12M18 36h8'] },
+    { label: '已完成', value: s ? String(s.myTaskCompleted) + ' 个' : '-', className: 'cyan', paths: ['M24 7a17 17 0 1 0 0 34a17 17 0 0 0 0-34z', 'M16 24l5 5 11-12'] },
+    { label: '逾期', value: s ? String(s.myTaskOverdue) + ' 个' : '-', className: 'red', paths: ['M24 7a17 17 0 1 0 0 34a17 17 0 0 0 0-34z', 'M24 14v12', 'M24 33h.01'] },
+    { label: '我的 Bug', value: s ? String(s.myBugTotal) + ' 个' : '-', className: 'orange', paths: ['M17 19h14v13a7 7 0 0 1-14 0z', 'M20 19l-4-5M28 19l4-5', 'M14 25H9M39 25h-5M14 32H9M39 32h-5', 'M21 27h.01M27 27h.01'] },
+    { label: '未关闭 Bug', value: s ? String(s.myBugOpen) + ' 个' : '-', className: 'purple', paths: ['M17 19h14v13a7 7 0 0 1-14 0z', 'M20 19l-4-5M28 19l4-5', 'M14 25H9M39 25h-5M14 32H9M39 32h-5', 'M24 24v8M24 36h.01'] },
   ]
 })
 
@@ -2320,15 +2320,28 @@ const trendPoints = [
   width: 52px;
   height: 52px;
   color: #fff;
-  font-size: 28px;
   border-radius: 50%;
 }
 
-.stat-icon.blue { background: #2f80ed; }
-.stat-icon.green { background: #27c27a; }
-.stat-icon.cyan { background: #1890ff; }
-.stat-icon.red { background: #ff4d4f; }
-.stat-icon.purple { background: #9254de; }
+.stat-icon__svg {
+  width: 30px;
+  height: 30px;
+}
+
+.stat-icon__svg path {
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.stat-icon.blue { background: linear-gradient(135deg, #5aa7ff, #1677ff); }
+.stat-icon.green { background: linear-gradient(135deg, #5ee6a8, #27c27a); }
+.stat-icon.cyan { background: linear-gradient(135deg, #66d9ff, #1890ff); }
+.stat-icon.red { background: linear-gradient(135deg, #ff8f85, #ff4d4f); }
+.stat-icon.orange { background: linear-gradient(135deg, #ffbd66, #fa8c16); }
+.stat-icon.purple { background: linear-gradient(135deg, #b68cff, #9254de); }
 
 .stats-panels {
   display: grid;
