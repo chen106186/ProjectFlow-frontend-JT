@@ -51,8 +51,10 @@ import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { login } from '@/api/auth'
+import { useDictStore } from '@/store/dictStore'
 
 const router = useRouter()
+const dictStore = useDictStore()
 const submitLoading = ref(false)
 const formState = reactive({
   username: '',
@@ -91,6 +93,11 @@ const handleSubmit = async () => {
       userId: user.userId,
       realName: user.realName,
     }))
+    try {
+      await dictStore.loadDicts()
+    } catch (error) {
+      message.error(error.message || '字典数据加载失败')
+    }
 
     if (formState.remember) {
       localStorage.setItem('rememberedUsername', formState.username)

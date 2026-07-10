@@ -195,7 +195,6 @@ import {
   deleteProjectFile,
   deleteProjectFiles,
   downloadProjectFile,
-  getDicts,
   getGanttNodes,
   getGanttSummary,
   getProjectBugs,
@@ -210,9 +209,11 @@ import {
   updateProjectReport,
   uploadProjectFile,
 } from '@/api/managementProject'
+import { useDictStore } from '@/store/dictStore'
 
 const route = useRoute()
 const router = useRouter()
+const dictStore = useDictStore()
 const viewMode = computed(() => route.meta.projectView || 'list')
 const formRef = ref()
 const submitLoading = ref(false)
@@ -266,7 +267,7 @@ const typeFilterOptions = computed(() => withAll(projectTypeFormOptions.value))
 const stageFilterOptions = computed(() => withAll(stageOptions.value))
 const projectStatusFilterOptions = computed(() => withAll(projectStatusOptions.value))
 const contractFilterOptions = computed(() => withAll(contractOptions.value))
-const nodeOptions = computed(() => stageOptions.value.map(item => item.value))
+const nodeOptions = computed(() => stageOptions.value.map(item => ({ label: item.label, value: item.label })))
 const groupOptions = [{ label: '项目经理', value: 'manager' }, { label: '项目阶段', value: 'stage' }, { label: '项目状态', value: 'status' }, { label: '项目类型', value: 'type' }, { label: '合同状态', value: 'contractStatus' }]
 
 const projects = ref([])
@@ -435,10 +436,11 @@ const mapProjectToForm = project => ({
 
 const fetchReferenceData = async () => {
   try {
-    const [dictGroups, userPage] = await Promise.all([
-      getDicts(),
+    const [userPage] = await Promise.all([
       getSystemUsers({ pageNo: 1, pageSize: 200, enabled: true }),
+      dictStore.loadDicts(),
     ])
+    const dictGroups = Object.entries(dictStore.state.groups).map(([type, group]) => ({ type, ...group }))
     dictGroups.forEach(group => {
       dictLabels[group.type] = Object.fromEntries(group.items.map(item => [item.value, item.label]))
     })
