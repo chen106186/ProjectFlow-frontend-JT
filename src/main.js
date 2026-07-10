@@ -5,7 +5,10 @@ import 'dayjs/locale/zh-cn'
 
 import App from './App.vue'
 import router from './router'
+import 'normalize.css'
 import './styles/main.css'
 import './styles/frappe-gantt.css'
+import './utils/rem'
+import px2rem from './utils/px2rem'
 
-createApp(App).use(Antd).use(router).mount('#app')
+createApp(App).use(Antd).use(router).use(px2rem).mount('#app')

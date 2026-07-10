@@ -5,9 +5,6 @@
         <a-form-item label="搜索">
           <a-input v-model:value="queryParams.keyword" class="filter-input" placeholder="请输入账号/姓名" allow-clear />
         </a-form-item>
-        <a-form-item label="所属部门">
-          <a-select v-model:value="queryParams.departmentId" class="filter-select" :options="departmentOptions" allow-clear placeholder="全部" />
-        </a-form-item>
         <a-form-item label="状态">
           <a-select v-model:value="queryParams.enabled" class="filter-select" :options="statusOptions" allow-clear placeholder="全部" />
         </a-form-item>
@@ -22,13 +19,34 @@
 
     <div class="content-grid">
       <a-card class="prototype-card org-card" :bordered="false">
+        <div class="org-toolbar">
+          <a-space align="end">
+            <a-button type="primary" @click="handleAddDepartment">
+              <template #icon><PlusOutlined /></template>
+              新增
+            </a-button>
+          </a-space>
+          <a-input v-model:value="departmentKeyword" placeholder="请输入部门名称" allow-clear @press-enter="handleDepartmentSearch" />
+        </div>
         <a-tree
           v-model:selectedKeys="selectedDepartmentKeys"
           :tree-data="departmentTree"
           default-expand-all
           block-node
           @select="handleDepartmentSelect"
-        />
+        >
+          <template #title="node">
+            <div class="department-node">
+              <span>{{ node.title }}</span>
+              <a-space class="department-node__actions" :size="2">
+                <a-button type="link" size="small" @click.stop="handleEditDepartment(node.key)">编辑</a-button>
+                <a-popconfirm title="确定删除该部门吗？" ok-text="删除" cancel-text="取消" @confirm="handleDeleteDepartment(node.key)">
+                  <a-button type="link" size="small" danger @click.stop>删除</a-button>
+                </a-popconfirm>
+              </a-space>
+            </div>
+          </template>
+        </a-tree>
       </a-card>
 
       <a-card class="prototype-card list-card" :bordered="false">
@@ -71,7 +89,35 @@
       </a-card>
     </div>
 
-    <!-- 新增 / 编辑用户 -->
+    <a-modal
+      v-model:open="departmentModalOpen"
+      :title="departmentModalMode === 'create' ? '新增部门' : '编辑部门'"
+      width="480px"
+      :confirm-loading="departmentSubmitLoading"
+      ok-text="确认"
+      cancel-text="取消"
+      @ok="handleDepartmentSubmit"
+      @cancel="departmentModalOpen = false"
+    >
+      <a-form ref="departmentFormRef" class="user-form" :model="departmentForm" :rules="departmentFormRules" :label-col="{ span: 6 }" :wrapper-col="{ span: 16 }">
+        <a-form-item label="父级节点" name="parentId">
+          <a-tree-select
+            v-model:value="departmentForm.parentId"
+            :tree-data="departmentSelectTree"
+            allow-clear
+            tree-default-expand-all
+            placeholder="请选择父级节点"
+          />
+        </a-form-item>
+        <a-form-item label="部门名称" name="name">
+          <a-input v-model:value="departmentForm.name" placeholder="请输入部门名称" />
+        </a-form-item>
+        <a-form-item label="排序号" name="sortOrder">
+          <a-input-number v-model:value="departmentForm.sortOrder" :min="0" :precision="0" placeholder="请输入排序号" />
+        </a-form-item>
+      </a-form>
+    </a-modal>
+
     <a-modal
       v-model:open="userModalOpen"
       :title="modalMode === 'create' ? '新增用户' : '编辑用户'"
@@ -110,7 +156,6 @@
       </a-form>
     </a-modal>
 
-    <!-- 分配角色 -->
     <a-modal
       v-model:open="roleModalOpen"
       title="分配角色"
@@ -127,7 +172,6 @@
       </a-checkbox-group>
     </a-modal>
 
-    <!-- 重置密码 -->
     <a-modal
       v-model:open="pwdModalOpen"
       title="重置密码"
@@ -154,11 +198,14 @@ import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
   assignSystemUserRoles,
+  createSystemDepartment,
   createSystemUser,
+  deleteSystemDepartment,
   getSystemDepartments,
   getSystemRoles,
   getSystemUsers,
   resetSystemUserPassword,
+  updateSystemDepartment,
   updateSystemUser,
   updateSystemUserEnabled,
 } from '@/api/systemSettings'
@@ -189,6 +236,12 @@ const createDefaultFormState = () => ({
   enabled: true,
 })
 
+const createDefaultDepartmentForm = () => ({
+  parentId: undefined,
+  name: '',
+  sortOrder: 0,
+})
+
 const queryParams = reactive({
   keyword: '',
   departmentId: undefined,
@@ -196,16 +249,24 @@ const queryParams = reactive({
 })
 
 const formRef = ref()
+const departmentFormRef = ref()
 const userModalOpen = ref(false)
+const departmentModalOpen = ref(false)
 const modalMode = ref('create')
+const departmentModalMode = ref('create')
 const editingUserId = ref(null)
+const editingDepartmentId = ref(null)
 const loading = ref(false)
 const submitLoading = ref(false)
+const departmentSubmitLoading = ref(false)
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 const selectedDepartmentKeys = ref([])
+const departmentKeyword = ref('')
+const appliedDepartmentKeyword = ref('')
 const formState = reactive(createDefaultFormState())
+const departmentForm = reactive(createDefaultDepartmentForm())
 const users = ref([])
 const departments = ref([])
 const roles = ref([])
@@ -228,6 +289,10 @@ const formRules = computed(() => ({
   password: modalMode.value === 'create' ? [{ required: true, message: '请输入初始密码', trigger: 'blur' }] : [],
 }))
 
+const departmentFormRules = {
+  name: [{ required: true, message: '请输入部门名称', trigger: 'blur' }],
+}
+
 const departmentMap = computed(() =>
   departments.value.reduce((map, item) => { map[item.id] = item.name; return map }, {}),
 )
@@ -235,7 +300,11 @@ const departmentMap = computed(() =>
 const departmentOptions = computed(() => departments.value.map(item => ({ label: item.name, value: item.id })))
 const departmentOptionsWithoutAll = computed(() => departmentOptions.value)
 const roleOptions = computed(() => roles.value.map(item => ({ label: item.name, value: item.id })))
-const departmentTree = computed(() => buildDepartmentTree(departments.value))
+const departmentTree = computed(() => filterDepartmentTree(buildDepartmentTree(departments.value), appliedDepartmentKeyword.value))
+const departmentSelectTree = computed(() => {
+  const disabledIds = editingDepartmentId.value ? getDepartmentChildrenIds(editingDepartmentId.value) : []
+  return buildDepartmentTree(departments.value.filter(item => !disabledIds.includes(item.id)))
+})
 
 const pagination = computed(() => ({
   current: currentPage.value,
@@ -254,7 +323,7 @@ onMounted(async () => {
 const buildDepartmentTree = items => {
   const nodeMap = new Map()
   const roots = []
-  items.forEach(item => { nodeMap.set(item.id, { title: item.name, key: item.id, children: [] }) })
+  items.forEach(item => { nodeMap.set(item.id, { title: item.name, key: item.id, value: item.id, children: [] }) })
   items.forEach(item => {
     const node = nodeMap.get(item.id)
     if (item.parentId && nodeMap.has(item.parentId)) {
@@ -266,21 +335,77 @@ const buildDepartmentTree = items => {
   return roots
 }
 
+const filterDepartmentTree = (nodes, keyword) => {
+  const text = keyword.trim()
+  if (!text) return nodes
+  return nodes.reduce((result, node) => {
+    const children = filterDepartmentTree(node.children || [], text)
+    if (node.title.includes(text) || children.length) {
+      result.push({ ...node, children })
+    }
+    return result
+  }, [])
+}
+
+const getDepartmentChildrenIds = departmentId => {
+  const ids = [departmentId]
+  const children = departments.value.filter(item => item.parentId === departmentId)
+  children.forEach(child => { ids.push(...getDepartmentChildrenIds(child.id)) })
+  return ids
+}
+
+const getDepartmentById = id => departments.value.find(item => item.id === id)
+
 const fetchDepartments = async () => { departments.value = await getSystemDepartments() }
 const fetchRoles = async () => { roles.value = await getSystemRoles() }
 
 const fetchUsers = async () => {
   loading.value = true
   try {
-    const result = await getSystemUsers({
-      keyword: queryParams.keyword || undefined,
-      departmentId: queryParams.departmentId,
-      enabled: queryParams.enabled,
-      pageNo: currentPage.value,
-      pageSize: pageSize.value,
-    })
-    total.value = result.total || 0
-    users.value = result.records.map((item, index) => ({
+    loading.value = true
+
+    const selectedDepartmentIds = queryParams.departmentId
+        ? getDepartmentChildrenIds(queryParams.departmentId)
+        : []
+
+    const fetchByDepartmentTree = selectedDepartmentIds.length > 1
+
+    const result = fetchByDepartmentTree
+        ? await Promise.all(
+            selectedDepartmentIds.map(departmentId =>
+                getSystemUsers({
+                  keyword: queryParams.keyword || undefined,
+                  departmentId,
+                  enabled: queryParams.enabled,
+                  pageNo: 1,
+                  pageSize: 1000,
+                })
+            )
+        )
+        : await getSystemUsers({
+          keyword: queryParams.keyword || undefined,
+          departmentId: queryParams.departmentId,
+          enabled: queryParams.enabled,
+          pageNo: currentPage.value,
+          pageSize: pageSize.value,
+        })
+
+    const records = fetchByDepartmentTree
+        ? result.flatMap(item => item.records || [])
+        : result.records || []
+
+    const pageRecords = fetchByDepartmentTree
+        ? records.slice(
+            (currentPage.value - 1) * pageSize.value,
+            currentPage.value * pageSize.value
+        )
+        : records
+
+    total.value = fetchByDepartmentTree
+        ? records.length
+        : result.total || 0
+
+    users.value = pageRecords.map((item, index) => ({
       ...item,
       index: (currentPage.value - 1) * pageSize.value + index + 1,
       departmentName: departmentMap.value[item.departmentId] || '-',
@@ -296,6 +421,10 @@ const handleDepartmentSelect = keys => {
   queryParams.departmentId = selectedKey
   currentPage.value = 1
   fetchUsers()
+}
+
+const handleDepartmentSearch = () => {
+  appliedDepartmentKeyword.value = departmentKeyword.value
 }
 
 const handleSearch = () => { currentPage.value = 1; fetchUsers() }
@@ -320,10 +449,79 @@ const handleReset = () => {
   fetchUsers()
 }
 
+const handleAddDepartment = () => {
+  departmentModalMode.value = 'create'
+  editingDepartmentId.value = null
+  Object.assign(departmentForm, createDefaultDepartmentForm(), {
+    parentId: selectedDepartmentKeys.value[0],
+  })
+  departmentFormRef.value?.clearValidate()
+  departmentModalOpen.value = true
+}
+
+const handleEditDepartment = id => {
+  const department = getDepartmentById(id)
+  if (!department) return
+  departmentModalMode.value = 'edit'
+  editingDepartmentId.value = id
+  Object.assign(departmentForm, {
+    parentId: department.parentId || undefined,
+    name: department.name,
+    sortOrder: department.sortOrder || 0,
+  })
+  departmentFormRef.value?.clearValidate()
+  departmentModalOpen.value = true
+}
+
+const handleDepartmentSubmit = async () => {
+  if (departmentSubmitLoading.value) return
+  try {
+    await departmentFormRef.value?.validate()
+    departmentSubmitLoading.value = true
+    const payload = {
+      parentId: departmentForm.parentId || null,
+      name: departmentForm.name,
+      sortOrder: departmentForm.sortOrder ?? 0,
+    }
+    if (departmentModalMode.value === 'edit') {
+      await updateSystemDepartment(editingDepartmentId.value, payload)
+      message.success('部门编辑成功')
+    } else {
+      await createSystemDepartment(payload)
+      message.success('部门新增成功')
+    }
+    departmentModalOpen.value = false
+    await fetchDepartments()
+    await fetchUsers()
+  } catch (error) {
+    if (error?.errorFields) return
+    message.error(error.message || '操作失败')
+  } finally {
+    departmentSubmitLoading.value = false
+  }
+}
+
+const handleDeleteDepartment = async id => {
+  try {
+    await deleteSystemDepartment(id)
+    message.success('部门删除成功')
+    if (queryParams.departmentId === id) {
+      queryParams.departmentId = undefined
+      selectedDepartmentKeys.value = []
+    }
+    await fetchDepartments()
+    await fetchUsers()
+  } catch (error) {
+    message.error(error.message || '删除失败')
+  }
+}
+
 const handleAdd = () => {
   modalMode.value = 'create'
   editingUserId.value = null
-  Object.assign(formState, createDefaultFormState())
+  Object.assign(formState, createDefaultFormState(), {
+    departmentId: selectedDepartmentKeys.value[0],
+  })
   formRef.value?.clearValidate()
   userModalOpen.value = true
 }
@@ -458,7 +656,7 @@ const handlePwdSubmit = async () => {
 
 .content-grid {
   display: grid;
-  grid-template-columns: 208px minmax(0, 1fr);
+  grid-template-columns: 280px minmax(0, 1fr);
   gap: 20px;
 }
 
@@ -468,6 +666,40 @@ const handlePwdSubmit = async () => {
 
 .org-card :deep(.ant-card-body) {
   padding: 12px 8px;
+}
+
+.org-toolbar {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 0 4px;
+}
+
+.org-toolbar :deep(.ant-btn) {
+  min-width: 80px;
+}
+
+.department-node {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 8px;
+}
+
+.department-node__actions {
+  opacity: 0;
+  transition: opacity 0.16s;
+}
+
+.department-node:hover .department-node__actions {
+  opacity: 1;
+}
+
+.department-node__actions :deep(.ant-btn) {
+  height: 22px;
+  padding: 0 2px;
+  font-size: 12px;
 }
 
 .list-card {
@@ -501,6 +733,10 @@ const handlePwdSubmit = async () => {
 
 .user-form {
   padding-top: 10px;
+}
+
+.user-form :deep(.ant-input-number) {
+  width: 100%;
 }
 
 .role-assign-tip {

@@ -83,6 +83,7 @@
           :tabs="detailTabs"
           :gantt-summary="ganttSummary"
           :gantt-table-width="ganttTableWidth"
+          :gantt-workspace-height="ganttWorkspaceHeight"
           :gantt-node-columns="ganttNodeColumns"
           :gantt-node-rows="ganttNodeRows"
           :gantt-status-colors="ganttStatusColors"
@@ -165,7 +166,7 @@
       <div class="report-modal__actions"><a-button @click="reportVisible = false">取消</a-button><a-button type="primary" :loading="reportSubmitLoading" @click="handleSubmitReport">确定</a-button></div>
     </a-modal>
 
-    <a-modal v-model:open="ganttEditVisible" title="编辑节点" :width="560" :footer="null" destroy-on-close>
+    <a-modal v-model:open="ganttEditVisible" title="编辑节点" :width="400" :footer="null" destroy-on-close>
       <a-form ref="ganttFormRef" :model="ganttForm" :rules="ganttFormRules" :label-col="{ span: 5 }" :wrapper-col="{ span: 19 }">
         <a-form-item label="节点名称"><a-input :value="ganttForm.name" disabled /></a-form-item>
         <a-form-item label="计划开始" name="planStart"><a-date-picker v-model:value="ganttForm.planStart" value-format="YYYY-MM-DD" placeholder="请选择计划开始日期" /></a-form-item>
@@ -332,25 +333,45 @@ const ganttStatusOptions = computed(() => taskStatusOptions.value.length ? taskS
   { label: '已逾期', value: 'OVERDUE' },
 ])
 const ganttNodeColumns = [
-  { title: '节点名称', dataIndex: 'name', width: 160 }, { title: '计划开始', dataIndex: 'planStart', width: 120 }, { title: '计划结束', dataIndex: 'planEnd', width: 120 },
-  { title: '实际开始', dataIndex: 'actualStart', width: 120 }, { title: '实际结束', dataIndex: 'actualEnd', width: 120 }, { title: '状态', dataIndex: 'status', width: 90 },
+  { title: '节点名称', dataIndex: 'name', width: 160 },
+  { title: '计划时间', dataIndex: 'planTime', width: 120 },
+  { title: '实际时间', dataIndex: 'actualTime', width: 120 },
+  { title: '状态', dataIndex: 'status', width: 90 },
   { title: '进度', dataIndex: 'progress', width: 160 },
 ]
 const ganttTableWidth = ganttNodeColumns.reduce((total, column) => total + column.width, 0)
 const ganttNodeRows = ref([])
-const ganttTasks = computed(() => ganttNodeRows.value.filter(node => node.planStart !== '-' && node.planEnd !== '-').map((node, index, rows) => ({
-  id: String(node.id),
-  name: node.name,
-  start: node.planStart.replaceAll('/', '-'),
-  end: node.status === '里程碑' ? dayjs(node.planEnd.replaceAll('/', '-')).add(1, 'day').format('YYYY-MM-DD') : node.planEnd.replaceAll('/', '-'),
-  planStart: node.planStart,
-  actualStart: node.actualStart,
-  planEnd: node.planEnd,
-  actualEnd: node.actualEnd,
-  progress: node.progress,
-  dependencies: index ? String(rows[index - 1].id) : undefined,
-  custom_class: ganttStatusClasses[node.status],
-})))
+const ganttWorkspaceHeight = computed(() => 86 + ganttNodeRows.value.length * 72)
+const formatDateRange = (start, end) => start === '-' && end === '-' ? '-' : `${start} ~ ${end}`
+const normalizeGanttEnd = (start, end, status) => {
+  const startDate = dayjs(start)
+  const endDate = dayjs(end)
+  return status === '里程碑' || !endDate.isAfter(startDate) ? endDate.add(1, 'day').format('YYYY-MM-DD') : end
+}
+const ganttTasks = computed(() => {
+  const validRows = ganttNodeRows.value.filter(node => node.planStart !== '-' && node.planEnd !== '-')
+  const fallbackStart = validRows[0]?.planStart?.replaceAll('/', '-') || dayjs().format('YYYY-MM-DD')
+  let previousVisibleTaskId
+  return ganttNodeRows.value.map(node => {
+    const hasPlanTime = node.planStart !== '-' && node.planEnd !== '-'
+    const taskId = String(node.id)
+    const task = {
+      id: taskId,
+      name: node.name,
+      start: hasPlanTime ? node.planStart.replaceAll('/', '-') : fallbackStart,
+      end: hasPlanTime ? normalizeGanttEnd(node.planStart.replaceAll('/', '-'), node.planEnd.replaceAll('/', '-'), node.status) : dayjs(fallbackStart).add(1, 'day').format('YYYY-MM-DD'),
+      planStart: node.planStart,
+      actualStart: node.actualStart,
+      planEnd: node.planEnd,
+      actualEnd: node.actualEnd,
+      progress: hasPlanTime ? node.progress : 0,
+      dependencies: hasPlanTime && previousVisibleTaskId ? previousVisibleTaskId : undefined,
+      custom_class: hasPlanTime ? ganttStatusClasses[node.status] : 'gantt-empty-row',
+    }
+    if (hasPlanTime) previousVisibleTaskId = taskId
+    return task
+  })
+})
 const ganttForm = reactive({ id: null, name: '', planStart: undefined, planEnd: undefined, actualStart: undefined, actualEnd: undefined, status: undefined, progress: 0 })
 const ganttFormRules = {
   planStart: [{ required: true, message: '请选择计划开始日期', trigger: 'change' }],
@@ -359,20 +380,7 @@ const ganttFormRules = {
   progress: [{ required: true, message: '请输入节点进度', trigger: 'change' }],
 }
 
-const risks = computed(() => {
-  const today = dayjs().startOf('day')
-  const nodes = ganttNodeRows.value.filter(n => n.planEnd !== '-' && n.statusCode !== 'COMPLETED')
-  const highRisk = nodes.filter(n => today.diff(dayjs(n.planEnd.replaceAll('/', '-')), 'day') >= 3).length
-  const medRisk = nodes.filter(n => { const d = today.diff(dayjs(n.planEnd.replaceAll('/', '-')), 'day'); return d >= 1 && d < 3 }).length
-  const dueSoon = nodes.filter(n => { const diff = dayjs(n.planEnd.replaceAll('/', '-')).diff(today, 'day'); return diff >= 0 && diff <= 3 }).length
-  const onTrack = nodes.filter(n => dayjs(n.planEnd.replaceAll('/', '-')).diff(today, 'day') > 3).length
-  return [
-    { label: '高风险节点', value: `${highRisk} 个`, desc: '延期 ≥ 3 天', class: 'risk-high', icon: FireOutlined },
-    { label: '中风险节点', value: `${medRisk} 个`, desc: '延期 1 - 2 天', class: 'risk-medium', icon: WarningOutlined },
-    { label: '即将到期', value: `${dueSoon} 个`, desc: '未来 3 天内到期', class: 'risk-due', icon: ClockCircleOutlined },
-    { label: '按计划进行', value: `${onTrack} 个`, desc: '无延期风险', class: 'risk-normal', icon: CheckCircleOutlined },
-  ]
-})
+const risks = [{ label: '高风险任务', value: '3 个', desc: '延期 ≥ 3 天', class: 'risk-high', icon: FireOutlined }, { label: '中风险任务', value: '2 个', desc: '延期 1 - 2 天', class: 'risk-medium', icon: WarningOutlined }, { label: '即将到期', value: '4 个', desc: '未来 3 天内到期', class: 'risk-due', icon: ClockCircleOutlined }, { label: '按计划进行', value: '8 个', desc: '无延期风险', class: 'risk-normal', icon: CheckCircleOutlined }]
 const taskColumns = [{ title: '序号', dataIndex: 'id', width: 60 }, { title: '任务名称', dataIndex: 'name', width: 180 }, { title: '负责人', dataIndex: 'owner', width: 90 }, { title: '优先级', dataIndex: 'priority', width: 80 }, { title: '状态', dataIndex: 'status', width: 90 }, { title: '计划开始', dataIndex: 'planStart', width: 110 }, { title: '计划结束', dataIndex: 'planEnd', width: 110 }, { title: '实际开始', dataIndex: 'actualStart', width: 110 }, { title: '实际结束', dataIndex: 'actualEnd', width: 110 }]
 const taskRows = ref([])
 const taskStatusFilters = toOptions(['全部状态', '未开始', '进行中', '已完成'])
@@ -416,6 +424,11 @@ const summaryItems = computed(() => [
 const getDictLabel = (type, value) => dictLabels[type]?.[value] || value || '-'
 const getUserName = id => managerOptions.value.find(item => item.value === id)?.label || (id ? `用户 ${id}` : '-')
 const getStatusLabel = value => ganttStatusOptions.value.find(item => item.value === value)?.label || getDictLabel('taskStatus', value)
+const formatNodeDate = value => {
+  if (!value || value === '-') return undefined
+  const date = dayjs(String(value).replaceAll('/', '-'))
+  return date.isValid() ? date.format('YYYY-MM-DD') : undefined
+}
 const mapProject = project => ({
   ...project,
   manager: getUserName(project.managerId),
@@ -517,7 +530,13 @@ const fetchProjectRelatedData = async projectId => {
     ])
     currentProject.value = mapProject(project)
     Object.assign(ganttSummaryData, ganttResult)
-    ganttNodeRows.value = nodes.map(node => ({ id: node.id, name: node.nodeName, planStart: node.plannedStartDate?.replaceAll('-', '/') || '-', planEnd: node.plannedEndDate?.replaceAll('-', '/') || '-', actualStart: node.actualStartDate?.replaceAll('-', '/') || '-', actualEnd: node.actualEndDate?.replaceAll('-', '/') || '-', status: getDictLabel('taskStatus', node.status), statusCode: node.status, progress: node.progressPercent || 0, isOverdue: node.status === 'OVERDUE' }))
+    ganttNodeRows.value = nodes.map(node => {
+      const planStart = node.plannedStartDate?.replaceAll('-', '/') || '-'
+      const planEnd = node.plannedEndDate?.replaceAll('-', '/') || '-'
+      const actualStart = node.actualStartDate?.replaceAll('-', '/') || '-'
+      const actualEnd = node.actualEndDate?.replaceAll('-', '/') || '-'
+      return { id: node.id, name: node.nodeName, planStart, planEnd, planTime: formatDateRange(planStart, planEnd), actualStart, actualEnd, actualTime: formatDateRange(actualStart, actualEnd), status: getDictLabel('taskStatus', node.status), statusCode: node.status, progress: node.progressPercent || 0, isOverdue: node.status === 'OVERDUE' }
+    })
     taskRows.value = taskResult.records.map(task => ({ id: task.id, name: task.name, owner: getUserName(task.assigneeId), priority: getDictLabel('taskPriority', task.priority), status: getDictLabel('taskStatus', task.status), planStart: task.plannedStartDate || '-', planEnd: task.plannedEndDate || '-', actualStart: task.actualStartDate || '-', actualEnd: task.actualEndDate || '-' }))
     bugRows.value = bugResult.records.map(bug => ({ id: bug.id, code: `BUG-${bug.id}`, title: bug.title, severity: getDictLabel('bugPriority', bug.priority), priorityCode: bug.priority, status: getDictLabel('bugStatus', bug.status), statusCode: bug.status, assignee: getUserName(bug.assigneeId), creator: getUserName(bug.creatorId) }))
     reportRows.value = reportResult.records.map(report => ({ id: report.id, title: report.title, type: getDictLabel('reportType', report.reportType), typeCode: report.reportType, status: getDictLabel('reportStatus', report.status), statusCode: report.status, planTime: report.plannedDate, actualTime: report.actualDate || '-', target: report.targetAudience, place: report.locationMethod, description: report.description }))
@@ -546,6 +565,10 @@ const renderGantt = async () => {
     readonly: true,
     language: 'zh',
     popup_on: 'hover',
+    upper_header_height: 44,
+    lower_header_height: 32,
+    bar_height: 30,
+    padding: 42,
     popup: ({ task, set_title, set_subtitle, set_details }) => {
       set_title('计划与实际时间')
       set_subtitle('')
@@ -574,9 +597,8 @@ const syncRoute = async () => {
   if (viewMode.value === 'edit') {
     detailLoading.value = true
     try {
-      const [project, nodes] = await Promise.all([getProjectDetail(projectId), getGanttNodes(projectId)])
+      const project = await getProjectDetail(projectId)
       Object.assign(formState, createDefaultForm(), mapProjectToForm(project))
-      formState.nodes = nodes.map(n => n.nodeName)
       editingId.value = project.id
     } catch (error) {
       message.error(error.message)
@@ -607,13 +629,14 @@ const handleGanttRow = record => ({
     Object.assign(ganttForm, {
       id: record.id,
       name: record.name,
-      planStart: record.planStart === '-' ? undefined : record.planStart.replaceAll('/', '-'),
-      planEnd: record.planEnd === '-' ? undefined : record.planEnd.replaceAll('/', '-'),
-      actualStart: record.actualStart === '-' ? undefined : record.actualStart.replaceAll('/', '-'),
-      actualEnd: record.actualEnd === '-' ? undefined : record.actualEnd.replaceAll('/', '-'),
+      planStart: formatNodeDate(record.planStart),
+      planEnd: formatNodeDate(record.planEnd),
+      actualStart: formatNodeDate(record.actualStart),
+      actualEnd: formatNodeDate(record.actualEnd),
       status: record.statusCode,
       progress: record.progress,
     })
+    ganttFormRef.value?.clearValidate()
     ganttEditVisible.value = true
   },
 })
@@ -758,11 +781,6 @@ const handleSubmit = async () => {
       receivableAmount: formState.amount,
       description: formState.description,
     }
-    if (editingId.value) {
-      projectData.nodeNames = formState.nodes
-    } else if (formState.nodes.length) {
-      projectData.nodes = formState.nodes.map(name => ({ nodeName: name }))
-    }
     const savedProject = editingId.value
       ? await updateProject(editingId.value, projectData)
       : await createProject(projectData)
@@ -803,7 +821,7 @@ const handleSubmit = async () => {
 .project-form-card :deep(.ant-checkbox-group) { display: flex; flex-wrap: wrap; gap: 10px 18px; }
 .form-actions { display: flex; justify-content: flex-end; gap: 20px; }
 .form-actions .ant-btn { width: 120px; }
-.project-detail { min-height: 100%; }
+.project-detail { height: 100%; min-height: 0; overflow: auto; }
 .project-detail__heading { display: flex; align-items: center; gap: 16px; margin-bottom: 6px; }
 .project-detail__heading :deep(.ant-tag) { padding: 6px 14px; font-size: 16px; }
 .project-tabs { display: flex; gap: 44px; height: 44px; padding-left: 8px; }
