@@ -234,6 +234,7 @@ const routeGroupMap = {
 }
 
 const rootMenuKeys = new Set(navigationItems.filter(item => item.children?.length).map(item => item.key))
+const hiddenNavigationKeys = new Set(['/requirements', '/bugs', '/files', '/daily-reports'])
 
 const groupPathMap = {
   个人工作: '/personal/tasks',
@@ -275,8 +276,21 @@ const flattenVisibleItems = items => {
   return result
 }
 
+const accessibleNavigation = computed(() => {
+  return navigationItems
+    .map(item => {
+      if (!item.children) {
+        return canAccess(item.accessCodes) ? item : null
+      }
+
+      const children = item.children.filter(child => canAccess(child.accessCodes))
+      return children.length ? { ...item, children } : null
+    })
+    .filter(Boolean)
+})
+
 const canAccessPath = path => {
-  const items = flattenVisibleItems(visibleNavigation.value)
+  const items = flattenVisibleItems(accessibleNavigation.value)
   return items.some(item => item.matches?.some(match => match(path)))
 }
 
@@ -333,15 +347,8 @@ const authorizedCodes = computed(() => {
 })
 
 const visibleNavigation = computed(() => {
-  return navigationItems
-    .map(item => {
-      if (!item.children) {
-        return canAccess(item.accessCodes) ? item : null
-      }
-
-      const children = item.children.filter(child => canAccess(child.accessCodes))
-      return children.length ? { ...item, children } : null
-    })
+  return accessibleNavigation.value
+    .filter(item => !hiddenNavigationKeys.has(item.key))
     .filter(Boolean)
 })
 
