@@ -8,13 +8,13 @@ import HomeView from '@/views/HomeView.vue'
 import LoginView from '@/views/LoginView.vue'
 import ManagementProject from '@/views/management-project/index.vue'
 import ModuleView from '@/views/ModuleView.vue'
+import DailyReportView from '@/views/personal/DailyReportView.vue'
 import RoleManagement from '@/views/system-settings/RoleManagement.vue'
 import UserManagement from '@/views/system-settings/UserManagement.vue'
 
 const moduleRoutes = [
   { path: 'personal/tasks', name: 'PersonalTasks', title: '我的任务', group: '个人工作' },
   { path: 'personal/bugs', name: 'PersonalBugs', title: '我的 Bug', group: '个人工作' },
-  { path: 'personal/daily', name: 'PersonalDaily', title: '我的日报', group: '个人工作' },
   { path: 'personal/statistics', name: 'PersonalStatistics', title: '我的统计', group: '个人工作' },
   { path: 'tasks/all', name: 'AllTasks', title: '全部任务', group: '任务列表' },
   { path: 'tasks/development', name: 'DevelopmentTasks', title: '开发任务', group: '任务列表' },
@@ -116,6 +116,12 @@ const router = createRouter({
             title: '角色管理',
             group: '系统设置',
           },
+        },
+        {
+          path: 'personal/daily',
+          name: 'PersonalDaily',
+          component: DailyReportView,
+          meta: { title: '我的日报', group: '个人工作' },
         },
         ...moduleRoutes.map(route => ({
           path: route.path,

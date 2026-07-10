@@ -68,7 +68,7 @@
               </template>
               <a-timeline>
                 <a-timeline-item v-for="log in taskLogs" :key="log.time">
-                  <span class="log-meta">{{ log.time }}　{{ log.user }}</span>
+                  <span class="log-meta">{{ log.time }}銆€{{ log.user }}</span>
                   <p>{{ log.text }}</p>
                 </a-timeline-item>
               </a-timeline>
@@ -77,7 +77,7 @@
 
           <a-card class="prototype-card related-bugs" :bordered="false">
             <template #title>
-              <span class="section-title"><BugOutlined /> 关联Bug（5）</span>
+              <span class="section-title"><BugOutlined /> 关联 Bug</span>
             </template>
             <article v-for="bug in relatedBugs" :key="bug.code" class="bug-mini-card">
               <p class="bug-code"><BugOutlined /> {{ bug.code }}</p>
@@ -157,7 +157,7 @@
             </table>
           </div>
           <div class="prototype-pagination">
-            <span>共 {{ visibleTasks.length }} 条</span>
+                  <span>共 {{ visibleTasks.length }} 条</span>
           </div>
         </a-card>
       </section>
@@ -170,9 +170,9 @@
           返回
         </a-button>
         <a-spin :spinning="bugDetailLoading">
-          <a-empty v-if="!selectedBugDetail" description="暂无详情" />
+          <a-empty v-if="!selectedBugDetail" description="鏆傛棤璇︽儏" />
           <a-card v-else class="prototype-card bug-detail-card" :bordered="false">
-            <h2>基本信息</h2>
+            <h2>鍩烘湰淇℃伅</h2>
             <div class="bug-info-grid">
               <span>Bug编号</span><strong>{{ selectedBugDetail.code }}</strong>
               <span>标题</span><strong>{{ selectedBugDetail.title }}</strong>
@@ -184,14 +184,14 @@
               <span>关闭时间</span><strong>{{ selectedBugDetail.closedAt ? String(selectedBugDetail.closedAt).slice(0, 10) : '-' }}</strong>
             </div>
             <div class="bug-text-block">
-              <h3>问题描述</h3>
+              <h3>闂鎻忚堪</h3>
               <p>{{ selectedBugDetail.description || '-' }}</p>
-              <h3>重现步骤</h3>
+              <h3>閲嶇幇姝ラ</h3>
               <p>{{ selectedBugDetail.reproduceSteps || '-' }}</p>
               <template v-if="selectedBugDetail.fixAnalysis || selectedBugDetail.fixDetail">
-                <h3>问题分析</h3>
+                <h3>闂鍒嗘瀽</h3>
                 <p>{{ selectedBugDetail.fixAnalysis || '-' }}</p>
-                <h3>修复细节</h3>
+                <h3>淇缁嗚妭</h3>
                 <p>{{ selectedBugDetail.fixDetail || '-' }}</p>
               </template>
             </div>
@@ -256,7 +256,7 @@
                   <a-button type="link" size="small" @click="handleBugDetail(record)">详情</a-button>
                   <template v-if="record.creatorId === currentUserId">
                     <a-button type="link" size="small" @click="handleOpenBugModal('edit', record)">编辑</a-button>
-                    <a-popconfirm title="确认删除该Bug?" ok-text="删除" cancel-text="取消" @confirm="handleDeleteBug(record)">
+                    <a-popconfirm title="确认删除该 Bug?" ok-text="删除" cancel-text="取消" @confirm="handleDeleteBug(record)">
                       <a-button type="link" size="small" danger>删除</a-button>
                     </a-popconfirm>
                     <a-button v-if="record.statusCode === 'PENDING_VERIFY'" type="link" size="small" style="color:#52c41a" :loading="bugVerifyLoading" @click="handleVerifyBug(record)">
@@ -279,14 +279,14 @@
       <section class="personal-page daily-page">
         <div class="daily-header">
           <div class="prototype-heading prototype-heading--inline">
-            <h1 class="prototype-title">日报</h1>
+            <h1 class="prototype-title">鏃ユ姤</h1>
           </div>
           <a-space>
-            <!-- <a-select class="daily-select" value="全部" :options="selectOptions" />
-            <a-input-search class="daily-search" placeholder="请搜索或选择人员" /> -->
+            <!-- <a-select class="daily-select" value="鍏ㄩ儴" :options="selectOptions" />
+            <a-input-search class="daily-search" placeholder="璇锋悳绱㈡垨閫夋嫨浜哄憳" /> -->
             <a-button type="primary" @click="openDailyModal">
               <template #icon><PlusOutlined /></template>
-              新建日报
+              閺傛澘缂撴棩鎶?
             </a-button>
           </a-space>
         </div>
@@ -294,7 +294,7 @@
           <a-button class="date-nav-button" @click="shiftDailyDate(-1)"><LeftOutlined /></a-button>
           <strong>{{ selectedDailyDateText }}</strong>
           <a-button class="date-nav-button" @click="shiftDailyDate(1)"><RightOutlined /></a-button>
-          <a-button @click="backToToday">回到今天</a-button>
+          <a-button @click="backToToday">鍥炲埌浠婂ぉ</a-button>
           <a-date-picker v-model:value="selectedDailyDate" :allow-clear="false" />
         </div>
         <section class="daily-workspace">
@@ -324,14 +324,14 @@
             <a-spin :spinning="dailyLoading">
               <template v-if="dailyHasRecord">
                 <!-- <div class="daily-record-head">
-                  <span>所属项目：{{ dailyProjectText }}</span>
-                  <span>提交人：{{ dailyReporterText }}</span>
+                  <span>鎵€灞為」鐩細{{ dailyProjectText }}</span>
+                  <span>鎻愪氦浜猴細{{ dailyReporterText }}</span>
                 </div> -->
                 <div class="daily-record-body">
                   <label>工作内容：</label>
                   <p>{{ dailyContentText }}</p>
                 </div>
-                <!-- <h3>已上传附件（{{ dailyFiles.length }}）</h3>
+                <!-- <h3>宸蹭笂浼犻檮浠讹紙{{ dailyFiles.length }}锛?h3>
                 <div v-if="dailyFiles.length" class="daily-files">
                   <article v-for="file in dailyFiles" :key="file.id || file.name" class="daily-file">
                     <span class="daily-file-icon" :class="file.type">
@@ -339,13 +339,13 @@
                     </span>
                     <div>
                       <strong>{{ file.name }}</strong>
-                      <p>{{ file.size }}　{{ file.time }}　{{ file.user }}</p>
+                      <p>{{ file.size }}銆€{{ file.time }}銆€{{ file.user }}</p>
                       <a-space :size="6">
-                        <a-tooltip title="预览">
-                          <a-button class="file-action-button" type="text" size="small" aria-label="预览"><EyeOutlined /></a-button>
+                        <a-tooltip title="妫板嫯顫?>
+                          <a-button class="file-action-button" type="text" size="small" aria-label="妫板嫯顫?><EyeOutlined /></a-button>
                         </a-tooltip>
-                        <a-tooltip title="下载">
-                          <a-button class="file-action-button" type="text" size="small" aria-label="下载"><DownloadOutlined /></a-button>
+                        <a-tooltip title="下载>
+                          <a-button class="file-action-button" type="text" size="small" aria-label="下载><DownloadOutlined /></a-button>
                         </a-tooltip>
                         <a-tooltip title="删除">
                           <a-button class="file-action-button danger" type="text" size="small" aria-label="删除"><DeleteOutlined /></a-button>
@@ -354,10 +354,10 @@
                     </div>
                   </article>
                 </div>
-                <a-empty v-else class="daily-file-empty" description="暂无附件" /> -->
+                <a-empty v-else class="daily-file-empty" description="鏆傛棤闄勪欢" /> -->
                 <span class="daily-time">{{ dailySubmitTime }}</span>
               </template>
-              <a-empty v-else :description="dailyError || `${selectedDailyDateText} 没有工作记录`" />
+              <a-empty v-else :description="dailyError || `${selectedDailyDateText} 暂无日报记录`" />
             </a-spin>
           </a-card>
         </section>
@@ -370,7 +370,7 @@
           <a-spin :spinning="statsLoading">
           <div class="stats-title-row">
             <div class="prototype-heading prototype-heading--inline">
-              <h1 class="prototype-title">我的统计</h1>
+              <h1 class="prototype-title">鎴戠殑缁熻</h1>
             </div>
             <a-select class="daily-select" v-model:value="statsPeriod" :options="STATS_PERIOD_OPTIONS" />
           </div>
@@ -381,16 +381,16 @@
             </article>
           </section>
           <section class="stats-panels">
-            <a-card class="chart-card" :bordered="false" title="任务完成趋势">
+            <a-card class="chart-card" :bordered="false" title="浠诲姟瀹屾垚瓒嬪娍">
               <div ref="trendChartRef" class="echart trend-chart"></div>
             </a-card>
-            <a-card class="chart-card" :bordered="false" title="工作分布">
+            <a-card class="chart-card" :bordered="false" title="宸ヤ綔鍒嗗竷">
               <div class="distribution">
                 <div class="distribution-panel">
-                  <h3>项目分布</h3>
+                  <h3>椤圭洰鍒嗗竷</h3>
                   <div ref="projectChartRef" class="echart donut-chart"></div>
                   <ul class="chart-legend">
-                    <li v-if="!projectLegendItems.length" class="muted">暂无数据</li>
+                    <li v-if="!projectLegendItems.length" class="muted">閺嗗倹妫ら弫鐗堝祦</li>
                     <li v-for="item in projectLegendItems" :key="item.name">
                       <span class="legend-dot" :style="{ background: item.color }"></span>{{ item.name }} <strong>{{ item.pct }}</strong>
                     </li>
@@ -400,7 +400,7 @@
                   <h3>任务状态分布</h3>
                   <div ref="statusChartRef" class="echart donut-chart"></div>
                   <ul class="chart-legend">
-                    <li v-if="!statusLegendItems.length" class="muted">暂无数据</li>
+                    <li v-if="!statusLegendItems.length" class="muted">暂无图表数据</li>
                     <li v-for="item in statusLegendItems" :key="item.name">
                       <span class="legend-dot" :style="{ background: item.color }"></span>{{ item.name }} <strong>{{ item.pct }}</strong>
                     </li>
@@ -459,7 +459,7 @@
       </a-form>
     </a-modal>
 
-    <a-modal v-model:open="bugEditOpen" width="640px" :title="bugFormMode === 'edit' ? '编辑Bug' : '新增Bug'" centered>
+    <a-modal v-model:open="bugEditOpen" width="640px" :title="bugFormMode === 'edit' ? '缂栬緫Bug' : '鏂板Bug'" centered>
       <template #footer>
         <a-space>
           <a-button @click="bugEditOpen = false">取消</a-button>
@@ -467,7 +467,7 @@
         </a-space>
       </template>
       <a-form class="prototype-modal-form" layout="horizontal" :label-col="{ span: 5 }">
-        <a-form-item label="Bug标题"><a-input v-model:value="bugForm.title" placeholder="请输入Bug标题" /></a-form-item>
+        <a-form-item label="Bug标题"><a-input v-model:value="bugForm.title" placeholder="请输入 Bug 标题" /></a-form-item>
         <a-form-item label="所属项目"><a-select v-model:value="bugForm.projectId" allow-clear placeholder="请选择项目" :options="bugProjects.map(p => ({ label: p.name, value: p.id }))" /></a-form-item>
         <a-form-item label="严重等级">
           <a-select v-model:value="bugForm.priority" allow-clear placeholder="请选择"
@@ -479,11 +479,11 @@
       </a-form>
     </a-modal>
 
-    <a-modal v-model:open="bugFixOpen" width="600px" title="填写修复详情" centered>
+    <a-modal v-model:open="bugFixOpen" width="600px" title="濉啓淇璇︽儏" centered>
       <template #footer>
         <a-space>
           <a-button @click="bugFixOpen = false">取消</a-button>
-          <a-button type="primary" :loading="bugFixLoading" @click="handleFixSubmit">提交（变更为待验证）</a-button>
+          <a-button type="primary" :loading="bugFixLoading" @click="handleFixSubmit">鎻愪氦锛堝彉鏇翠负寰呴獙璇侊級</a-button>
         </a-space>
       </template>
       <a-form class="prototype-modal-form" layout="horizontal" :label-col="{ span: 5 }">
@@ -519,9 +519,9 @@
       <a-upload-dragger class="upload-dragger" :file-list="[]" name="file">
         <p class="upload-icon"><InboxOutlined /></p>
         <p>拖拽文件到此处，或点击选择文件</p>
-        <p class="muted">支持：docx、xlsx、pdf、png、jpg、drawio，单个文件不超过 50MB</p>
+        <p class="muted">支持 docx、xlsx、pdf、png、jpg、drawio，单个文件不超过 50MB</p>
       </a-upload-dragger>
-      <h3>文件列表：</h3>
+      <h3>文件列表</h3>
       <div class="upload-file-row" v-for="file in uploadFiles" :key="file.name">
         <FileTextOutlined />
         <strong>{{ file.name }}</strong>
@@ -530,7 +530,7 @@
         <a-button type="link">{{ file.percent === 100 ? '完成' : '取消' }}</a-button>
       </div>
       <a-form class="upload-meta-form" layout="inline">
-        <a-form-item label="存储位置"><a-select value="默认" :options="storeOptions" /></a-form-item>
+        <a-form-item label="存储位置"><a-select value="默认存储" :options="storeOptions" /></a-form-item>
         <a-form-item label="文件分类"><a-select value="需求类" :options="categoryOptions" /></a-form-item>
         <a-form-item label="版本说明"><a-textarea placeholder="请输入版本更新说明..." :rows="3" /></a-form-item>
       </a-form>
@@ -700,11 +700,11 @@ const selectedDailyDateText = computed(() => selectedDailyDate.value.format('YYY
 const currentDailyReport = computed(() => dailyReports.value[0])
 const dailyProjectText = computed(() => {
   const report = currentDailyReport.value
-  return report?.projectName || report?.project?.name || (report?.projectId ? `项目ID：${report.projectId}` : '-')
+  return report?.projectName || report?.project?.name || (report?.projectId ? `椤圭洰ID锛?{report.projectId}` : '-')
 })
 const dailyReporterText = computed(() => {
   const report = currentDailyReport.value
-  return report?.reporterName || report?.reporter?.name || report?.createdByName || report?.creatorName || (report?.reporterId ? `用户ID：${report.reporterId}` : '-')
+  return report?.reporterName || report?.reporter?.name || report?.createdByName || report?.creatorName || (report?.reporterId ? `鐢ㄦ埛ID锛?{report.reporterId}` : '-')
 })
 const dailyContentText = computed(() => currentDailyReport.value?.content || '')
 const weekStart = computed(() => selectedDailyDate.value.subtract((selectedDailyDate.value.day() + 6) % 7, 'day'))
@@ -772,11 +772,11 @@ function getTaskLabel(type, value) {
 }
 
 function getTaskUserName(userId) {
-  return taskUsers.value.find(item => item.id === userId)?.realName || (userId ? `用户 ${userId}` : '-')
+  return taskUsers.value.find(item => item.id === userId)?.realName || (userId ? `閻劍鍩?${userId}` : '-')
 }
 
 function getTaskProjectName(projectId) {
-  return taskProjects.value.find(item => item.id === projectId)?.name || (projectId ? `项目 ${projectId}` : '-')
+  return taskProjects.value.find(item => item.id === projectId)?.name || (projectId ? `妞ゅ湱娲?${projectId}` : '-')
 }
 
 function getTaskRoleName(task) {
@@ -785,7 +785,6 @@ function getTaskRoleName(task) {
   if (roleName.includes('开发') || /dev/i.test(roleName)) return '开发'
   return route.name === 'TestingTasks' ? '测试' : '开发'
 }
-
 function getTaskProgress(status) {
   if (status === 'COMPLETED') return 100
   if (status === 'IN_PROGRESS') return 60
@@ -966,7 +965,7 @@ async function loadMyStatistics() {
     await nextTick()
     renderStatisticsCharts()
   } catch (error) {
-    message.error(error.message || '统计数据加载失败')
+    message.error(error.message || '缁熻鏁版嵁鍔犺浇澶辫触')
   } finally {
     statsLoading.value = false
   }
@@ -984,7 +983,7 @@ function renderStatisticsCharts() {
   projectChart = echarts.init(projectChartRef.value)
   statusChart = echarts.init(statusChartRef.value)
 
-  // 任务完成趋势
+  // 浠诲姟瀹屾垚瓒嬪娍
   const trendPoints = stats?.completionTrend || []
   const trendDates = trendPoints.map(p => dayjs(p.date).format('MM/DD'))
   const trendValues = trendPoints.map(p => p.count)
@@ -994,13 +993,13 @@ function renderStatisticsCharts() {
     color: ['#2f80ed'],
     tooltip: {
       trigger: 'axis',
-      formatter: params => `${params[0].axisValue}<br/>完成数：${params[0].value}`,
+      formatter: params => `${params[0].axisValue}<br/>瀹屾垚閺佸府绱?{params[0].value}`,
     },
     grid: { top: 28, right: 24, bottom: 34, left: 42 },
     xAxis: {
       type: 'category',
       boundaryGap: false,
-      data: trendDates.length ? trendDates : ['暂无数据'],
+      data: trendDates.length ? trendDates : ['閺嗗倹妫ら弫鐗堝祦'],
       axisLine: { lineStyle: { color: '#d8dee8' } },
       axisLabel: { color: '#6b7280', fontSize: 12 },
       axisTick: { show: false },
@@ -1014,7 +1013,7 @@ function renderStatisticsCharts() {
       axisLabel: { color: '#6b7280', fontSize: 12 },
     },
     series: [{
-      name: '完成数',
+      name: '瀹屾垚鏁?,
       type: 'line',
       smooth: false,
       symbol: 'circle',
@@ -1027,7 +1026,7 @@ function renderStatisticsCharts() {
     }],
   })
 
-  // 项目分布
+  // 椤圭洰鍒嗗竷
   const projectDist = stats?.projectDistribution || {}
   const projectData = Object.entries(projectDist).map(([name, value], i) => ({
     value,
@@ -1035,11 +1034,11 @@ function renderStatisticsCharts() {
     itemStyle: { color: CHART_COLORS[i % CHART_COLORS.length] },
   }))
   projectChart.setOption(createDonutOption(
-    projectData.length ? projectData : [{ value: 1, name: '暂无数据', itemStyle: { color: '#c8cfd9' } }],
+    projectData.length ? projectData : [{ value: 1, name: '閺嗗倹妫ら弫鐗堝祦', itemStyle: { color: '#c8cfd9' } }],
     CHART_COLORS,
   ))
 
-  // 任务状态分布
+  // 浠诲姟鐘舵€佸垎甯?
   const statusDist = stats?.taskStatusDistribution || {}
   const statusData = Object.entries(statusDist).map(([code, value]) => ({
     value,
@@ -1047,7 +1046,7 @@ function renderStatisticsCharts() {
     itemStyle: { color: STATUS_COLOR_MAP[code] || '#c8cfd9' },
   }))
   statusChart.setOption(createDonutOption(
-    statusData.length ? statusData : [{ value: 1, name: '暂无数据', itemStyle: { color: '#c8cfd9' } }],
+    statusData.length ? statusData : [{ value: 1, name: '閺嗗倹妫ら弫鐗堝祦', itemStyle: { color: '#c8cfd9' } }],
     Object.values(STATUS_COLOR_MAP),
   ))
 }
@@ -1080,7 +1079,7 @@ const handleTaskDetail = async record => {
   try {
     selectedTaskDetail.value = await getTaskById(record.id)
   } catch (error) {
-    message.error(error.message || '任务详情加载失败')
+    message.error(error.message || '浠诲姟璇︽儏鍔犺浇澶辫触')
   } finally {
     taskDetailLoading.value = false
   }
@@ -1103,7 +1102,7 @@ const openTaskModal = (mode, record) => {
     taskFormState.value = {
       projectId: undefined,
       name: '',
-      roleName: route.name === 'TestingTasks' ? '测试' : (route.name === 'DevelopmentTasks' ? '开发' : undefined),
+      roleName: route.name === 'TestingTasks' ? '测试' : (route.name === 'DevelopmentTasks' ? '开发 : undefined),
       priority: undefined,
       assigneeId: undefined,
       status: undefined,
@@ -1160,10 +1159,10 @@ const handleTaskSubmit = async () => {
         actualEndDate: fs.actualEndDate ? fs.actualEndDate.format('YYYY-MM-DD') : undefined,
       }
     } else {
-      if (!fs.name) { message.warning('请输入任务名称'); taskSubmitLoading.value = false; return }
-      if (!fs.projectId) { message.warning('请选择所属项目'); taskSubmitLoading.value = false; return }
-      if (!fs.assigneeId) { message.warning('请选择负责人'); taskSubmitLoading.value = false; return }
-      if (!fs.priority) { message.warning('请选择优先级'); taskSubmitLoading.value = false; return }
+      if (!fs.name) { message.warning('请输入任务名称); taskSubmitLoading.value = false; return }
+      if (!fs.projectId) { message.warning('璇烽€夋嫨所属项目); taskSubmitLoading.value = false; return }
+      if (!fs.assigneeId) { message.warning('璇烽€夋嫨负责人); taskSubmitLoading.value = false; return }
+      if (!fs.priority) { message.warning('璇烽€夋嫨优先级); taskSubmitLoading.value = false; return }
       body = {
         projectId: fs.projectId,
         name: fs.name,
@@ -1242,7 +1241,7 @@ const handleOpenBugModal = (mode, record) => {
 
 const handleBugSubmit = async () => {
   const f = bugForm.value
-  if (!f.title) { message.warning('请输入Bug标题'); return }
+  if (!f.title) { message.warning('鐠囩柉绶崗顧坲g鏍囬'); return }
   bugSubmitLoading.value = true
   try {
     const body = {
@@ -1255,15 +1254,15 @@ const handleBugSubmit = async () => {
     }
     if (bugEditingId.value) {
       await updateBug(bugEditingId.value, body)
-      message.success('Bug更新成功')
+      message.success('Bug鏇存柊鎴愬姛')
     } else {
       await createBug(body)
-      message.success('Bug提交成功')
+      message.success('Bug鎻愪氦鎴愬姛')
     }
     bugEditOpen.value = false
     await loadMyBugs()
   } catch (error) {
-    message.error(error.message || (bugEditingId.value ? 'Bug更新失败' : 'Bug提交失败'))
+    message.error(error.message || (bugEditingId.value ? 'Bug閺囧瓨鏌婃径杈Е' : 'Bug閹绘劒姘︽径杈Е'))
   } finally {
     bugSubmitLoading.value = false
   }
@@ -1272,10 +1271,10 @@ const handleBugSubmit = async () => {
 const handleDeleteBug = async record => {
   try {
     await deleteBug(record.id)
-    message.success('Bug已删除')
+    message.success('Bug宸插垹闄?)
     await loadMyBugs()
   } catch (error) {
-    message.error(error.message || '删除失败')
+    message.error(error.message || '删除婢惰精瑙?)
   }
 }
 
@@ -1283,13 +1282,13 @@ const handleVerifyBug = async record => {
   bugVerifyLoading.value = true
   try {
     await closeBug(record.id)
-    message.success('验证通过，Bug已关闭')
+    message.success('楠岃瘉閫氳繃锛孊ug宸插叧闂?)
     await loadMyBugs()
     if (selectedBugDetail.value?.id === record.id) {
-      selectedBugDetail.value = { ...selectedBugDetail.value, statusCode: 'CLOSED', status: '已关闭', statusColor: 'green' }
+      selectedBugDetail.value = { ...selectedBugDetail.value, statusCode: 'CLOSED', status: '宸插叧闂?, statusColor: 'green' }
     }
   } catch (error) {
-    message.error(error.message || '操作失败')
+    message.error(error.message || '操作婢惰精瑙?)
   } finally {
     bugVerifyLoading.value = false
   }
@@ -1305,18 +1304,18 @@ const handleFixSubmit = async () => {
   bugFixLoading.value = true
   try {
     await fixBug(bugFixBugId.value, bugFixForm.value)
-    message.success('修复详情已提交，Bug状态变为待验证')
+    message.success('娣囶喖顦茶鎯呭鍙夊絹娴溿倧绱滲ug閻樿埖鈧礁褰夋稉鍝勭窡妤犲矁鐦?)
     bugFixOpen.value = false
     await loadMyBugs()
   } catch (error) {
-    message.error(error.message || '提交失败')
+    message.error(error.message || '閹绘劒姘︽径杈Е')
   } finally {
     bugFixLoading.value = false
   }
 }
 
 const handleBugSearch = () => {
-  // filter is reactive — visibleBugs recomputes automatically
+  // filter is reactive 閳?visibleBugs recomputes automatically
 }
 
 const handleBugReset = () => {
@@ -1359,7 +1358,7 @@ const getDailyUploadIcon = name => {
 }
 
 const normalizeDailyFile = file => {
-  const name = file.name || file.fileName || file.originalName || file.url || '未命名附件'
+  const name = file.name || file.fileName || file.originalName || file.url || '鏈懡鍚嶉檮浠?
   return {
     id: file.id || file.fileId || name,
     name,
@@ -1419,7 +1418,7 @@ const loadDailyReports = async () => {
   } catch (error) {
     dailyReports.value = []
     dailyHasRecord.value = false
-    dailyError.value = error.message || '日报加载失败'
+    dailyError.value = error.message || '鏃ユ姤鍔犺浇澶辫触'
   } finally {
     dailyLoading.value = false
   }
@@ -1430,7 +1429,7 @@ const handleCreateDailyReport = async () => {
 
   const content = dailyForm.value.content.trim()
   if (!content) {
-    message.warning('请输入工作内容')
+    message.warning('璇疯緭鍏ュ伐浣滃唴瀹?)
     return
   }
 
@@ -1443,9 +1442,9 @@ const handleCreateDailyReport = async () => {
     dailyEditOpen.value = false
     selectedDailyDate.value = dailyForm.value.reportDate
     await loadDailyReports()
-    message.success('日报新建成功')
+    message.success('鏃ユ姤鏂板缓鎴愬姛')
   } catch (error) {
-    message.error(error.message || '日报新建失败')
+    message.error(error.message || '鏃ユ姤閺傛澘缂撴径杈Е')
   } finally {
     dailySubmitLoading.value = false
   }
@@ -1462,31 +1461,31 @@ watch(statsPeriod, () => {
 })
 
 const selectOptions = [
-  { label: '全部', value: '全部' },
-  { label: '张三', value: '张三' },
-  { label: '李四', value: '李四' },
+  { label: '鍏ㄩ儴', value: '鍏ㄩ儴' },
+  { label: '寮犱笁', value: '寮犱笁' },
+  { label: '鏉庡洓', value: '鏉庡洓' },
 ]
-const projectGroupOptions = [{ label: '所属项目', value: '所属项目' }]
+const projectGroupOptions = [{ label: '所属项目, value: '所属项目 }]
 const projectOptions = [
-  { label: 'XX企业数字化管理系统', value: 'XX企业数字化管理系统' },
-  { label: 'YY电子商务平台建设', value: 'YY电子商务平台建设' },
+  { label: 'XX浼佷笟鏁板瓧鍖栫鐞嗙郴缁?, value: 'XX浼佷笟鏁板瓧鍖栫鐞嗙郴缁? },
+  { label: 'YY鐢靛瓙鍟嗗姟骞冲彴寤鸿', value: 'YY鐢靛瓙鍟嗗姟骞冲彴寤鸿' },
 ]
-const userOptions = [{ label: '张三', value: '张三' }, { label: '李四', value: '李四' }]
-const statusOptions = [{ label: '未开始', value: '未开始' }, { label: '进行中', value: '进行中' }, { label: '已完成', value: '已完成' }]
-const roleOptions = [{ label: '开发', value: '开发' }, { label: '测试', value: '测试' }]
-const priorityOptions = [{ label: '紧急', value: '紧急' }, { label: '高', value: '高' }, { label: '中', value: '中' }, { label: '低', value: '低' }]
-const bugLevelOptions = [{ label: '严重', value: '严重' }, { label: '致命', value: '致命' }, { label: '一般', value: '一般' }]
-const taskOptions = [{ label: '用户管理模块前端开发', value: '用户管理模块前端开发' }]
-const todayOptions = [{ label: '今天', value: '今天' }, { label: '本周', value: '本周' }, { label: '本月', value: '本月' }]
-const storeOptions = [{ label: '默认', value: '默认' }]
-const categoryOptions = [{ label: '需求类', value: '需求类' }, { label: '设计类', value: '设计类' }]
+const userOptions = [{ label: '寮犱笁', value: '寮犱笁' }, { label: '鏉庡洓', value: '鏉庡洓' }]
+const statusOptions = [{ label: '鏈紑濮?, value: '鏈紑濮? }, { label: '杩涜涓?, value: '杩涜涓? }, { label: '宸插畬鎴?, value: '宸插畬鎴? }]
+const roleOptions = [{ label: '开发, value: '开发 }, { label: '测试', value: '测试' }]
+const priorityOptions = [{ label: '绱ф€?, value: '绱ф€? }, { label: '楂?, value: '楂? }, { label: '涓?, value: '涓? }, { label: '浣?, value: '浣? }]
+const bugLevelOptions = [{ label: '涓ラ噸', value: '涓ラ噸' }, { label: '鑷村懡', value: '鑷村懡' }, { label: '涓€鑸?, value: '涓€鑸? }]
+const taskOptions = [{ label: '鐢ㄦ埛绠＄悊妯″潡鍓嶇开发, value: '鐢ㄦ埛绠＄悊妯″潡鍓嶇开发 }]
+const todayOptions = [{ label: '浠婂ぉ', value: '浠婂ぉ' }, { label: '鏈懆', value: '鏈懆' }, { label: '鏈湀', value: '鏈湀' }]
+const storeOptions = [{ label: '榛樿', value: '榛樿' }]
+const categoryOptions = [{ label: '闇€姹傜被', value: '闇€姹傜被' }, { label: '璁捐绫?, value: '璁捐绫? }]
 
 const smallPagination = {
   current: 1,
   pageSize: 6,
   total: 6,
   showSizeChanger: false,
-  showTotal: total => `共 ${total} 条`,
+  showTotal: total => `共 ${total} 鏉,
 }
 
 const personalTaskColumns = [
@@ -1500,83 +1499,83 @@ const personalTaskColumns = [
   { title: '状态', dataIndex: 'status', width: 100 },
   { title: '计划开始日期', dataIndex: 'planStart', width: 125 },
   { title: '实际开始日期', dataIndex: 'actualStart', width: 125 },
-  { title: '计划完成日期', dataIndex: 'planEnd', width: 125 },
-  { title: '实际完成日期', dataIndex: 'actualEnd', width: 125 },
+  { title: '计划结束日期', dataIndex: 'planEnd', width: 125 },
+  { title: '实际结束日期', dataIndex: 'actualEnd', width: 125 },
   { title: '操作', dataIndex: 'operation', fixed: 'right', width: 100 },
 ]
 
 const personalBugColumns = [
   { title: '序号', dataIndex: 'index', width: 70 },
-  { title: 'Bug编号', dataIndex: 'code', width: 130 },
-  { title: 'Bug标题', dataIndex: 'title', width: 240 },
-  { title: '所属项目', dataIndex: 'project', width: 220 },
-  { title: '严重等级', dataIndex: 'level', width: 110 },
-  { title: '状态', dataIndex: 'status', width: 110 },
-  { title: '指定人', dataIndex: 'assignee', width: 100 },
-  { title: '创建人', dataIndex: 'creator', width: 100 },
-  { title: '创建日期', dataIndex: 'createdAt', width: 130 },
+  { title: 'Bug缂栧彿', dataIndex: 'code', width: 130 },
+  { title: 'Bug鏍囬', dataIndex: 'title', width: 240 },
+  { title: '所属项目, dataIndex: 'project', width: 220 },
+  { title: '涓ラ噸绛夌骇', dataIndex: 'level', width: 110 },
+  { title: '状态, dataIndex: 'status', width: 110 },
+  { title: '鎸囧畾浜?, dataIndex: 'assignee', width: 100 },
+  { title: '鍒涘缓浜?, dataIndex: 'creator', width: 100 },
+  { title: '鍒涘缓鏃ユ湡', dataIndex: 'createdAt', width: 130 },
   { title: '操作', dataIndex: 'operation', fixed: 'right', width: 220 },
 ]
 
 
 const attachmentColumns = [
-  { title: '文件名', dataIndex: 'name' },
-  { title: '类型', dataIndex: 'type', width: 90 },
-  { title: '大小', dataIndex: 'size', width: 90 },
-  { title: '版本', dataIndex: 'version', width: 90 },
-  { title: '上传人', dataIndex: 'user', width: 90 },
-  { title: '上传时间', dataIndex: 'time', width: 120 },
+  { title: '鏂囦欢鍚?, dataIndex: 'name' },
+  { title: '绫诲瀷', dataIndex: 'type', width: 90 },
+  { title: '澶у皬', dataIndex: 'size', width: 90 },
+  { title: '鐗堟湰', dataIndex: 'version', width: 90 },
+  { title: '涓婁紶浜?, dataIndex: 'user', width: 90 },
+  { title: '涓婁紶鏃堕棿', dataIndex: 'time', width: 120 },
   { title: '操作', dataIndex: 'action', width: 120 },
 ]
 
 const attachments = [
-  { name: '项目需求说明书V2.0.docx', type: 'DOCX', size: '2.3MB', version: 'V2.0', user: '张三', time: '06-20 10:30' },
-  { name: '系统架构设计图.drawio', type: 'DRAWIO', size: '1.1MB', version: 'V1.0', user: '李四', time: '06-19 15:20' },
-  { name: '接口文档V1.2.docx', type: 'DOCX', size: '856KB', version: 'V1.2', user: '王五', time: '06-18 09:15' },
-  { name: '项目需求说明书V2.0.docx', type: 'DOCX', size: '2.3MB', version: 'V2.0', user: '张三', time: '06-20 10:30' },
-  { name: '系统架构设计图.drawio', type: 'DRAWIO', size: '1.1MB', version: 'V1.0', user: '李四', time: '06-19 15:20' },
-  { name: '接口文档V1.2.docx', type: 'DOCX', size: '856KB', version: 'V1.2', user: '王五', time: '06-18 09:15' },
+  { name: '椤圭洰闇€姹傝鏄庝功V2.0.docx', type: 'DOCX', size: '2.3MB', version: 'V2.0', user: '寮犱笁', time: '06-20 10:30' },
+  { name: '绯荤粺鏋舵瀯璁捐鍥?drawio', type: 'DRAWIO', size: '1.1MB', version: 'V1.0', user: '鏉庡洓', time: '06-19 15:20' },
+  { name: '鎺ュ彛鏂囨。V1.2.docx', type: 'DOCX', size: '856KB', version: 'V1.2', user: '鐜嬩簲', time: '06-18 09:15' },
+  { name: '椤圭洰闇€姹傝鏄庝功V2.0.docx', type: 'DOCX', size: '2.3MB', version: 'V2.0', user: '寮犱笁', time: '06-20 10:30' },
+  { name: '绯荤粺鏋舵瀯璁捐鍥?drawio', type: 'DRAWIO', size: '1.1MB', version: 'V1.0', user: '鏉庡洓', time: '06-19 15:20' },
+  { name: '鎺ュ彛鏂囨。V1.2.docx', type: 'DOCX', size: '856KB', version: 'V1.2', user: '鐜嬩簲', time: '06-18 09:15' },
 ]
 
 const relatedBugs = [
-  { code: 'BUG-2026-00102', title: '用户登录页面异常报错', level: '严重', status: '修复中', levelColor: 'red', statusColor: 'orange' },
-  { code: 'BUG-2026-00112', title: '权限校验绕过漏洞', level: '致命', status: '已提交', levelColor: 'red', statusColor: 'blue' },
-  { code: 'BUG-2026-00125', title: '文件上传大小限制不生效', level: '一般', status: '待验证', levelColor: 'orange', statusColor: 'purple' },
-  { code: 'BUG-2026-00125', title: '文件上传大小限制不生效', level: '一般', status: '待验证', levelColor: 'orange', statusColor: 'purple' },
-  { code: 'BUG-2026-00125', title: '文件上传大小限制不生效', level: '一般', status: '待验证', levelColor: 'orange', statusColor: 'purple' },
+  { code: 'BUG-2026-00102', title: '鐢ㄦ埛鐧诲綍椤甸潰寮傚父鎶ラ敊', level: '涓ラ噸', status: '淇涓?, levelColor: 'red', statusColor: 'orange' },
+  { code: 'BUG-2026-00112', title: '鏉冮檺鏍￠獙缁曡繃婕忔礊', level: '鑷村懡', status: '宸叉彁浜?, levelColor: 'red', statusColor: 'blue' },
+  { code: 'BUG-2026-00125', title: '鏂囦欢涓婁紶澶у皬闄愬埗涓嶇敓鏁?, level: '涓€鑸?, status: '寰呴獙璇?, levelColor: 'orange', statusColor: 'purple' },
+  { code: 'BUG-2026-00126', title: '浠诲姟绛涢€夋潯浠跺洖鏄惧紓甯?, level: '涓€鑸?, status: '寰呴獙璇?, levelColor: 'orange', statusColor: 'purple' },
+  { code: 'BUG-2026-00127', title: '鏃ユ姤鍒涘缓鍚庢湭鍗虫椂鍒锋柊', level: '涓€鑸?, status: '寰呴獙璇?, levelColor: 'orange', statusColor: 'purple' },
 ]
 
 const taskLogs = [
-  { time: '2026-06-11 14:30', user: '张三', text: '上传XX文档和图片' },
-  { time: '2026-06-10 16:00', user: '张三', text: '完成新增/编辑用户弹窗组件开发，对接后端接口' },
-  { time: '2026-06-09 09:30', user: '张三', text: '搭建页面基础框架，引入Ant Design组件库' },
-  { time: '2026-06-01 10:00', user: '张三', text: '任务创建，开始需求分析' },
+  { time: '2026-06-11 14:30', user: '寮犱笁', text: '涓婁紶闇€姹傛枃妗ｅ拰璁捐鍥剧墖' },
+  { time: '2026-06-10 16:00', user: '寮犱笁', text: '瀹屾垚鏂板/缂栬緫鐢ㄦ埛寮圭獥缁勪欢寮€鍙戯紝骞跺鎺ュ悗绔帴鍙? },
+  { time: '2026-06-09 09:30', user: '寮犱笁', text: '鎼缓椤甸潰鍩虹妗嗘灦锛屽苟寮曞叆 Ant Design 缁勪欢搴? },
+  { time: '2026-06-01 10:00', user: '寮犱笁', text: '浠诲姟鍒涘缓锛屽紑濮嬮渶姹傚垎鏋? },
 ]
 
 const uploadFiles = [
-  { name: '项目需求说明书V2.0.docx', size: '2.3MB', percent: 80 },
-  { name: '系统架构图.drawio', size: '1.1MB', percent: 100 },
+  { name: '椤圭洰闇€姹傝鏄庝功V2.0.docx', size: '2.3MB', percent: 80 },
+  { name: '绯荤粺鏋舵瀯鍥?drawio', size: '1.1MB', percent: 100 },
 ]
 
 const STATS_PERIOD_OPTIONS = [
-  { label: '今天', value: 'today' },
-  { label: '本周', value: 'week' },
-  { label: '本月', value: 'month' },
-  { label: '全年', value: 'year' },
+  { label: '浠婂ぉ', value: 'today' },
+  { label: '鏈懆', value: 'week' },
+  { label: '鏈湀', value: 'month' },
+  { label: '鍏ㄥ勾', value: 'year' },
 ]
 
 const CHART_COLORS = ['#1677ff', '#69b1ff', '#27c27a', '#ff7a45', '#9254de', '#c8cfd9']
-const STATUS_LABEL_MAP = { COMPLETED: '已完成', IN_PROGRESS: '进行中', DUE_SOON: '即将到期', OVERDUE: '逾期', NOT_STARTED: '待开始', PAUSED: '暂停' }
+const STATUS_LABEL_MAP = { COMPLETED: '宸插畬鎴?, IN_PROGRESS: '杩涜涓?, DUE_SOON: '鍗冲皢鍒版湡', OVERDUE: '閫炬湡', NOT_STARTED: '鏈紑濮?, PAUSED: '鏆傚仠' }
 const STATUS_COLOR_MAP = { COMPLETED: '#27c27a', IN_PROGRESS: '#1677ff', DUE_SOON: '#ff7a45', OVERDUE: '#ff4d4f', NOT_STARTED: '#c8cfd9', PAUSED: '#9254de' }
 
 const statCards = computed(() => {
   const s = statsData.value
   return [
-    { label: '总任务', value: s ? `${s.myTaskTotal} 个` : '-', icon: ScheduleOutlined, className: 'blue' },
-    { label: '已完成', value: s ? `${s.myTaskCompleted} 个` : '-', icon: CheckCircleOutlined, className: 'cyan' },
-    { label: '逾期', value: s ? `${s.myTaskOverdue} 个` : '-', icon: ExclamationCircleOutlined, className: 'red' },
-    { label: '我的 Bug', value: s ? `${s.myBugTotal} 个` : '-', icon: BugOutlined, className: 'orange' },
-    { label: '未关闭 Bug', value: s ? `${s.myBugOpen} 个` : '-', icon: ExclamationCircleOutlined, className: 'purple' },
+    { label: '鎬讳换鍔?, value: s ? `${s.myTaskTotal} 椤筦 : '-', icon: ScheduleOutlined, className: 'blue' },
+    { label: '宸插畬鎴?, value: s ? `${s.myTaskCompleted} 椤筦 : '-', icon: CheckCircleOutlined, className: 'cyan' },
+    { label: '閫炬湡', value: s ? `${s.myTaskOverdue} 椤筦 : '-', icon: ExclamationCircleOutlined, className: 'red' },
+    { label: '鎴戠殑 Bug', value: s ? `${s.myBugTotal} 椤筦 : '-', icon: BugOutlined, className: 'orange' },
+    { label: '鏈叧闂瑽ug', value: s ? `${s.myBugOpen} 椤筦 : '-', icon: ExclamationCircleOutlined, className: 'purple' },
   ]
 })
 
@@ -2725,3 +2724,4 @@ const trendPoints = [
   background-clip: content-box;
 }
 </style>
+

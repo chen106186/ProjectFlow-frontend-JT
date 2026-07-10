@@ -41,7 +41,7 @@
           >
             <template #bodyCell="{ column, record, text, index }">
               <template v-if="column.dataIndex === 'index'">{{ (current - 1) * pageSize + index + 1 }}</template>
-              <template v-else-if="column.dataIndex === 'id'"><span class="bug-id">#{{ text }}</span></template>
+              <template v-else-if="column.dataIndex === 'id'"><span class="bug-id">{{ text }}</span></template>
               <template v-else-if="column.dataIndex === 'title'">
                 <a-button type="link" class="bug-title-link" @click="handleDetail(record)">{{ text }}</a-button>
               </template>
@@ -55,8 +55,8 @@
               <template v-else-if="column.dataIndex === 'operation'">
                 <a-space>
                   <a-button type="link" size="small" @click="handleDetail(record)">详情</a-button>
-                  <a-button v-if="record.status !== 'CLOSED'" type="link" size="small" @click="handleEdit(record)">编辑</a-button>
-                  <a-button v-if="record.status !== 'CLOSED'" type="link" size="small" danger @click="handleDeleteBug(record)">删除</a-button>
+                  <a-button v-if="!isClosedBug(record)" type="link" size="small" @click="handleEdit(record)">编辑</a-button>
+                  <a-button v-if="!isClosedBug(record)" type="link" size="small" danger @click="handleDeleteBug(record)">删除</a-button>
                 </a-space>
               </template>
             </template>
@@ -75,7 +75,7 @@
               size="middle"
             >
               <template #bodyCell="{ column, record, text }">
-                <template v-if="column.dataIndex === 'id'"><span class="bug-id">#{{ text }}</span></template>
+                <template v-if="column.dataIndex === 'id'"><span class="bug-id">{{ text }}</span></template>
                 <template v-else-if="column.dataIndex === 'title'">
                   <a-button type="link" class="bug-title-link" @click="handleDetail(record)">{{ text }}</a-button>
                 </template>
@@ -89,8 +89,8 @@
                 <template v-else-if="column.dataIndex === 'operation'">
                   <a-space>
                     <a-button type="link" size="small" @click="handleDetail(record)">详情</a-button>
-                    <a-button v-if="record.status !== 'CLOSED'" type="link" size="small" @click="handleEdit(record)">编辑</a-button>
-                    <a-button v-if="record.status !== 'CLOSED'" type="link" size="small" danger @click="handleDeleteBug(record)">删除</a-button>
+                    <a-button v-if="!isClosedBug(record)" type="link" size="small" @click="handleEdit(record)">编辑</a-button>
+                    <a-button v-if="!isClosedBug(record)" type="link" size="small" danger @click="handleDeleteBug(record)">删除</a-button>
                   </a-space>
                 </template>
               </template>
@@ -109,7 +109,7 @@
         <div class="bug-form-fields">
           <a-form-item label="Bug标题" name="title"><a-input v-model:value="formState.title" placeholder="请输入Bug标题" /></a-form-item>
           <a-form-item label="所属项目" name="projectId"><a-select v-model:value="formState.projectId" :options="projectOptions" placeholder="请选择所属项目" /></a-form-item>
-          <a-form-item label="指派给" name="assigneeId"><a-select v-model:value="formState.assigneeId" :options="userOptions" placeholder="请选择负责人" show-search option-filter-prop="label" /></a-form-item>
+          <a-form-item label="指派给" name="assigneeId"><a-select v-model:value="formState.assigneeId" :options="bugFormUserOptions" placeholder="请选择负责人" show-search option-filter-prop="label" /></a-form-item>
           <a-form-item label="优先级" name="priority"><a-select v-model:value="formState.priority" :options="priorityOptions" /></a-form-item>
           <a-form-item label="问题描述" name="description"><a-textarea v-model:value="formState.description" :rows="6" placeholder="请输入问题描述" /></a-form-item>
           <a-form-item label="重现步骤">
@@ -131,7 +131,7 @@
             <section class="detail-section detail-basic">
               <h2>基本信息</h2>
               <a-descriptions bordered :column="2">
-                <a-descriptions-item label="Bug ID">#{{ selectedBug.id }}</a-descriptions-item>
+                <a-descriptions-item label="Bug ID">{{ selectedBug.id }}</a-descriptions-item>
                 <a-descriptions-item label="标题">{{ selectedBug.title }}</a-descriptions-item>
                 <a-descriptions-item label="所属项目">{{ selectedBug.projectName || '-' }}</a-descriptions-item>
                 <a-descriptions-item label="优先级">
@@ -165,7 +165,7 @@
                   <div v-if="!comments.length" style="padding: 12px; color: #999; text-align: center;">暂无评论</div>
                 </div>
               </a-spin>
-              <template v-if="selectedBug.status !== 'CLOSED'">
+              <template v-if="!isClosedBug(selectedBug)">
                 <div class="comment-rich-editor">
                   <Toolbar :editor="commentEditorRef" :default-config="toolbarConfig" mode="default" />
                   <Editor v-model="commentContent" :default-config="commentEditorConfig" mode="default" @on-created="handleCommentEditorCreated" />
@@ -174,7 +174,7 @@
               </template>
             </section>
 
-            <div v-if="selectedBug.status !== 'CLOSED'" class="detail-actions">
+            <div v-if="!isClosedBug(selectedBug)" class="detail-actions">
               <a-button type="primary" @click="handleEditFromDetail">编辑</a-button>
               <a-button @click="assignVisible = true">指派</a-button>
               <a-button danger :loading="closeLoading" @click="handleCloseBug">关闭Bug</a-button>
@@ -229,8 +229,14 @@ const groupOptions = [
 
 const projects = ref([])
 const users = ref([])
+const currentUserId = computed(() => {
+  try { return JSON.parse(localStorage.getItem('userInfo') || '{}').userId || null } catch { return null }
+})
 const projectOptions = computed(() => projects.value.map(p => ({ label: p.name, value: p.id })))
 const userOptions = computed(() => users.value.map(u => ({ label: u.realName, value: u.id })))
+const bugFormUserOptions = computed(() => users.value
+  .filter(user => String(user.id) !== String(currentUserId.value))
+  .map(user => ({ label: user.realName, value: user.id })))
 
 const bugs = ref([])
 const total = ref(0)
@@ -265,6 +271,11 @@ const groupedBugs = computed(() => {
   }
   return result
 })
+
+const isClosedBug = bug => {
+  if (!bug) return false
+  return bug.status === 'CLOSED' || bug.status === '已关闭' || bug.statusCode === 'CLOSED'
+}
 
 const loadBugs = async () => {
   listLoading.value = true
@@ -386,6 +397,10 @@ const handleEditorCreated = editor => { editorRef.value = editor }
 const handleSubmit = async () => {
   if (submitLoading.value) return
   await formRef.value?.validate()
+  if (formState.assigneeId && String(formState.assigneeId) === String(currentUserId.value)) {
+    message.warning('Bug 不能指定给自己，请选择其他负责人')
+    return
+  }
   submitLoading.value = true
   try {
     const body = {
@@ -482,7 +497,7 @@ onBeforeUnmount(() => {
 
 onMounted(async () => {
   const [projectRes, userRes] = await Promise.all([
-    getProjectList({ pageSize: 500 }).catch(() => ({ records: [] })),
+    getProjectList({ projectType: 'EXECUTION', pageSize: 500 }).catch(() => ({ records: [] })),
     getSystemUsers({ pageSize: 500 }).catch(() => ({ records: [] })),
   ])
   projects.value = projectRes.records || []
