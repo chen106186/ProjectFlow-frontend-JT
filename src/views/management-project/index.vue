@@ -359,7 +359,20 @@ const ganttFormRules = {
   progress: [{ required: true, message: '请输入节点进度', trigger: 'change' }],
 }
 
-const risks = [{ label: '高风险任务', value: '3 个', desc: '延期 ≥ 3 天', class: 'risk-high', icon: FireOutlined }, { label: '中风险任务', value: '2 个', desc: '延期 1 - 2 天', class: 'risk-medium', icon: WarningOutlined }, { label: '即将到期', value: '4 个', desc: '未来 3 天内到期', class: 'risk-due', icon: ClockCircleOutlined }, { label: '按计划进行', value: '8 个', desc: '无延期风险', class: 'risk-normal', icon: CheckCircleOutlined }]
+const risks = computed(() => {
+  const today = dayjs().startOf('day')
+  const nodes = ganttNodeRows.value.filter(n => n.planEnd !== '-' && n.statusCode !== 'COMPLETED')
+  const highRisk = nodes.filter(n => today.diff(dayjs(n.planEnd.replaceAll('/', '-')), 'day') >= 3).length
+  const medRisk = nodes.filter(n => { const d = today.diff(dayjs(n.planEnd.replaceAll('/', '-')), 'day'); return d >= 1 && d < 3 }).length
+  const dueSoon = nodes.filter(n => { const diff = dayjs(n.planEnd.replaceAll('/', '-')).diff(today, 'day'); return diff >= 0 && diff <= 3 }).length
+  const onTrack = nodes.filter(n => dayjs(n.planEnd.replaceAll('/', '-')).diff(today, 'day') > 3).length
+  return [
+    { label: '高风险节点', value: `${highRisk} 个`, desc: '延期 ≥ 3 天', class: 'risk-high', icon: FireOutlined },
+    { label: '中风险节点', value: `${medRisk} 个`, desc: '延期 1 - 2 天', class: 'risk-medium', icon: WarningOutlined },
+    { label: '即将到期', value: `${dueSoon} 个`, desc: '未来 3 天内到期', class: 'risk-due', icon: ClockCircleOutlined },
+    { label: '按计划进行', value: `${onTrack} 个`, desc: '无延期风险', class: 'risk-normal', icon: CheckCircleOutlined },
+  ]
+})
 const taskColumns = [{ title: '序号', dataIndex: 'id', width: 60 }, { title: '任务名称', dataIndex: 'name', width: 180 }, { title: '负责人', dataIndex: 'owner', width: 90 }, { title: '优先级', dataIndex: 'priority', width: 80 }, { title: '状态', dataIndex: 'status', width: 90 }, { title: '计划开始', dataIndex: 'planStart', width: 110 }, { title: '计划结束', dataIndex: 'planEnd', width: 110 }, { title: '实际开始', dataIndex: 'actualStart', width: 110 }, { title: '实际结束', dataIndex: 'actualEnd', width: 110 }]
 const taskRows = ref([])
 const taskStatusFilters = toOptions(['全部状态', '未开始', '进行中', '已完成'])
@@ -561,8 +574,9 @@ const syncRoute = async () => {
   if (viewMode.value === 'edit') {
     detailLoading.value = true
     try {
-      const project = await getProjectDetail(projectId)
+      const [project, nodes] = await Promise.all([getProjectDetail(projectId), getGanttNodes(projectId)])
       Object.assign(formState, createDefaultForm(), mapProjectToForm(project))
+      formState.nodes = nodes.map(n => n.nodeName)
       editingId.value = project.id
     } catch (error) {
       message.error(error.message)
@@ -593,8 +607,8 @@ const handleGanttRow = record => ({
     Object.assign(ganttForm, {
       id: record.id,
       name: record.name,
-      planStart: record.planStart.replaceAll('/', '-'),
-      planEnd: record.planEnd.replaceAll('/', '-'),
+      planStart: record.planStart === '-' ? undefined : record.planStart.replaceAll('/', '-'),
+      planEnd: record.planEnd === '-' ? undefined : record.planEnd.replaceAll('/', '-'),
       actualStart: record.actualStart === '-' ? undefined : record.actualStart.replaceAll('/', '-'),
       actualEnd: record.actualEnd === '-' ? undefined : record.actualEnd.replaceAll('/', '-'),
       status: record.statusCode,
@@ -743,6 +757,11 @@ const handleSubmit = async () => {
       businessSupervisor: formState.supervisor,
       receivableAmount: formState.amount,
       description: formState.description,
+    }
+    if (editingId.value) {
+      projectData.nodeNames = formState.nodes
+    } else if (formState.nodes.length) {
+      projectData.nodes = formState.nodes.map(name => ({ nodeName: name }))
     }
     const savedProject = editingId.value
       ? await updateProject(editingId.value, projectData)

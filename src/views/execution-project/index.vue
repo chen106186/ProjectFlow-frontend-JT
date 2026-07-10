@@ -222,6 +222,17 @@ const handleSubmit = async () => {
       status: formState.status,
       description: formState.description,
     }
+    if (!editingId.value) {
+      data.nodes = [
+        { nodeName: '项目立项' },
+        { nodeName: '需求分析' },
+        { nodeName: 'UI设计' },
+        { nodeName: '开发阶段' },
+        { nodeName: '测试阶段' },
+        { nodeName: '上线试运行' },
+        { nodeName: '部署' },
+      ]
+    }
     const savedProject = editingId.value
       ? await updateProject(editingId.value, data)
       : await createProject(data)

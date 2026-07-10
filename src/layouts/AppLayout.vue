@@ -207,14 +207,6 @@ const navigationItems = [
     matches: [path => path.startsWith('/daily-reports')],
   },
   {
-    key: '/project-reports',
-    path: '/project-reports',
-    label: '项目汇报管理',
-    icon: FolderOpenOutlined,
-    accessCodes: ['project-report'],
-    matches: [path => path.startsWith('/project-reports')],
-  },
-  {
     key: 'settings',
     label: '系统设置',
     icon: SettingOutlined,
@@ -244,7 +236,6 @@ const groupPathMap = {
   'Bug 列表': '/bugs',
   文件管理: '/files',
   日报管理: '/daily-reports',
-  项目汇报管理: '/project-reports',
   系统设置: '/settings/users',
 }
 
@@ -598,6 +589,7 @@ const handleUserMenuClick = ({ key }) => {
 }
 
 .app-content__body--fixed {
+  height: calc(100vh - 68px - 52px);
   overflow: hidden;
 }
 </style>
