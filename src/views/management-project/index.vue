@@ -266,7 +266,7 @@ const typeFilterOptions = computed(() => withAll(projectTypeFormOptions.value))
 const stageFilterOptions = computed(() => withAll(stageOptions.value))
 const projectStatusFilterOptions = computed(() => withAll(projectStatusOptions.value))
 const contractFilterOptions = computed(() => withAll(contractOptions.value))
-const nodeOptions = computed(() => stageOptions.value.map(item => item.value))
+const nodeOptions = computed(() => stageOptions.value.map(item => ({ label: item.label, value: item.value })))
 const groupOptions = [{ label: '项目经理', value: 'manager' }, { label: '项目阶段', value: 'stage' }, { label: '项目状态', value: 'status' }, { label: '项目类型', value: 'type' }, { label: '合同状态', value: 'contractStatus' }]
 
 const projects = ref([])
