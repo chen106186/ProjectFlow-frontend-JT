@@ -45,7 +45,7 @@
 
     <a-modal v-model:open="formVisible" class="execution-form-modal" :title="editingId ? '编辑项目' : '新建项目'" :footer="null" :width="584" destroy-on-close>
       <a-form ref="formRef" class="execution-form" :model="formState" :rules="formRules" :label-col="{ flex: '138px' }" :wrapper-col="{ flex: '356px' }">
-        <a-form-item label="项目名称" name="name"><a-input v-model:value="formState.name" placeholder="请输入项目名称" /></a-form-item>
+        <a-form-item label="项目名称" name="name"><a-select v-model:value="formState.name" show-search :filter-option="filterOption" :options="managementProjectNameOptions" placeholder="请选择项目名称" @change="handleProjectNameChange" /></a-form-item>
         <a-form-item label="业务部门"><a-input v-model:value="formState.department" placeholder="请输入业务部门" /></a-form-item>
         <a-form-item label="项目经理" name="managerId"><a-select v-model:value="formState.managerId" :options="managerOptions" placeholder="请选择项目经理" /></a-form-item>
         <a-form-item label="参与人员"><a-select v-model:value="formState.participantIds" mode="multiple" :options="managerOptions" placeholder="请选择参与人员" /></a-form-item>
@@ -105,7 +105,7 @@ const columns = [
 const createDefaultForm = () => ({ name: '', department: '', managerId: undefined, participantIds: [], managementProjectId: undefined, stage: 'REQUIREMENT_ANALYSIS', status: 'NOT_STARTED', description: '' })
 const formState = reactive(createDefaultForm())
 const formRules = {
-  name: [{ required: true, message: '请输入项目名称', trigger: 'blur' }],
+  name: [{ required: true, message: '请选择项目名称', trigger: 'change' }],
   managerId: [{ required: true, message: '请选择项目经理', trigger: 'change' }],
   description: [{ required: true, message: '请输入项目描述', trigger: 'blur' }],
 }
@@ -124,6 +124,11 @@ const groupedProjects = computed(() => {
 
 const getManagerName = id => managerOptions.value.find(item => item.value === id)?.label || (id ? `用户 ${id}` : '-')
 const filterOption = (input, option) => option.label.toLowerCase().includes(input.toLowerCase())
+const managementProjectNameOptions = computed(() => managementProjectOptions.value.map(item => ({ label: item.label, value: item.label, projectId: item.value })))
+const handleProjectNameChange = value => {
+  const selectedProject = managementProjectNameOptions.value.find(item => item.value === value)
+  if (selectedProject) formState.managementProjectId = selectedProject.projectId
+}
 const fetchReferenceData = async () => {
   try {
     const [dicts, users, managementProjects] = await Promise.all([
