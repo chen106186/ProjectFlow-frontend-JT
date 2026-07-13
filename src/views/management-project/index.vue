@@ -232,7 +232,7 @@
         <a-form-item label="状态" name="status"><a-select v-model:value="reportForm.status" :options="reportStatusOptions" placeholder="请选择汇报状态" /></a-form-item>
         <a-form-item label="计划日期" name="planDate"><a-date-picker v-model:value="reportForm.planDate" format="YYYY-MM-DD" placeholder="请选择计划日期" /></a-form-item>
         <a-form-item label="实际日期"><a-date-picker v-model:value="reportForm.actualDate" format="YYYY-MM-DD" placeholder="请选择实际日期" /></a-form-item>
-        <a-form-item label="关联任务"><a-select v-model:value="reportForm.task" :options="reportTaskOptions" placeholder="请选择关联任务" allow-clear /></a-form-item>
+        <!--<a-form-item label="关联任务"><a-select v-model:value="reportForm.task" :options="reportTaskOptions" placeholder="请选择关联任务" allow-clear /></a-form-item>-->
         <a-form-item label="汇报对象" name="target"><a-input v-model:value="reportForm.target" placeholder="请输入汇报对象" /></a-form-item>
         <a-form-item label="地点/方式" name="place"><a-input v-model:value="reportForm.place" placeholder="请输入地点或汇报方式" /></a-form-item>
         <a-form-item label="描述" name="description"><a-textarea v-model:value="reportForm.description" :rows="4" placeholder="请输入汇报描述" /></a-form-item>
