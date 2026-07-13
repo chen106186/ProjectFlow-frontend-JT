@@ -110,6 +110,15 @@ const router = useRouter()
 const AUTH_PROFILE_KEY = 'authProfile'
 const USER_INFO_KEY = 'userInfo'
 const TOKEN_KEY = 'token'
+const MENU_CACHE_KEYS = [
+  AUTH_PROFILE_KEY,
+  USER_INFO_KEY,
+  'menus',
+  'menuList',
+  'systemMenus',
+  'roleMenus',
+  'permissions',
+]
 
 const isSiderCollapsed = ref(false)
 const openKeys = ref([])
@@ -226,7 +235,7 @@ const routeGroupMap = {
 }
 
 const rootMenuKeys = new Set(navigationItems.filter(item => item.children?.length).map(item => item.key))
-const hiddenNavigationKeys = new Set(['/requirements', '/bugs', '/files', '/daily-reports'])
+const hiddenNavigationKeys = new Set(['/files', '/daily-reports'])
 
 const groupPathMap = {
   个人工作: '/personal/tasks',
@@ -239,12 +248,21 @@ const groupPathMap = {
   系统设置: '/settings/users',
 }
 
-const canAccess = accessCodes => {
-  if (!accessCodes?.length) {
+const normalizeMenuPath = path => {
+  if (!path) {
+    return ''
+  }
+
+  const normalizedPath = String(path).replace(/\/+$/, '')
+  return normalizedPath || '/'
+}
+
+const canAccess = item => {
+  if (!item?.accessCodes?.length) {
     return true
   }
 
-  return accessCodes.some(code => authorizedCodes.value.has(code))
+  return item.accessCodes?.some(code => authorizedMenuCodes.value.has(code)) || authorizedMenuPaths.value.has(normalizeMenuPath(item.path))
 }
 
 const syncOpenKeys = path => {
@@ -271,10 +289,10 @@ const accessibleNavigation = computed(() => {
   return navigationItems
     .map(item => {
       if (!item.children) {
-        return canAccess(item.accessCodes) ? item : null
+        return canAccess(item) ? item : null
       }
 
-      const children = item.children.filter(child => canAccess(child.accessCodes))
+      const children = item.children.filter(child => canAccess(child))
       return children.length ? { ...item, children } : null
     })
     .filter(Boolean)
@@ -319,7 +337,7 @@ const currentUserName = computed(() => {
   }
 })
 
-const authorizedCodes = computed(() => {
+const authorizedMenuCodes = computed(() => {
   const codes = new Set()
 
   for (const menu of authProfile.value.menus || []) {
@@ -335,6 +353,18 @@ const authorizedCodes = computed(() => {
   }
 
   return codes
+})
+
+const authorizedMenuPaths = computed(() => {
+  const paths = new Set()
+
+  for (const menu of authProfile.value.menus || []) {
+    if (menu?.path) {
+      paths.add(normalizeMenuPath(menu.path))
+    }
+  }
+
+  return paths
 })
 
 const visibleNavigation = computed(() => {
@@ -397,6 +427,16 @@ const saveAuthProfile = profile => {
   )
 }
 
+const clearAuthCache = () => {
+  localStorage.removeItem(TOKEN_KEY)
+  MENU_CACHE_KEYS.forEach(key => localStorage.removeItem(key))
+  authProfile.value = {
+    menus: [],
+    permissions: [],
+    realName: '',
+  }
+}
+
 const loadCurrentUserProfile = async () => {
   if (!localStorage.getItem(TOKEN_KEY)) {
     profileReady.value = true
@@ -447,9 +487,7 @@ const handleNavigate = path => {
 
 const handleUserMenuClick = ({ key }) => {
   if (key === 'logout') {
-    localStorage.removeItem(TOKEN_KEY)
-    localStorage.removeItem(USER_INFO_KEY)
-    localStorage.removeItem(AUTH_PROFILE_KEY)
+    clearAuthCache()
     router.push('/login')
   }
 }
