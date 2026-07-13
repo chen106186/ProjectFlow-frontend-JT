@@ -61,7 +61,24 @@
         </section>
 
         <section v-if="activeTab === 'tasks'" class="detail-panel">
-          <h3>任务列表</h3>
+          <h3>全局风险预警</h3>
+          <div class="risk-grid">
+            <div v-for="risk in risks" :key="risk.label" class="semantic-card" :class="risk.class">
+              <span class="semantic-card__icon"><component :is="risk.icon" /></span>
+              <span class="semantic-card__content">
+                <span>{{ risk.label }}</span>
+                <strong>{{ risk.value }}</strong>
+                <small>{{ risk.desc }}</small>
+              </span>
+            </div>
+          </div>
+          <div class="section-heading">
+            <h3>任务列表</h3>
+            <a-space>
+              <a-select value="全部状态" :options="taskStatusFilters" />
+              <a-select value="全部负责人" :options="personFilterOptions" />
+            </a-space>
+          </div>
           <a-table row-key="id" :columns="taskColumns" :data-source="taskRows" :loading="taskLoading" :pagination="pagination" size="small" :scroll="{ x: 950 }">
             <template #bodyCell="{ column, text }">
               <a-tag v-if="column.dataIndex === 'priority'" color="red">{{ text }}</a-tag>
@@ -71,7 +88,23 @@
         </section>
 
         <section v-if="activeTab === 'bugs'" class="detail-panel">
-          <h3>Bug 列表</h3>
+          <h3>Bug 总览</h3>
+          <div class="bug-summary">
+            <div v-for="item in bugSummary" :key="item.label" class="semantic-card" :class="item.class">
+              <span class="semantic-card__icon"><component :is="item.icon" /></span>
+              <span class="semantic-card__content">
+                <span>{{ item.label }}</span>
+                <strong>{{ item.value }} 个</strong>
+              </span>
+            </div>
+          </div>
+          <div class="section-heading">
+            <h3>Bug 列表</h3>
+            <a-space>
+              <a-select value="全部状态" :options="bugStatusFilters" />
+              <a-select value="全部指定人" :options="personFilterOptions" />
+            </a-space>
+          </div>
           <a-table row-key="id" :columns="bugColumns" :data-source="bugRows" :loading="bugLoading" :pagination="pagination" size="small" :scroll="{ x: 900 }">
             <template #bodyCell="{ column, text }">
               <a-tag v-if="column.dataIndex === 'severity'" color="red">{{ text }}</a-tag>
@@ -319,14 +352,23 @@ defineExpose({
   padding: 12px;
 }
 
-.project-stat-row {
+.project-stat-row,
+.risk-grid,
+.bug-summary {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
+  margin-bottom: 22px;
+}
+
+.project-stat-row {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-bottom: 16px;
 }
 
-.project-stat-row .semantic-card {
+.project-stat-row .semantic-card,
+.risk-grid .semantic-card,
+.bug-summary .semantic-card {
   display: flex;
   gap: 12px;
   align-items: center;
@@ -341,9 +383,77 @@ defineExpose({
   transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.28s ease;
 }
 
-.project-stat-row .semantic-card:hover {
+.project-stat-row .semantic-card:hover,
+.risk-grid .semantic-card:hover,
+.bug-summary .semantic-card:hover {
   box-shadow: 0 14px 28px rgb(0 0 0 / 10%);
   transform: translateY(-4px);
+}
+
+.semantic-card__icon {
+  display: inline-flex;
+  flex: 0 0 36px;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  font-size: 20px;
+  background: rgb(255 255 255 / 78%);
+  border-radius: 11px;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 6%);
+}
+
+.semantic-card__content {
+  min-width: 0;
+}
+
+.semantic-card__content > span,
+.semantic-card__content strong,
+.semantic-card__content small {
+  display: block;
+}
+
+.semantic-card__content > span {
+  color: #6e6e73;
+  font-size: 13px;
+}
+
+.semantic-card__content strong {
+  margin: 3px 0;
+  color: #1d1d1f;
+  font-size: 19px;
+}
+
+.semantic-card__content small {
+  overflow: hidden;
+  color: #86868b;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gantt-progress,
+.risk-due,
+.bug-confirmed {
+  color: #0066cc;
+  background: linear-gradient(135deg, #fff 0%, #edf6ff 100%);
+}
+
+.risk-high,
+.bug-severe {
+  color: #d70015;
+  background: linear-gradient(135deg, #fff 0%, #fff0f1 100%);
+}
+
+.risk-medium,
+.bug-submitted {
+  color: #c93400;
+  background: linear-gradient(135deg, #fff 0%, #fff5e8 100%);
+}
+
+.risk-normal,
+.bug-closed {
+  color: #248a3d;
+  background: linear-gradient(135deg, #fff 0%, #eefbf2 100%);
 }
 
 .gantt-workspace {
