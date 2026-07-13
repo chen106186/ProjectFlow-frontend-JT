@@ -917,9 +917,10 @@ const handleSubmit = async () => {
 .project-form-card :deep(.ant-checkbox-group) { display: flex; flex-wrap: wrap; gap: 10px 18px; }
 .form-actions { display: flex; justify-content: flex-end; gap: 20px; }
 .form-actions .ant-btn { width: 120px; }
-.project-detail { height: 100%; min-height: 0; overflow: auto; }
+.project-detail { display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: hidden; }
 .project-detail__heading { display: flex; align-items: center; gap: 16px; margin-bottom: 6px; }
 .project-detail__heading :deep(.ant-tag) { padding: 6px 14px; font-size: 16px; }
+.project-detail :deep(.project-detail-tabs) { flex: 1; min-height: 0; }
 .project-tabs { display: flex; gap: 44px; height: 44px; padding-left: 8px; }
 .project-tabs button { display: inline-flex; align-items: center; gap: 7px; height: 44px; padding: 0 7px; background: transparent; border: 0; border-bottom: 3px solid transparent; cursor: pointer; }
 .project-tabs button.active { color: #1677ff; border-bottom-color: #1677ff; }

@@ -639,7 +639,7 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.execution-detail { height: 100%; min-width: 0; overflow: auto; color: #262626; }
+.execution-detail { display: flex; flex-direction: column; height: 100%; min-width: 0; min-height: 0; overflow: hidden; color: #262626; }
 .execution-detail__heading { display: flex; align-items: center; gap: 16px; margin-bottom: 8px; }
 .execution-detail__heading :deep(.ant-tag) { padding: 6px 14px; font-size: 16px; }
 .execution-summary { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; margin: 0 0 14px; padding: 16px 18px; background: #fff; border-radius: 8px; }
@@ -658,11 +658,11 @@ onMounted(async () => {
 .summary-metrics span { color: #8c8c8c; font-size: 12px; }
 .summary-metrics strong { font-size: 18px; }
 .summary-metrics .danger { color: #ff4d4f; }
-.execution-detail-card { min-height: 560px; overflow: hidden; background: #fff; }
-.execution-tabs { display: flex; gap: 44px; height: 44px; padding-left: 8px; }
+.execution-detail-card { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; background: #fff; }
+.execution-tabs { flex: 0 0 44px; display: flex; gap: 44px; height: 44px; padding-left: 8px; }
 .execution-tabs button { display: inline-flex; gap: 7px; align-items: center; height: 44px; padding: 0 7px; color: #1f1f1f; background: transparent; border: 0; border-bottom: 3px solid transparent; cursor: pointer; }
 .execution-tabs button.active { color: #1677ff; border-bottom-color: #1677ff; }
-.execution-tab-panel { min-height: 530px; padding: 14px; overflow: auto; }
+.execution-tab-panel { flex: 1; height: 100%; min-height: 0; padding: 14px; overflow: auto; }
 .execution-tab-panel h3 { margin: 0 0 12px; }
 .gantt-panel { padding: 12px; }
 .execution-stat-row, .risk-grid, .bug-summary, .document-categories { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 22px; }
