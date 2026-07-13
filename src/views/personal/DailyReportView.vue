@@ -21,7 +21,8 @@
             </template>
 
             <template #dateCellRender="{ current }">
-              <div v-if="reportMap[current.format('YYYY-MM-DD')]" class="dr-cal-dot" />
+              <div v-if="reportMap[current.format('YYYY-MM-DD')]" class="dr-cal-dot dr-cal-dot--done" />
+              <div v-else-if="!current.isAfter(today, 'day')" class="dr-cal-dot dr-cal-dot--missing" />
             </template>
           </a-calendar>
         </a-spin>
@@ -32,17 +33,25 @@
         <header class="dr-panel__header">
           <div class="dr-panel__date">
             <strong>{{ selectedDate.format('YYYY-MM-DD') }}</strong>
-            <span v-if="selectedDate.isSame(today, 'day')" class="dr-today-badge">今天</span>
+            <span v-if="isToday" class="dr-today-badge">今天</span>
+            <span v-else-if="isYesterday" class="dr-yesterday-badge">昨天</span>
           </div>
           <div>
-            <a-button v-if="currentReport" size="small" style="margin-right:8px" @click="openEdit">
+            <a-button v-if="currentReport && canEdit" size="small" style="margin-right:8px" @click="openEdit">
               <EditOutlined />编辑
             </a-button>
-            <a-button type="primary" size="small" @click="openCreate">
+            <a-button v-if="canCreate" type="primary" size="small" @click="openCreate">
               <PlusOutlined />新建日报
             </a-button>
           </div>
         </header>
+
+        <!-- 未填写日报的红色提示（今天及过去日期） -->
+        <div v-if="!currentReport && isPastOrToday" class="dr-missing-alert">
+          <ExclamationCircleFilled class="dr-missing-alert__icon" />
+          <span>{{ isToday ? '今天还没有提交日报，请及时填写' : `${selectedDate.format('MM月DD日')} 没有日报记录` }}</span>
+          <a-button v-if="canCreate" size="small" type="link" @click="openCreate">立即填写</a-button>
+        </div>
 
         <div class="dr-panel__body">
           <template v-if="currentReport">
@@ -89,7 +98,7 @@
 </template>
 
 <script setup>
-import { EditOutlined, LeftOutlined, PlusOutlined, RightOutlined } from '@ant-design/icons-vue'
+import { EditOutlined, ExclamationCircleFilled, LeftOutlined, PlusOutlined, RightOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { computed, onMounted, ref } from 'vue'
@@ -97,8 +106,15 @@ import { computed, onMounted, ref } from 'vue'
 import { createDailyReport, listMyDailyReports, updateDailyReport } from '@/api/dailyReports'
 
 const today = dayjs()
+const yesterday = today.subtract(1, 'day')
 const calendarValue = ref(today)
 const selectedDate = ref(today)
+
+const isToday = computed(() => selectedDate.value.isSame(today, 'day'))
+const isYesterday = computed(() => selectedDate.value.isSame(yesterday, 'day'))
+const isPastOrToday = computed(() => !selectedDate.value.isAfter(today, 'day'))
+const canEdit = computed(() => isToday.value || isYesterday.value)
+const canCreate = computed(() => isToday.value)
 const allLoading = ref(false)
 const allReports = ref([])
 
@@ -147,7 +163,7 @@ const goToday = onChange => {
   selectedDate.value = today
 }
 
-const disabledFuture = date => date && date.isAfter(today, 'day')
+const disabledFuture = date => date && (date.isAfter(today, 'day') || date.isBefore(yesterday, 'day'))
 
 const formatDateTime = val => {
   if (!val) return '-'
@@ -157,7 +173,7 @@ const formatDateTime = val => {
 
 const openCreate = () => {
   editingId.value = null
-  form.value = { reportDate: selectedDate.value, content: '' }
+  form.value = { reportDate: today, content: '' }
   modalOpen.value = true
 }
 
@@ -266,8 +282,15 @@ const handleSubmit = async () => {
   width: 6px;
   height: 6px;
   margin-top: 4px;
-  background: #52c41a;
   border-radius: 50%;
+}
+
+.dr-cal-dot--done {
+  background: #52c41a;
+}
+
+.dr-cal-dot--missing {
+  background: #f5222d;
 }
 
 /* 右侧面板 */
@@ -311,6 +334,32 @@ const handleSubmit = async () => {
   font-size: 12px;
   background: #e6f4ff;
   border-radius: 10px;
+}
+
+.dr-yesterday-badge {
+  padding: 1px 7px;
+  color: #52c41a;
+  font-size: 12px;
+  background: #f6ffed;
+  border-radius: 10px;
+}
+
+
+.dr-missing-alert {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 18px;
+  color: #cf1322;
+  font-size: 13px;
+  background: #fff1f0;
+  border-bottom: 1px solid #ffa39e;
+}
+
+.dr-missing-alert__icon {
+  flex-shrink: 0;
+  font-size: 15px;
+  color: #f5222d;
 }
 
 .dr-panel__body {

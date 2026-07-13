@@ -101,7 +101,7 @@
           :bug-loading="bugLoading"
           :bug-status-filters="bugStatusFilters"
           :report-rows="reportRows"
-          :report-columns="reportColumns"
+          :report-columns="reportTableColumns"
           :report-loading="reportLoading"
           :report-status-filters="reportStatusFilters"
           :document-categories="documentCategories"
@@ -113,6 +113,7 @@
           :pagination="pagination"
           @create-report="handleCreateReport"
           @edit-report="handleEditReport"
+          @delete-report="handleDeleteReport"
           @open-upload="handleOpenUploadModal"
           @delete-documents="handleDeleteDocuments"
           @download-document="handleDownloadDocument"
@@ -195,6 +196,7 @@ import {
   deleteProject,
   deleteProjectFile,
   deleteProjectFiles,
+  deleteProjectReport,
   downloadProjectFile,
   getGanttNodes,
   getGanttSummary,
@@ -211,6 +213,7 @@ import {
   uploadProjectFile,
 } from '@/api/managementProject'
 import { useDictStore } from '@/store/dictStore'
+import { OPERATION_ACTIONS, OPERATION_MODULES, recordOperationLog } from '@/utils/operationLog'
 
 const route = useRoute()
 const router = useRouter()
@@ -299,10 +302,7 @@ const projectPagination = reactive({ current: 1, pageSize: 10, total: 0, pageSiz
 const pagination = { defaultPageSize: 10, pageSizeOptions: ['10', '50', '100'], showSizeChanger: true, showTotal: total => `共 ${total} 条` }
 const formRules = { name: [{ required: true, message: '请输入项目名称', trigger: 'blur' }], managerId: [{ required: true, message: '请选择项目经理', trigger: 'change' }], type: [{ required: true, message: '请选择项目类型', trigger: 'change' }], description: [{ required: true, message: '请输入项目描述', trigger: 'blur' }] }
 
-const filteredProjects = computed(() => projects.value.filter(item => {
-  const keywordMatched = !appliedQuery.keyword || item.name.includes(appliedQuery.keyword)
-  return keywordMatched && ['type', 'stage'].every(key => appliedQuery[key] === '全部' || item[key] === appliedQuery[key])
-}))
+const filteredProjects = computed(() => projects.value)
 const groupedProjects = computed(() => {
   const labelMap = { manager: '项目经理', stage: '项目阶段', status: '项目状态', type: '项目类型', contractStatus: '合同状态' }
   const groups = new Map()
@@ -392,6 +392,16 @@ const bugStatusFilters = toOptions(['全部状态', '待处理', '修复中', '�
 const reportStatusFilters = toOptions(['全部', '准备中', '进行中', '已完成'])
 const reportColumns = [{ title: '汇报标题', dataIndex: 'title', width: 220 }, { title: '汇报类型', dataIndex: 'type', width: 110 }, { title: '状态', dataIndex: 'status', width: 100 }, { title: '计划时间', dataIndex: 'planTime', width: 150 }, { title: '实际时间', dataIndex: 'actualTime', width: 150 }, { title: '汇报对象', dataIndex: 'target', width: 110 }, { title: '地点/方式', dataIndex: 'place', width: 120 }]
 const reportRows = ref([])
+const reportTableColumns = [
+  { title: '汇报标题', dataIndex: 'title', width: 220 },
+  { title: '汇报类型', dataIndex: 'type', width: 110 },
+  { title: '状态', dataIndex: 'status', width: 100 },
+  { title: '计划时间', dataIndex: 'planTime', width: 150 },
+  { title: '实际时间', dataIndex: 'actualTime', width: 150 },
+  { title: '汇报对象', dataIndex: 'target', width: 110 },
+  { title: '地点/方式', dataIndex: 'place', width: 120 },
+  { title: '操作', dataIndex: 'operation', width: 140, fixed: 'right' },
+]
 const createDefaultReportForm = () => ({ title: '', type: 'WEEKLY', status: 'DRAFT', planDate: undefined, actualDate: undefined, task: undefined, target: '', place: '', description: '' })
 const reportForm = reactive(createDefaultReportForm())
 const reportTaskOptions = computed(() => taskRows.value.map(item => ({ label: item.name, value: item.id })))
@@ -529,6 +539,17 @@ const fetchProjectRelatedData = async projectId => {
       getProjectFiles({ businessType: 'PROJECT', businessId: projectId }),
     ])
     currentProject.value = mapProject(project)
+    if (viewMode.value === 'detail') {
+      void recordOperationLog({
+        module: OPERATION_MODULES.MANAGEMENT_PROJECT,
+        action: OPERATION_ACTIONS.DETAIL,
+        bizType: 'PROJECT',
+        bizId: projectId,
+        bizName: currentProject.value?.name,
+        detail: `查看管理类项目详情：${currentProject.value?.name || projectId}`,
+        routeName: 'ManagementProjectDetail',
+      })
+    }
     Object.assign(ganttSummaryData, ganttResult)
     ganttNodeRows.value = nodes.map(node => {
       const planStart = node.plannedStartDate?.replaceAll('-', '/') || '-'
@@ -539,7 +560,7 @@ const fetchProjectRelatedData = async projectId => {
     })
     taskRows.value = taskResult.records.map(task => ({ id: task.id, name: task.name, owner: getUserName(task.assigneeId), priority: getDictLabel('taskPriority', task.priority), status: getDictLabel('taskStatus', task.status), planStart: task.plannedStartDate || '-', planEnd: task.plannedEndDate || '-', actualStart: task.actualStartDate || '-', actualEnd: task.actualEndDate || '-' }))
     bugRows.value = bugResult.records.map(bug => ({ id: bug.id, code: `BUG-${bug.id}`, title: bug.title, severity: getDictLabel('bugPriority', bug.priority), priorityCode: bug.priority, status: getDictLabel('bugStatus', bug.status), statusCode: bug.status, assignee: getUserName(bug.assigneeId), creator: getUserName(bug.creatorId) }))
-    reportRows.value = reportResult.records.map(report => ({ id: report.id, title: report.title, type: getDictLabel('reportType', report.reportType), typeCode: report.reportType, status: getDictLabel('reportStatus', report.status), statusCode: report.status, planTime: report.plannedDate, actualTime: report.actualDate || '-', target: report.targetAudience, place: report.locationMethod, description: report.description }))
+    reportRows.value = reportResult.records.map(report => ({ id: report.id, title: report.title, type: getDictLabel('reportType', report.reportType), typeCode: report.reportType, status: getDictLabel('reportStatus', report.status), statusCode: report.status, planTime: report.plannedDate, actualTime: report.actualDate || '-', target: report.targetAudience, place: report.locationMethod, description: report.description, taskId: report.taskId || report.relatedTaskId || undefined, taskName: report.taskName || report.relatedTaskName || undefined }))
     documentRows.value = files.map(file => ({ id: file.id, name: file.originalName, type: file.originalName.split('.').pop()?.toUpperCase() || '-', size: formatFileSize(file.fileSize), version: file.versionNo || '-', uploader: getUserName(file.uploaderId), category: file.fileCategory || '-', uploadTime: file.uploadedAt || '-' }))
     await renderGantt()
   } catch (error) {
@@ -617,7 +638,26 @@ onMounted(async () => {
   await syncRoute()
 })
 
-const handleSearch = async () => { Object.assign(appliedQuery, query); projectPagination.current = 1; await fetchProjects() }
+const handleSearch = async () => {
+  Object.assign(appliedQuery, query)
+  projectPagination.current = 1
+  await fetchProjects()
+  void recordOperationLog({
+    module: OPERATION_MODULES.MANAGEMENT_PROJECT,
+    action: OPERATION_ACTIONS.QUERY,
+    bizType: 'PROJECT',
+    bizName: '管理类项目列表',
+    detail: {
+      keyword: query.keyword,
+      managerId: query.managerId,
+      type: query.type,
+      contractStatus: query.contractStatus,
+      stage: query.stage,
+      status: query.status,
+    },
+    routeName: 'ManagementProjects',
+  })
+}
 const handleReset = async () => { Object.assign(query, { keyword: '', managerId: '全部', type: '全部', contractStatus: '全部', stage: '全部', status: '全部' }); Object.assign(appliedQuery, query); projectPagination.current = 1; await fetchProjects() }
 const handleProjectTableChange = async page => { projectPagination.current = page.current; projectPagination.pageSize = page.pageSize; await fetchProjects() }
 const isGroupCollapsed = value => collapsedGroups.value.includes(value)
@@ -659,12 +699,32 @@ const handleCreate = () => router.push({ name: 'ManagementProjectCreate' })
 const handleEdit = record => {
   router.push({ name: 'ManagementProjectEdit', params: { id: record.id } })
 }
-const handleDetail = record => router.push({ name: 'ManagementProjectDetail', params: { id: record.id } })
+const handleDetail = record => {
+  void recordOperationLog({
+    module: OPERATION_MODULES.MANAGEMENT_PROJECT,
+    action: OPERATION_ACTIONS.DETAIL,
+    bizType: 'PROJECT',
+    bizId: record.id,
+    bizName: record.name,
+    detail: `查看管理类项目详情：${record.name}`,
+    routeName: 'ManagementProjectDetail',
+  })
+  router.push({ name: 'ManagementProjectDetail', params: { id: record.id } })
+}
 const handleBack = () => router.push({ name: 'ManagementProjects' })
 const handleDelete = async record => {
   try {
     await deleteProject(record.id)
     message.success('项目删除成功')
+    void recordOperationLog({
+      module: OPERATION_MODULES.MANAGEMENT_PROJECT,
+      action: OPERATION_ACTIONS.DELETE,
+      bizType: 'PROJECT',
+      bizId: record.id,
+      bizName: record.name,
+      detail: `删除管理类项目：${record.name}`,
+      routeName: 'ManagementProjects',
+    })
     await fetchProjects()
   } catch (error) {
     message.error(error.message)
@@ -744,7 +804,7 @@ const handleCreateReport = () => {
 const handleEditReport = record => {
   reportMode.value = 'edit'
   editingReportId.value = record.id
-  Object.assign(reportForm, { title: record.title, type: record.typeCode, status: record.statusCode, planDate: dayjs(record.planTime), actualDate: record.actualTime === '-' ? undefined : dayjs(record.actualTime), task: undefined, target: record.target, place: record.place, description: record.description })
+  Object.assign(reportForm, { title: record.title, type: record.typeCode, status: record.statusCode, planDate: dayjs(record.planTime), actualDate: record.actualTime === '-' ? undefined : dayjs(record.actualTime), task: record.taskId || undefined, target: record.target, place: record.place, description: record.description })
   reportVisible.value = true
 }
 const handleSubmitReport = async () => {
@@ -752,15 +812,42 @@ const handleSubmitReport = async () => {
   await reportFormRef.value?.validate()
   reportSubmitLoading.value = true
   try {
-    const reportData = { projectId: route.params.id, title: reportForm.title, reportType: reportForm.type, status: reportForm.status, plannedDate: reportForm.planDate.format('YYYY-MM-DD'), actualDate: reportForm.actualDate?.format('YYYY-MM-DD') || null, targetAudience: reportForm.target, locationMethod: reportForm.place, description: reportForm.description }
+    const reportData = { projectId: route.params.id, title: reportForm.title, reportType: reportForm.type, status: reportForm.status, plannedDate: reportForm.planDate.format('YYYY-MM-DD'), actualDate: reportForm.actualDate?.format('YYYY-MM-DD') || null, taskId: reportForm.task || undefined, targetAudience: reportForm.target, locationMethod: reportForm.place, description: reportForm.description }
     if (editingReportId.value) await updateProjectReport(editingReportId.value, reportData)
     else await createProjectReport(reportData)
+    void recordOperationLog({
+      module: OPERATION_MODULES.MANAGEMENT_PROJECT,
+      action: editingReportId.value ? OPERATION_ACTIONS.UPDATE : OPERATION_ACTIONS.CREATE,
+      bizType: 'PROJECT_REPORT',
+      bizId: editingReportId.value,
+      bizName: reportForm.title,
+      detail: editingReportId.value ? `编辑项目汇报：${reportForm.title}` : `新建项目汇报：${reportForm.title}`,
+      routeName: 'ManagementProjectDetail',
+    })
     message.success(editingReportId.value ? '汇报编辑成功' : '汇报新建成功')
     reportVisible.value = false
     await fetchProjectRelatedData(route.params.id)
   } catch (error) {
     message.error(error.message)
   } finally { reportSubmitLoading.value = false }
+}
+const handleDeleteReport = async record => {
+  try {
+    await deleteProjectReport(record.id)
+    void recordOperationLog({
+      module: OPERATION_MODULES.MANAGEMENT_PROJECT,
+      action: OPERATION_ACTIONS.DELETE,
+      bizType: 'PROJECT_REPORT',
+      bizId: record.id,
+      bizName: record.title,
+      detail: `删除项目汇报：${record.title}`,
+      routeName: 'ManagementProjectDetail',
+    })
+    message.success('汇报删除成功')
+    await fetchProjectRelatedData(route.params.id)
+  } catch (error) {
+    message.error(error.message)
+  }
 }
 const handleSubmit = async () => {
   if (submitLoading.value) return
@@ -785,6 +872,15 @@ const handleSubmit = async () => {
       ? await updateProject(editingId.value, projectData)
       : await createProject(projectData)
     message.success(editingId.value ? '项目编辑成功' : '项目新建成功')
+    void recordOperationLog({
+      module: OPERATION_MODULES.MANAGEMENT_PROJECT,
+      action: editingId.value ? OPERATION_ACTIONS.UPDATE : OPERATION_ACTIONS.CREATE,
+      bizType: 'PROJECT',
+      bizId: savedProject?.id || editingId.value,
+      bizName: projectData.name,
+      detail: editingId.value ? `编辑管理类项目：${projectData.name}` : `新建管理类项目：${projectData.name}`,
+      routeName: 'ManagementProjectDetail',
+    })
     router.push({ name: 'ManagementProjectDetail', params: { id: savedProject.id || editingId.value } })
   } catch (error) {
     message.error(error.message)

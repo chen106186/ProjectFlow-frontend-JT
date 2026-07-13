@@ -95,7 +95,7 @@
         <a-card class="prototype-card filter-panel" :bordered="false">
           <a-form class="prototype-filter" layout="inline">
             <a-form-item label="任务名称"><a-input v-model:value="taskFilter.keyword" placeholder="请输入任务名称" /></a-form-item>
-            <a-form-item label="所属项目"><a-select v-model:value="taskFilter.projectId" allow-clear placeholder="全部" :options="taskProjectOptions" /></a-form-item>
+            <a-form-item label="所属项目"><a-select v-model:value="taskFilter.projectId" allow-clear placeholder="全部" :options="taskFilterProjectOptions" /></a-form-item>
             <a-form-item v-if="!isPersonalTasks" label="负责人"><a-select v-model:value="taskFilter.assigneeId" allow-clear placeholder="全部" :options="taskUserOptions" /></a-form-item>
             <a-form-item label="优先级"><a-select v-model:value="taskFilter.priority" allow-clear placeholder="全部" :options="taskPrioritySelectOptions" /></a-form-item>
             <a-form-item label="状态"><a-select v-model:value="taskFilter.status" allow-clear placeholder="全部" :options="taskStatusSelectOptions" /></a-form-item>
@@ -441,7 +441,7 @@
       </template>
       <a-form class="prototype-modal-form" layout="horizontal" :label-col="{ span: 5 }">
         <template v-if="!isPersonalTasks">
-          <a-form-item label="所属项目"><a-select v-model:value="taskFormState.projectId" :options="taskProjectOptions" placeholder="请选择所属项目" /></a-form-item>
+          <a-form-item label="所属项目"><a-select v-model:value="taskFormState.projectId" :options="taskFormProjectOptions" placeholder="请选择所属项目" /></a-form-item>
           <a-form-item label="任务名称"><a-input v-model:value="taskFormState.name" placeholder="请输入任务名称" /></a-form-item>
           <a-form-item label="负责人"><a-select v-model:value="taskFormState.assigneeId" :options="taskUserOptions" placeholder="请选择负责人" /></a-form-item>
           <a-form-item label="角色"><a-select v-model:value="taskFormState.roleName" :options="roleOptions" allow-clear placeholder="请选择角色" /></a-form-item>
@@ -567,7 +567,8 @@ import dayjs from 'dayjs'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { createDailyReport, fetchDailyReports } from '@/api/dailyReports'
-import { closeBug, createBug, createTask, deleteBug, deleteTask, fixBug, getDicts, getMyBugs, getMyStatistics, getProjectList, getProjectTasks, getSystemUsers, getTaskById, updateBug, updateTask } from '@/api/managementProject'
+import { closeBug, createBug, createTask, deleteBug, deleteTask, fixBug, getDicts, getMyStatistics, getProjectBugs, getProjectList, getProjectTasks, getSystemUsers, getTaskById, updateBug, updateTask } from '@/api/managementProject'
+import { OPERATION_ACTIONS, OPERATION_MODULES, recordOperationLog } from '@/utils/operationLog'
 
 const route = useRoute()
 const router = useRouter()
@@ -674,9 +675,17 @@ const visibleTasks = computed(() => {
   }
   return taskApiRows.value
 })
-const taskProjectOptions = computed(() =>
+const isExecutionProject = project => (project?.projectType || project?.type) === 'EXECUTION'
+const taskFilterProjectOptions = computed(() =>
   taskProjects.value.map(p => ({ label: p.name, value: p.id }))
 )
+const taskFormProjectOptions = computed(() => {
+  const projects = taskModalMode.value === 'create'
+    ? taskProjects.value.filter(isExecutionProject)
+    : taskProjects.value
+
+  return projects.map(p => ({ label: p.name, value: p.id }))
+})
 const taskUserOptions = computed(() =>
   taskUsers.value.map(u => ({ label: u.realName, value: u.id }))
 )
@@ -686,16 +695,7 @@ const taskPrioritySelectOptions = computed(() =>
 const taskStatusSelectOptions = computed(() =>
   Object.entries(taskDictLabels.value.taskStatus).map(([value, label]) => ({ label, value }))
 )
-const visibleBugs = computed(() => {
-  const f = bugFilter.value
-  return bugApiRows.value.filter(bug => {
-    if (f.keyword && !bug.title.includes(f.keyword)) return false
-    if (f.projectId && bug.projectId !== f.projectId) return false
-    if (f.priority && bug.priorityCode !== f.priority) return false
-    if (f.status && bug.statusCode !== f.status) return false
-    return true
-  })
-})
+const visibleBugs = computed(() => bugApiRows.value)
 const selectedDailyDateText = computed(() => selectedDailyDate.value.format('YYYY-MM-DD'))
 const currentDailyReport = computed(() => dailyReports.value[0])
 const dailyProjectText = computed(() => {
@@ -737,10 +737,21 @@ const dailySubmitTime = computed(() => {
 })
 
 watch(
-  () => [route.name, route.query.detail],
-  ([name, detail]) => {
+  () => [route.name, route.query.detail, route.query.taskId],
+  async ([name, detail, taskId]) => {
     if ((name === 'PersonalTasks' || taskModuleRouteNames.includes(name)) && detail === 'task') {
       personalMode.value = 'task-detail'
+      if (taskId && (!selectedTaskDetail.value || String(selectedTaskDetail.value.id) !== String(taskId))) {
+        selectedTaskDetail.value = null
+        taskDetailLoading.value = true
+        try {
+          selectedTaskDetail.value = await getTaskById(taskId)
+        } catch (error) {
+          message.error(error.message || '任务详情加载失败')
+        } finally {
+          taskDetailLoading.value = false
+        }
+      }
     } else if (name === 'PersonalBugs' && detail === 'bug') {
       personalMode.value = 'bug-detail'
     } else {
@@ -873,7 +884,7 @@ async function fetchBugModuleData() {
     const [dicts, users, projects] = await Promise.all([
       getDicts(),
       getSystemUsers({ pageNo: 1, pageSize: 200, enabled: true }),
-      getProjectList({ pageNo: 1, pageSize: 200 }),
+      getProjectList({ pageNo: 1, pageSize: 200, projectType: 'EXECUTION' }),
     ])
     bugUsers.value = users.records || []
     bugProjects.value = projects.records || []
@@ -894,11 +905,22 @@ async function fetchBugModuleData() {
 
 async function loadMyBugs() {
   try {
-    const bugs = await getMyBugs()
-    bugApiRows.value = (bugs || []).map((bug, index) => ({
+    const profile = JSON.parse(window.localStorage.getItem('authProfile') || '{}')
+    const f = bugFilter.value
+    const result = await getProjectBugs({
+      pageNo: 1,
+      pageSize: 200,
+      keyword: f.keyword || undefined,
+      projectId: f.projectId || undefined,
+      priority: f.priority || undefined,
+      status: f.status || undefined,
+      assigneeId: profile.id || undefined,
+    })
+    const bugs = result.records || []
+    bugApiRows.value = bugs.map((bug, index) => ({
       id: bug.id,
       index: index + 1,
-      code: `#${bug.id}`,
+      code: `${bug.id}`,
       title: bug.title,
       project: getBugProjectName(bug.projectId),
       projectId: bug.projectId,
@@ -1068,7 +1090,9 @@ onBeforeUnmount(() => {
 const updateDetailQuery = detail => {
   router.replace({
     path: route.path,
-    query: detail ? { ...route.query, detail } : Object.fromEntries(Object.entries(route.query).filter(([key]) => key !== 'detail')),
+    query: detail
+      ? { ...route.query, detail }
+      : Object.fromEntries(Object.entries(route.query).filter(([key]) => key !== 'detail' && key !== 'taskId')),
   })
 }
 
@@ -1079,6 +1103,15 @@ const handleTaskDetail = async record => {
   taskDetailLoading.value = true
   try {
     selectedTaskDetail.value = await getTaskById(record.id)
+    void recordOperationLog({
+      module: OPERATION_MODULES.TASK,
+      action: OPERATION_ACTIONS.DETAIL,
+      bizType: 'TASK',
+      bizId: record.id,
+      bizName: record.name,
+      detail: `查看任务详情：${record.name}`,
+      routeName: route.name,
+    })
   } catch (error) {
     message.error(error.message || '任务详情加载失败')
   } finally {
@@ -1134,6 +1167,20 @@ const openTaskModal = (mode, record) => {
 
 const handleTaskSearch = () => {
   loadTasks()
+  void recordOperationLog({
+    module: OPERATION_MODULES.TASK,
+    action: OPERATION_ACTIONS.QUERY,
+    bizType: 'TASK',
+    bizName: route.meta?.title || '任务列表',
+    detail: {
+      keyword: taskFilter.value.keyword,
+      projectId: taskFilter.value.projectId,
+      assigneeId: taskFilter.value.assigneeId,
+      priority: taskFilter.value.priority,
+      status: taskFilter.value.status,
+    },
+    routeName: route.name,
+  })
 }
 
 const handleTaskReset = () => {
@@ -1155,6 +1202,14 @@ const handleTaskSubmit = async () => {
   try {
     let body
     if (isPersonalTasks.value && editingTaskId.value) {
+      if (!editingTaskId.value) {
+        const selectedProject = taskProjects.value.find(project => project.id === fs.projectId)
+        if (selectedProject && !isExecutionProject(selectedProject)) {
+          message.warning('新建任务只能选择执行类项目')
+          taskSubmitLoading.value = false
+          return
+        }
+      }
       body = {
         actualStartDate: fs.actualStartDate ? fs.actualStartDate.format('YYYY-MM-DD') : undefined,
         actualEndDate: fs.actualEndDate ? fs.actualEndDate.format('YYYY-MM-DD') : undefined,
@@ -1164,6 +1219,14 @@ const handleTaskSubmit = async () => {
       if (!fs.projectId) { message.warning('请选择所属项目'); taskSubmitLoading.value = false; return }
       if (!fs.assigneeId) { message.warning('请选择负责人'); taskSubmitLoading.value = false; return }
       if (!fs.priority) { message.warning('请选择优先级'); taskSubmitLoading.value = false; return }
+      if (!editingTaskId.value) {
+        const selectedProject = taskProjects.value.find(project => project.id === fs.projectId)
+        if (selectedProject && !isExecutionProject(selectedProject)) {
+          message.warning('新建任务只能选择执行类项目')
+          taskSubmitLoading.value = false
+          return
+        }
+      }
       body = {
         projectId: fs.projectId,
         name: fs.name,
@@ -1181,9 +1244,27 @@ const handleTaskSubmit = async () => {
     }
     if (editingTaskId.value) {
       await updateTask(editingTaskId.value, body)
+      void recordOperationLog({
+        module: OPERATION_MODULES.TASK,
+        action: OPERATION_ACTIONS.UPDATE,
+        bizType: 'TASK',
+        bizId: editingTaskId.value,
+        bizName: fs.name || selectedTaskDetail.value?.name,
+        detail: `编辑任务：${fs.name || selectedTaskDetail.value?.name || editingTaskId.value}`,
+        routeName: route.name,
+      })
       message.success('任务更新成功')
     } else {
-      await createTask(body)
+      const savedTask = await createTask(body)
+      void recordOperationLog({
+        module: OPERATION_MODULES.TASK,
+        action: OPERATION_ACTIONS.CREATE,
+        bizType: 'TASK',
+        bizId: savedTask?.id,
+        bizName: fs.name,
+        detail: `新建任务：${fs.name}`,
+        routeName: route.name,
+      })
       message.success('任务创建成功')
     }
     taskEditOpen.value = false
@@ -1198,6 +1279,15 @@ const handleTaskSubmit = async () => {
 const handleDeleteTask = async record => {
   try {
     await deleteTask(record.id)
+    void recordOperationLog({
+      module: OPERATION_MODULES.TASK,
+      action: OPERATION_ACTIONS.DELETE,
+      bizType: 'TASK',
+      bizId: record.id,
+      bizName: record.name,
+      detail: `删除任务：${record.name}`,
+      routeName: route.name,
+    })
     message.success('任务删除成功')
     await loadTasks()
   } catch (error) {
@@ -1316,11 +1406,12 @@ const handleFixSubmit = async () => {
 }
 
 const handleBugSearch = () => {
-  // filter is reactive — visibleBugs recomputes automatically
+  loadMyBugs()
 }
 
 const handleBugReset = () => {
   bugFilter.value = { keyword: '', projectId: undefined, priority: undefined, status: undefined }
+  loadMyBugs()
 }
 
 const selectDailyDate = date => {

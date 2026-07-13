@@ -457,9 +457,10 @@ const handleUserMenuClick = ({ key }) => {
 
 <style scoped>
 .app-layout {
-  min-width: 1100px;
-  height: 100vh;
-  overflow: hidden;
+  min-width: 0;
+  min-height: 100vh;
+  height: auto;
+  overflow: visible;
 }
 
 .app-header {
@@ -525,6 +526,7 @@ const handleUserMenuClick = ({ key }) => {
 }
 
 .app-layout__body {
+  flex: 1;
   min-height: 0;
   background: #f5f7fa;
 }
@@ -556,8 +558,9 @@ const handleUserMenuClick = ({ key }) => {
 .app-content {
   display: flex;
   flex-direction: column;
+  min-height: 0;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .app-content__header {
@@ -576,7 +579,7 @@ const handleUserMenuClick = ({ key }) => {
   flex: 1;
   min-height: 0;
   width: 100%;
-  overflow: auto;
+  overflow: visible;
 }
 
 .app-content__body {
@@ -589,7 +592,9 @@ const handleUserMenuClick = ({ key }) => {
 }
 
 .app-content__body--fixed {
-  height: calc(100vh - 68px - 52px);
-  overflow: hidden;
+  min-height: calc(100vh - 68px - 52px);
+  height: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 </style>

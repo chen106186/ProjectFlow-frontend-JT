@@ -62,7 +62,7 @@
 
           <a-spin :spinning="dayLoading">
             <div class="daily-task-panel__list">
-              <button v-for="task in dayTasks" :key="task.id" class="daily-task-card" :class="`daily-task-card--${taskCardStatus(task)}`" type="button">
+              <button v-for="task in dayTasks" :key="task.id" class="daily-task-card" :class="`daily-task-card--${taskCardStatus(task)}`" type="button" @click="handleTaskClick(task)">
                 <span class="daily-task-card__priority" :class="`daily-task-card__priority--${priorityKey(task.priority)}`">
                   <component :is="priorityIcon(task.priority)" />
                   {{ priorityLabel(task.priority) }}
@@ -98,6 +98,7 @@ import {
 import dayjs from 'dayjs'
 import updateLocale from 'dayjs/plugin/updateLocale'
 import { ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 
 import { getTaskCalendarDay, getTaskCalendarMonth } from '@/api/dashboard'
 
@@ -108,6 +109,8 @@ const props = defineProps({
   open: { type: Boolean, default: false },
 })
 const emit = defineEmits(['update:open'])
+
+const router = useRouter()
 
 const today = dayjs()
 const calendarValue = ref(today)
@@ -223,6 +226,11 @@ const handleToday = onChange => {
   selectedDate.value = today
   fetchMonth(today)
   fetchDay(today)
+}
+
+const handleTaskClick = task => {
+  emit('update:open', false)
+  router.push({ name: 'AllTasks', query: { detail: 'task', taskId: task.id } })
 }
 
 const handleClose = () => {

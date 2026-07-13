@@ -74,7 +74,7 @@
 <script setup>
 import { DownOutlined, EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   assignSystemRoleMenus,
   createSystemRole,
@@ -110,13 +110,7 @@ const formRules = {
   name: [{ required: true, message: '请输入角色名称', trigger: 'blur' }],
 }
 
-const filteredRoles = computed(() => {
-  if (!keyword.value) {
-    return roles.value
-  }
-
-  return roles.value.filter(role => role.name.includes(keyword.value) || role.code.includes(keyword.value))
-})
+const filteredRoles = computed(() => roles.value)
 
 const modalTitle = computed(() => (modalMode.value === 'create' ? '新增角色' : '编辑角色'))
 const permissionTree = computed(() => buildMenuTree(menus.value))
@@ -126,6 +120,18 @@ onMounted(async () => {
   if (roles.value.length) {
     await handleSelectRole(roles.value[0])
   }
+})
+
+watch(keyword, async () => {
+  const currentId = currentRoleId.value
+  await fetchRoles()
+  if (!roles.value.length) {
+    currentRoleId.value = undefined
+    checkedPermissionKeys.value = []
+    return
+  }
+  const matched = currentId ? roles.value.find(role => role.id === currentId) : undefined
+  await handleSelectRole(matched || roles.value[0])
 })
 
 const buildMenuTree = items => {
@@ -152,7 +158,7 @@ const fetchRoles = async () => {
   roleLoading.value = true
 
   try {
-    roles.value = await getSystemRoles()
+    roles.value = await getSystemRoles({ keyword: keyword.value || undefined })
   } finally {
     roleLoading.value = false
   }
