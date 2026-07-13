@@ -496,9 +496,8 @@ const handleUserMenuClick = ({ key }) => {
 <style scoped>
 .app-layout {
   min-width: 0;
-  min-height: 100vh;
-  height: auto;
-  overflow: visible;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .app-header {
@@ -565,7 +564,9 @@ const handleUserMenuClick = ({ key }) => {
 
 .app-layout__body {
   flex: 1;
+  height: calc(100vh - 68px);
   min-height: 0;
+  overflow: hidden;
   background: #f5f7fa;
 }
 
@@ -596,14 +597,13 @@ const handleUserMenuClick = ({ key }) => {
 .app-content {
   display: flex;
   flex-direction: column;
+  height: 100%;
   min-height: 0;
   min-width: 0;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .app-content__header {
-  position: sticky;
-  top: 0;
   z-index: 5;
   flex: 0 0 52px;
   display: flex;
@@ -617,22 +617,28 @@ const handleUserMenuClick = ({ key }) => {
   flex: 1;
   min-height: 0;
   width: 100%;
-  overflow: visible;
+  overflow: hidden;
+}
+
+.app-content__spin :deep(.ant-spin-container) {
+  height: 100%;
+  min-height: 0;
 }
 
 .app-content__body {
-  min-height: calc(100vh - 68px - 52px);
+  height: 100%;
+  min-height: 0;
   padding: 18px 18px 22px;
+  overflow: auto;
 }
 
 .app-content--home .app-content__body {
-  min-height: calc(100vh - 68px);
+  height: 100%;
+  min-height: 0;
 }
 
 .app-content__body--fixed {
-  min-height: calc(100vh - 68px - 52px);
-  height: auto;
-  overflow-x: hidden;
-  overflow-y: auto;
+  height: 100%;
+  min-height: 0;
 }
 </style>

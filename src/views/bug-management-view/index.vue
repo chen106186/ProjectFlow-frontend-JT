@@ -303,7 +303,6 @@ const groupField = ref('projectName')
 const queryParams = reactive({ keyword: '', projectId: undefined, priority: undefined, status: undefined })
 
 const columns = [
-  { title: '序号', dataIndex: 'index', width: 60, fixed: 'left' },
   { title: '编号', dataIndex: 'bugNo', width: 80 },
   { title: 'Bug标题', dataIndex: 'title', width: 240 },
   { title: '所属项目', dataIndex: 'projectName', width: 210 },
