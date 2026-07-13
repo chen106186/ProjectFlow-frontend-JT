@@ -60,6 +60,8 @@
         <a-form-item label="项目阶段"><a-select v-model:value="formState.stage" :options="stageOptions" /></a-form-item>
         <a-form-item label="项目状态"><a-select v-model:value="formState.status" :options="projectStatusOptions" /></a-form-item>
         <a-form-item label="合同状态"><a-select v-model:value="formState.contractStatus" :options="contractOptions" /></a-form-item>
+        <a-form-item label="计划开始时间"><a-date-picker v-model:value="formState.plannedStartDate" value-format="YYYY-MM-DD" placeholder="请选择计划开始时间" /></a-form-item>
+        <a-form-item label="计划结束时间"><a-date-picker v-model:value="formState.plannedEndDate" value-format="YYYY-MM-DD" placeholder="请选择计划结束时间" /></a-form-item>
         <a-form-item label="回款金额"><a-input-number v-model:value="formState.amount" :min="0" :precision="2" addon-after="万元" /></a-form-item>
         <a-form-item label="项目描述" name="description"><a-textarea v-model:value="formState.description" :rows="5" placeholder="请输入项目描述" /></a-form-item>
       </a-form>
@@ -112,6 +114,7 @@
           :selected-document-ids="selectedDocumentIds"
           :pagination="pagination"
           @create-report="handleCreateReport"
+          @view-report="handleViewReport"
           @edit-report="handleEditReport"
           @delete-report="handleDeleteReport"
           @open-upload="handleOpenUploadModal"
@@ -151,6 +154,75 @@
         <a-form-item label="版本说明"><a-textarea v-model:value="uploadForm.description" :rows="4" placeholder="请输入版本更新说明..." /></a-form-item>
       </a-form>
       <div class="upload-modal-actions"><a-button @click="uploadVisible = false">取消</a-button><a-button type="primary" :loading="uploadLoading" @click="handleStartUpload">开始上传</a-button></div>
+    </a-modal>
+
+    <a-modal v-model:open="reportDetailVisible" class="report-detail-modal" :width="1120" :footer="null" destroy-on-close>
+      <a-spin :spinning="reportDetailLoading">
+        <div v-if="currentReportDetail" class="report-detail-view">
+          <div class="report-detail-header">
+            <strong>{{ currentReportDetail.title }}</strong>
+          </div>
+
+          <div class="report-detail-info-table">
+            <div class="report-detail-info-grid">
+              <span>类型</span><strong>{{ currentReportDetail.type }}</strong>
+              <span>状态</span><strong><a-tag color="processing">{{ currentReportDetail.status }}</a-tag></strong>
+              <span>汇报对象</span><strong>{{ currentReportDetail.target }}</strong>
+              <span>地点/方式</span><strong>{{ currentReportDetail.place }}</strong>
+              <span>计划日期</span><strong>{{ currentReportDetail.planTime }}</strong>
+              <span>实际日期</span><strong>{{ currentReportDetail.actualTime }}</strong>
+              <span>创建时间</span><strong>{{ currentReportDetail.createdAt }}</strong>
+              <span>任务进度</span>
+              <strong class="report-detail-progress">
+                <a-progress :percent="currentReportDetail.progress" :show-info="false" size="small" />
+                <em>{{ currentReportDetail.progress }}%</em>
+              </strong>
+            </div>
+            <div class="report-detail-description">
+              <span>描述</span>
+              <p>{{ currentReportDetail.description }}</p>
+            </div>
+          </div>
+
+          <div class="report-detail-section-title">
+            <FileTextOutlined />
+            <span>准备工作 ({{ currentReportDetail.items.length }})</span>
+          </div>
+          <div class="report-detail-remark">
+            <label>备注：</label>
+            <a-textarea v-model:value="reportDetailRemark" :rows="3" placeholder="请输入备注" />
+          </div>
+          <div class="report-detail-remark-actions">
+            <a-button type="primary" @click="handleConfirmReportRemark">确认</a-button>
+          </div>
+          <div class="report-task-toolbar">
+            <a-button type="primary" @click="handleAddReportTask">添加任务</a-button>
+            <a-radio-group v-model:value="reportDetailTaskType" button-style="solid">
+              <a-radio-button value="meeting">会议任务</a-radio-button>
+              <a-radio-button value="related">关联任务</a-radio-button>
+            </a-radio-group>
+          </div>
+          <a-table row-key="id" :columns="reportItemColumns" :data-source="currentReportDetail.items" :pagination="false" size="small" :scroll="{ x: 980 }">
+            <template #bodyCell="{ column, text }">
+              <a-tag v-if="column.dataIndex === 'priority'" color="red">{{ text }}</a-tag>
+              <a-tag v-else-if="column.dataIndex === 'status'" color="processing">{{ text }}</a-tag>
+            </template>
+          </a-table>
+
+          <div class="report-detail-section-title report-detail-log-title">
+            <FileTextOutlined />
+            <span>操作日志</span>
+          </div>
+          <a-timeline v-if="currentReportDetail.logs.length" class="report-detail-logs">
+            <a-timeline-item v-for="log in currentReportDetail.logs" :key="log.id">
+              <span class="report-detail-log-meta">{{ log.time }}　{{ log.user }}</span>
+              <p>{{ log.content }}</p>
+            </a-timeline-item>
+          </a-timeline>
+          <a-empty v-else description="暂无操作日志" />
+        </div>
+        <a-empty v-else-if="!reportDetailLoading" description="暂无汇报详情" />
+      </a-spin>
     </a-modal>
 
     <a-modal v-model:open="reportVisible" class="report-modal" :title="reportMode === 'create' ? '新建汇报' : '编辑汇报'" :width="640" :footer="null" destroy-on-close>
@@ -205,6 +277,7 @@ import {
   getProjectDetail,
   getProjectFiles,
   getProjectList,
+  getProjectReportDetail,
   getProjectReports,
   getProjectTasks,
   getSystemUsers,
@@ -238,6 +311,11 @@ const uploadVisible = ref(false)
 const uploadLoading = ref(false)
 const uploadFiles = ref([])
 const reportVisible = ref(false)
+const reportDetailVisible = ref(false)
+const reportDetailLoading = ref(false)
+const currentReportDetail = ref(null)
+const reportDetailRemark = ref('')
+const reportDetailTaskType = ref('meeting')
 const ganttEditVisible = ref(false)
 const ganttSubmitLoading = ref(false)
 const ganttFormRef = ref()
@@ -277,7 +355,7 @@ const nodeOptions = computed(() => stageOptions.value.map(item => ({ label: item
 const groupOptions = [{ label: '项目经理', value: 'manager' }, { label: '项目阶段', value: 'stage' }, { label: '项目状态', value: 'status' }, { label: '项目类型', value: 'type' }, { label: '合同状态', value: 'contractStatus' }]
 
 const projects = ref([])
-const createDefaultForm = () => ({ name: '', managerId: undefined, department: '', contractor: '', supervisor: '', type: 'DIGITALIZATION', nodes: [], stage: 'BUSINESS_OPPORTUNITY', status: 'NOT_STARTED', contractStatus: 'NOT_SIGNED', amount: 0, description: '' })
+const createDefaultForm = () => ({ name: '', managerId: undefined, department: '', contractor: '', supervisor: '', type: 'DIGITALIZATION', nodes: [], stage: 'BUSINESS_OPPORTUNITY', status: 'NOT_STARTED', contractStatus: 'NOT_SIGNED', plannedStartDate: undefined, plannedEndDate: undefined, amount: 0, description: '' })
 const formState = reactive(createDefaultForm())
 const query = reactive({ keyword: '', managerId: '全部', type: '全部', contractStatus: '全部', stage: '全部', status: '全部' })
 const appliedQuery = reactive({ ...query })
@@ -404,6 +482,14 @@ const reportTableColumns = [
   { title: '地点/方式', dataIndex: 'place', width: 120 },
   { title: '操作', dataIndex: 'operation', width: 140, fixed: 'right' },
 ]
+const reportItemColumns = [
+  { title: '任务', dataIndex: 'content', width: 240 },
+  { title: '负责人', dataIndex: 'owner', width: 100 },
+  { title: '优先级', dataIndex: 'priority', width: 90 },
+  { title: '状态', dataIndex: 'status', width: 100 },
+  { title: '截止日期', dataIndex: 'plannedDate', width: 120 },
+  { title: '备注', dataIndex: 'description', width: 180 },
+]
 const createDefaultReportForm = () => ({ title: '', type: 'WEEKLY', status: 'DRAFT', planDate: undefined, actualDate: undefined, task: undefined, target: '', place: '', description: '' })
 const reportForm = reactive(createDefaultReportForm())
 const reportTaskOptions = computed(() => taskRows.value.map(item => ({ label: item.name, value: item.id })))
@@ -437,6 +523,44 @@ const summaryItems = computed(() => [
 
 const getDictLabel = (type, value) => dictLabels[type]?.[value] || value || '-'
 const getUserName = id => managerOptions.value.find(item => item.value === id)?.label || (id ? `用户 ${id}` : '-')
+const formatDateTime = value => value ? dayjs(value).format('YYYY-MM-DD HH:mm') : '-'
+const isFinishedStatus = value => ['COMPLETED', 'DONE', 'FINISHED', '已完成'].includes(value)
+const mapReportDetail = report => {
+  const items = (report.items || []).map(item => ({
+    id: item.id,
+    content: item.content || '-',
+    owner: getUserName(item.ownerId),
+    priority: getDictLabel('taskPriority', item.priority),
+    status: getDictLabel('taskStatus', item.status),
+    statusCode: item.status,
+    plannedDate: item.plannedDate || '-',
+    description: item.description || '-',
+  }))
+  const completedCount = items.filter(item => isFinishedStatus(item.statusCode) || isFinishedStatus(item.status)).length
+  const logs = []
+  if (report.updatedAt && report.updatedAt !== report.createdAt) {
+    logs.push({ id: 'updated', time: formatDateTime(report.updatedAt), user: getUserName(report.updatedBy), content: '更新项目汇报信息' })
+  }
+  if (report.createdAt) {
+    logs.push({ id: 'created', time: formatDateTime(report.createdAt), user: getUserName(report.createdBy), content: `新建汇报【${report.title}】，状态${getDictLabel('reportStatus', report.status)}` })
+  }
+
+  return {
+    id: report.id,
+    title: report.title || '-',
+    type: getDictLabel('reportType', report.reportType),
+    status: getDictLabel('reportStatus', report.status),
+    planTime: report.plannedDate || '-',
+    actualTime: report.actualDate || '-',
+    target: report.targetAudience || '-',
+    place: report.locationMethod || '-',
+    description: report.description || '-',
+    createdAt: formatDateTime(report.createdAt),
+    progress: items.length ? Math.round((completedCount / items.length) * 100) : 0,
+    items,
+    logs,
+  }
+}
 const getStatusLabel = value => ganttStatusOptions.value.find(item => item.value === value)?.label || getDictLabel('taskStatus', value)
 const formatNodeDate = value => {
   if (!value || value === '-') return undefined
@@ -470,6 +594,8 @@ const mapProjectToForm = project => ({
   stage: project.stage || 'BUSINESS_OPPORTUNITY',
   status: project.statusCode || project.status || 'NOT_STARTED',
   contractStatus: project.contractStatusCode || project.contractStatus || 'NOT_SIGNED',
+  plannedStartDate: project.plannedStartDate || undefined,
+  plannedEndDate: project.plannedEndDate || undefined,
   amount: project.amount ?? project.receivableAmount ?? 0,
   description: project.description || '',
 })
@@ -804,6 +930,26 @@ const handleDeleteDocuments = async () => {
     message.error(error.message)
   }
 }
+const handleViewReport = async record => {
+  reportDetailVisible.value = true
+  reportDetailLoading.value = true
+  currentReportDetail.value = null
+  reportDetailRemark.value = ''
+  reportDetailTaskType.value = 'meeting'
+  try {
+    const report = await getProjectReportDetail(record.id)
+    currentReportDetail.value = mapReportDetail(report)
+  } catch (error) {
+    message.error(error.message)
+    reportDetailVisible.value = false
+  } finally { reportDetailLoading.value = false }
+}
+const handleConfirmReportRemark = () => {
+  message.success('备注已确认')
+}
+const handleAddReportTask = () => {
+  message.info('新增任务功能待接口确认')
+}
 const handleCreateReport = () => {
   reportMode.value = 'create'
   editingReportId.value = null
@@ -870,6 +1016,8 @@ const handleSubmit = async () => {
       stage: formState.stage,
       status: formState.status,
       contractStatus: formState.contractStatus,
+      plannedStartDate: formState.plannedStartDate || null,
+      plannedEndDate: formState.plannedEndDate || null,
       managerId: formState.managerId,
       businessDepartment: formState.department,
       contractorUnit: formState.contractor,
@@ -922,7 +1070,7 @@ const handleSubmit = async () => {
 .project-form-card :deep(.ant-card-body) { padding: 24px 50px 30px; }
 .project-form-card h2 { margin: 0 0 24px; font-size: 18px; }
 .project-form-card :deep(.ant-form-item) { margin-bottom: 28px; }
-.project-form-card :deep(.ant-input-number) { width: 100%; }
+.project-form-card :deep(.ant-input-number), .project-form-card :deep(.ant-picker) { width: 100%; }
 .project-form-card :deep(.ant-checkbox-group) { display: flex; flex-wrap: wrap; gap: 10px 18px; }
 .form-actions { display: flex; justify-content: flex-end; gap: 20px; }
 .form-actions .ant-btn { width: 120px; }
@@ -1008,6 +1156,34 @@ const handleSubmit = async () => {
 .upload-file-item__icon { color: #1677ff; font-size: 22px; }.upload-file-item__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.upload-file-item__success { color: #52c41a; }
 .upload-form { margin-top: 18px; }.upload-form__row { display: block; }.upload-form :deep(.ant-form-item) { margin-bottom: 18px; }.upload-form :deep(.ant-select) { width: 100%; }
 .upload-modal-actions { display: flex; justify-content: flex-end; gap: 16px; }.upload-modal-actions .ant-btn { width: 118px; }
+.report-detail-modal :deep(.ant-modal-body) { padding: 0; background: #f5f5f5; border-radius: 8px; }
+.report-detail-modal :deep(.ant-modal-close) { top: 12px; right: 12px; }
+.report-detail-view { min-height: 620px; padding: 18px 22px 22px; background: #fff; border-radius: 8px; }
+.report-detail-header { display: flex; align-items: center; min-height: 32px; padding-right: 42px; margin-bottom: 14px; }
+.report-detail-header strong { font-size: 16px; }
+.report-detail-info-table { margin-bottom: 24px; border: 1px solid #e5e6eb; border-right: 0; border-bottom: 0; }
+.report-detail-info-grid { display: grid; grid-template-columns: 86px minmax(120px, 1fr) 86px minmax(120px, 1fr) 86px minmax(120px, 1fr) 86px minmax(120px, 1fr); }
+.report-detail-info-grid span,
+.report-detail-info-grid strong,
+.report-detail-description span,
+.report-detail-description p { min-height: 42px; padding: 10px 12px; border-right: 1px solid #e5e6eb; border-bottom: 1px solid #e5e6eb; }
+.report-detail-info-grid span,
+.report-detail-description span { color: #1f1f1f; font-weight: 600; background: #fafafa; }
+.report-detail-info-grid strong { min-width: 0; font-weight: 400; overflow-wrap: anywhere; }
+.report-detail-progress { display: grid; grid-template-columns: minmax(0, 80px) 38px; gap: 10px; align-items: center; }
+.report-detail-progress em { font-style: normal; font-size: 12px; }
+.report-detail-description { display: grid; grid-template-columns: 86px minmax(0, 1fr); margin: 0; color: #404040; }
+.report-detail-description p { margin: 0; }
+.report-detail-section-title { display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 12px; font-size: 18px; }
+.report-detail-remark { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 10px; align-items: flex-start; margin-bottom: 10px; }
+.report-detail-remark label { padding-top: 6px; font-weight: 500; }
+.report-detail-remark-actions { display: flex; justify-content: flex-end; margin-bottom: 14px; }
+.report-task-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
+.report-detail-log-title { margin-top: 28px; }
+.report-detail-logs { min-height: 130px; padding: 16px 18px 4px; border: 1px solid #f0f0f0; border-radius: 6px; }
+.report-detail-log-meta { color: #8c8c8c; font-size: 12px; }
+.report-detail-logs p { margin: 6px 0 0; color: #1f1f1f; }
+.report-detail-view :deep(.ant-table-cell) { white-space: nowrap; }
 .report-modal :deep(.ant-modal-body) { padding-top: 12px; }.report-modal :deep(.ant-form-item) { margin-bottom: 20px; }.report-modal :deep(.ant-picker), .report-modal :deep(.ant-select) { width: 100%; }.report-modal__actions { display: flex; justify-content: flex-end; gap: 10px; }.report-modal__actions .ant-btn { min-width: 80px; }
 @media (max-width: 1280px) { .project-filter__form { grid-template-columns: repeat(2, minmax(0, 1fr)); }.project-tabs { gap: 20px; }.project-summary { grid-template-columns: 1fr; }.project-summary__progress { padding: 16px 0 0; border-top: 1px solid #edf0f3; border-left: 0; }.project-summary dl { grid-template-columns: repeat(2, max-content minmax(120px, 1fr)); } }
 </style>

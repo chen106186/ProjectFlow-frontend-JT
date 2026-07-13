@@ -21,6 +21,7 @@ export const getProjectTasks = params => request('/api/tasks', { params })
 export const getProjectBugs = params => request('/api/bugs', { params })
 
 export const getProjectReports = params => request('/api/project-reports', { params })
+export const getProjectReportDetail = id => request(`/api/project-reports/${id}`)
 export const createProjectReport = data => request('/api/project-reports', { method: 'POST', body: data })
 export const updateProjectReport = (id, data) => request(`/api/project-reports/${id}`, { method: 'PUT', body: data })
 export const deleteProjectReport = id => request(`/api/project-reports/${id}`, { method: 'DELETE' })

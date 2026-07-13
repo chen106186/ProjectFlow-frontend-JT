@@ -135,12 +135,12 @@
             <a-button @click="handleResetReportFilter">重置</a-button>
           </a-form>
 
-          <a-table row-key="id" :columns="reportColumns" :data-source="filteredReportRows" :loading="reportLoading" :pagination="pagination" :scroll="{ x: 1040 }">
+          <a-table row-key="id" :columns="reportColumns" :data-source="filteredReportRows" :loading="reportLoading" :pagination="pagination" :scroll="{ x: 1040 }" :custom-row="getReportCustomRow">
             <template #bodyCell="{ column, record, text }">
-              <a-button v-if="column.dataIndex === 'title'" type="link" @click="emit('edit-report', record)">{{ text }}</a-button>
+              <a-button v-if="column.dataIndex === 'title'" type="link" @click.stop="emit('view-report', record)">{{ text }}</a-button>
               <a-tag v-else-if="column.dataIndex === 'status'" color="green">{{ text }}</a-tag>
-              <a-space v-else-if="column.dataIndex === 'operation'" :size="2">
-                <a-button type="link" size="small" @click="emit('edit-report', record)">编辑</a-button>
+              <a-space v-else-if="column.dataIndex === 'operation'" :size="2" @click.stop>
+                <a-button type="link" size="small" @click.stop="emit('edit-report', record)">编辑</a-button>
                 <a-popconfirm title="确定删除该汇报吗？" ok-text="删除" cancel-text="取消" @confirm="emit('delete-report', record)">
                   <a-button type="link" size="small" danger>删除</a-button>
                 </a-popconfirm>
@@ -241,6 +241,7 @@ const props = defineProps({
 const emit = defineEmits([
   'update:activeTab',
   'create-report',
+  'view-report',
   'edit-report',
   'delete-report',
   'open-upload',
@@ -288,6 +289,10 @@ const handleResetReportFilter = () => {
   reportFilter.status = '全部'
   reportFilter.dateRange = []
 }
+
+const getReportCustomRow = record => ({
+  onClick: () => emit('view-report', record),
+})
 
 defineExpose({
   getGanttElement: () => ganttRef.value,
