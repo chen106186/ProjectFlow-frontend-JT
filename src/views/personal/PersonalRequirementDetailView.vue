@@ -1,0 +1,375 @@
+<template>
+  <section class="requirement-detail-page">
+    <!-- breadcrumb for management context -->
+    <div v-if="from === 'management'" class="page-breadcrumb">
+      <span class="breadcrumb-link" @click="handleBack">需求管理</span>
+      <span class="breadcrumb-sep"> &gt; </span>
+      <span class="breadcrumb-current">需求详情</span>
+    </div>
+
+    <div class="detail-actions">
+      <a-button class="back-button" @click="handleBack">
+        <template #icon><ArrowLeftOutlined /></template>
+        返回
+      </a-button>
+      <template v-if="requirement">
+        <a-tag :color="statusColor(requirement.status)">{{ statusLabel }}</a-tag>
+        <a-tag :color="priorityColor(requirement.priority)">{{ priorityLabel }}</a-tag>
+        <div class="detail-actions__right">
+          <a-button v-if="canEdit" @click="openEditModal">编辑</a-button>
+          <template v-if="requirement.status === 'PENDING_REVIEW'">
+            <a-button type="primary" :loading="statusLoading === 'ACCEPTED'" @click="handleStatusChange('ACCEPTED')">采纳</a-button>
+            <a-button danger :loading="statusLoading === 'REJECTED'" @click="handleStatusChange('REJECTED')">拒绝</a-button>
+          </template>
+        </div>
+      </template>
+    </div>
+
+    <a-card class="detail-card" :bordered="false">
+      <template #title>
+        <span class="detail-card__title">需求信息</span>
+      </template>
+
+      <a-spin :spinning="loading">
+        <template v-if="requirement">
+          <a-descriptions :column="4" bordered size="middle">
+            <a-descriptions-item label="需求编号">{{ requirementNo }}</a-descriptions-item>
+            <a-descriptions-item label="需求标题" :span="3">{{ requirement.title }}</a-descriptions-item>
+            <a-descriptions-item label="所属项目">{{ projectName }}</a-descriptions-item>
+            <a-descriptions-item label="需求类型">
+              <a-tag color="blue">{{ typeLabel }}</a-tag>
+            </a-descriptions-item>
+            <a-descriptions-item label="优先级">
+              <a-tag :color="priorityColor(requirement.priority)">{{ priorityLabel }}</a-tag>
+            </a-descriptions-item>
+            <a-descriptions-item label="状态">
+              <a-tag :color="statusColor(requirement.status)">{{ statusLabel }}</a-tag>
+            </a-descriptions-item>
+            <a-descriptions-item label="负责人">{{ requirement.creatorName || '-' }}</a-descriptions-item>
+            <a-descriptions-item label="审核人">{{ requirement.reviewerName || '-' }}</a-descriptions-item>
+            <a-descriptions-item label="创建时间">{{ createdAtText }}</a-descriptions-item>
+            <a-descriptions-item label="标签" :span="4">{{ requirement.tags || '-' }}</a-descriptions-item>
+            <a-descriptions-item label="需求描述" :span="4">
+              <div class="detail-description">{{ requirement.description || '-' }}</div>
+            </a-descriptions-item>
+          </a-descriptions>
+        </template>
+        <a-empty v-else-if="!loading" description="暂无需求详情" />
+      </a-spin>
+    </a-card>
+
+    <a-card class="logs-card" :bordered="false">
+      <template #title>
+        <span class="detail-card__title">操作日志</span>
+      </template>
+      <a-spin :spinning="logsLoading">
+        <a-empty v-if="!logsLoading && logs.length === 0" description="暂无操作日志" />
+        <a-timeline v-else class="req-timeline">
+          <a-timeline-item
+            v-for="(log, idx) in logsReversed"
+            :key="log.id"
+            :color="idx === 0 ? 'blue' : (log.operationType === 'CREATE' ? 'green' : 'gray')"
+          >
+            <div class="log-meta">
+              <span>{{ formatLogTime(log.createdAt) }}</span>
+              <span class="log-operator">{{ log.operatorName || '-' }}</span>
+            </div>
+            <div class="log-content">{{ log.content || '-' }}</div>
+          </a-timeline-item>
+        </a-timeline>
+      </a-spin>
+    </a-card>
+
+    <!-- 编辑弹窗 -->
+    <a-modal
+      v-model:open="editVisible"
+      title="编辑需求"
+      width="720px"
+      :confirm-loading="editLoading"
+      ok-text="保存"
+      cancel-text="取消"
+      @ok="handleEditSubmit"
+    >
+      <a-form ref="editFormRef" :model="editForm" :rules="editRules" :label-col="{ span: 4 }" :wrapper-col="{ span: 18 }">
+        <a-form-item label="需求标题" name="title">
+          <a-input v-model:value="editForm.title" />
+        </a-form-item>
+        <a-form-item label="所属项目" name="projectId">
+          <a-select v-model:value="editForm.projectId" show-search :options="projectOptions" option-filter-prop="label" />
+        </a-form-item>
+        <a-form-item label="需求类型" name="requirementType">
+          <a-select v-model:value="editForm.requirementType" :options="typeOptions" />
+        </a-form-item>
+        <a-form-item label="优先级" name="priority">
+          <a-select v-model:value="editForm.priority" :options="priorityOptions" />
+        </a-form-item>
+        <a-form-item label="审核人" name="reviewerId">
+          <a-select v-model:value="editForm.reviewerId" show-search :options="reviewerOptions" option-filter-prop="label" />
+        </a-form-item>
+        <a-form-item label="标签">
+          <a-input v-model:value="editForm.tags" placeholder="多个标签请用逗号分隔" />
+        </a-form-item>
+        <a-form-item label="需求描述" name="description">
+          <a-textarea v-model:value="editForm.description" :rows="6" />
+        </a-form-item>
+      </a-form>
+    </a-modal>
+  </section>
+</template>
+
+<script setup>
+import { ArrowLeftOutlined } from '@ant-design/icons-vue'
+import { message } from 'ant-design-vue'
+import dayjs from 'dayjs'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+
+import { getProjectList, getSystemUsers } from '@/api/managementProject'
+import { getRequirementById, getRequirementLogs, updateRequirement, updateRequirementStatus } from '@/api/requirements'
+import { useDictStore } from '@/store/dictStore'
+
+const route = useRoute()
+const router = useRouter()
+const dictStore = useDictStore()
+
+const from = route.query.from
+
+const loading = ref(false)
+const requirement = ref(null)
+const projectMap = ref({})
+const userRows = ref([])
+const statusLoading = ref('')
+const editVisible = ref(false)
+const editLoading = ref(false)
+const editFormRef = ref()
+const logs = ref([])
+const logsLoading = ref(false)
+
+const editForm = reactive({
+  title: '',
+  projectId: undefined,
+  reviewerId: undefined,
+  requirementType: undefined,
+  priority: undefined,
+  description: '',
+  tags: '',
+})
+
+const editRules = {
+  title: [{ required: true, message: '请输入需求标题', trigger: 'blur' }],
+  projectId: [{ required: true, message: '请选择所属项目', trigger: 'change' }],
+  reviewerId: [{ required: true, message: '请选择审核人', trigger: 'change' }],
+  requirementType: [{ required: true, message: '请选择需求类型', trigger: 'change' }],
+  priority: [{ required: true, message: '请选择优先级', trigger: 'change' }],
+  description: [{ required: true, message: '请输入需求描述', trigger: 'blur' }],
+}
+
+const requirementNo = computed(() => {
+  if (!requirement.value) return '-'
+  if (requirement.value.requirementNo != null) {
+    const year = requirement.value.createdAt ? dayjs(requirement.value.createdAt).format('YYYY') : dayjs().format('YYYY')
+    return `REQ-${year}-${String(requirement.value.requirementNo).padStart(4, '0')}`
+  }
+  return '-'
+})
+
+const projectName = computed(() => projectMap.value[requirement.value?.projectId] || '-')
+const typeLabel = computed(() => dictStore.getDictLabel('requirementType', requirement.value?.requirementType) || '-')
+const priorityLabel = computed(() => dictStore.getDictLabel('requirementPriority', requirement.value?.priority) || '-')
+const statusLabel = computed(() => dictStore.getDictLabel('requirementStatus', requirement.value?.status) || '-')
+const createdAtText = computed(() => requirement.value?.createdAt ? dayjs(requirement.value.createdAt).format('YYYY-MM-DD') : '-')
+const logsReversed = computed(() => [...logs.value].reverse())
+
+const currentUserId = () => {
+  try { return JSON.parse(localStorage.getItem('userInfo') || '{}').id } catch { return null }
+}
+const canEdit = computed(() => requirement.value && String(requirement.value.createdBy) === String(currentUserId()))
+
+const typeOptions = computed(() => dictStore.getDictItems('requirementType'))
+const priorityOptions = computed(() => dictStore.getDictItems('requirementPriority'))
+const projectOptions = computed(() => Object.entries(projectMap.value).map(([value, label]) => ({ value, label })))
+const reviewerOptions = computed(() => userRows.value.map(user => ({ label: user.realName || user.username, value: user.id })))
+
+const priorityColor = value => ({ URGENT: 'red', HIGH: 'orange', MEDIUM: 'gold', LOW: 'default' }[value] || 'default')
+const statusColor = value => ({ PENDING_REVIEW: 'blue', ACCEPTED: 'green', REJECTED: 'red' }[value] || 'default')
+const formatLogTime = dt => dt ? dayjs(dt).format('YYYY-MM-DD HH:mm') : '-'
+const loadProjects = async () => {
+  const result = await getProjectList({ pageNo: 1, pageSize: 200, projectType: 'EXECUTION' })
+  projectMap.value = Object.fromEntries((result.records || []).map(item => [item.id, item.name]))
+}
+
+const loadUsers = async () => {
+  const result = await getSystemUsers({ pageNo: 1, pageSize: 200, enabled: true })
+  userRows.value = result.records || []
+}
+
+const loadDetail = async () => {
+  loading.value = true
+  try {
+    requirement.value = await getRequirementById(route.params.id)
+  } catch (error) {
+    requirement.value = null
+    message.error(error.message || '需求详情加载失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+const loadLogs = async () => {
+  logsLoading.value = true
+  try {
+    logs.value = await getRequirementLogs(route.params.id) || []
+  } catch {
+    logs.value = []
+  } finally {
+    logsLoading.value = false
+  }
+}
+
+const handleStatusChange = async status => {
+  statusLoading.value = status
+  try {
+    requirement.value = await updateRequirementStatus(route.params.id, status)
+    await loadLogs()
+    message.success(status === 'ACCEPTED' ? '需求已采纳' : '需求已拒绝')
+  } catch (error) {
+    message.error(error.message || '状态更新失败')
+  } finally {
+    statusLoading.value = ''
+  }
+}
+
+const openEditModal = () => {
+  const r = requirement.value
+  Object.assign(editForm, {
+    title: r.title || '',
+    projectId: r.projectId,
+    reviewerId: r.reviewerId,
+    requirementType: r.requirementType,
+    priority: r.priority,
+    description: r.description || '',
+    tags: r.tags || '',
+  })
+  editFormRef.value?.clearValidate()
+  editVisible.value = true
+}
+
+const handleEditSubmit = async () => {
+  if (editLoading.value) return
+  await editFormRef.value?.validate()
+  editLoading.value = true
+  try {
+    requirement.value = await updateRequirement(route.params.id, {
+      title: editForm.title,
+      projectId: editForm.projectId,
+      reviewerId: editForm.reviewerId,
+      requirementType: editForm.requirementType,
+      priority: editForm.priority,
+      description: editForm.description,
+      tags: editForm.tags || undefined,
+    })
+    await loadLogs()
+    message.success('需求已更新')
+    editVisible.value = false
+  } catch (error) {
+    message.error(error.message || '更新失败')
+  } finally {
+    editLoading.value = false
+  }
+}
+
+const handleBack = () => {
+  if (from === 'management') {
+    router.push({ name: 'RequirementManagement' })
+  } else {
+    router.push({ name: 'PersonalRequirements' })
+  }
+}
+
+const initPage = async () => {
+  await dictStore.loadDicts()
+  await loadProjects()
+  await loadUsers()
+  await Promise.all([loadDetail(), loadLogs()])
+}
+
+onMounted(initPage)
+</script>
+
+<style scoped>
+.requirement-detail-page {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.page-breadcrumb {
+  font-size: 15px;
+  color: #595959;
+}
+
+.breadcrumb-link {
+  color: #1677ff;
+  cursor: pointer;
+}
+
+.breadcrumb-link:hover { text-decoration: underline; }
+.breadcrumb-sep { color: #bfbfbf; margin: 0 4px; }
+.breadcrumb-current { color: #1f1f1f; font-weight: 500; }
+
+.detail-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.detail-actions__right {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.detail-card,
+.logs-card {
+  border: 1px solid #edf0f3;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 3%);
+}
+
+.detail-card :deep(.ant-card-body),
+.logs-card :deep(.ant-card-body) {
+  padding: 18px 22px 24px;
+}
+
+.detail-card__title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.detail-description {
+  white-space: pre-wrap;
+  line-height: 1.8;
+}
+
+.req-timeline {
+  padding-top: 8px;
+}
+
+.log-meta {
+  font-size: 13px;
+  color: #8c8c8c;
+  margin-bottom: 4px;
+}
+
+.log-operator {
+  margin-left: 10px;
+  font-weight: 500;
+  color: #595959;
+}
+
+.log-content {
+  font-size: 14px;
+  color: #262626;
+  line-height: 1.6;
+}
+</style>

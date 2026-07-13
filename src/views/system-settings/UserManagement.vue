@@ -378,7 +378,7 @@ const fetchUsers = async () => {
                   departmentId,
                   enabled: queryParams.enabled,
                   pageNo: 1,
-                  pageSize: 1000,
+                  pageSize: 200,
                 })
             )
         )

@@ -132,7 +132,7 @@
             </a-space>
           </div>
           <div class="document-categories">
-            <button v-for="item in documentCategories" :key="item.label" type="button" :class="item.class">
+            <button v-for="item in documentCategories" :key="item.label" type="button" :class="[item.class, { active: item.active }]" @click="emit('select-document-category', item.label)">
               <span class="document-category__icon"><component :is="item.icon" /></span>
               <span>{{ item.label }}</span>
               <strong>{{ item.value }}</strong>
@@ -140,7 +140,16 @@
           </div>
           <a-table row-key="id" :row-selection="documentRowSelection" :columns="documentColumns" :data-source="documentRows" :loading="documentLoading" :pagination="false">
             <template #bodyCell="{ column, record }">
-              <template v-if="column.dataIndex === 'operation'">
+              <template v-if="column.dataIndex === 'name'">
+                <button type="button" class="document-name" @click="emit('download-document', record)">
+                  <FileOutlined />
+                  <span>{{ record.name }}</span>
+                </button>
+              </template>
+              <template v-else-if="column.dataIndex === 'category'">
+                <a-tag color="blue">{{ record.category }}</a-tag>
+              </template>
+              <template v-else-if="column.dataIndex === 'operation'">
                 <a-space>
                   <a-button type="link" size="small" @click="emit('download-document', record)">下载</a-button>
                   <a-popconfirm title="确定删除该文件吗？" @confirm="emit('delete-document', record)">
@@ -157,7 +166,7 @@
 </template>
 
 <script setup>
-import { DeleteOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons-vue'
+import { DeleteOutlined, FileOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons-vue'
 import dayjs from 'dayjs'
 import { computed, reactive, ref } from 'vue'
 
@@ -202,6 +211,7 @@ const emit = defineEmits([
   'edit-report',
   'delete-report',
   'open-upload',
+  'select-document-category',
   'delete-documents',
   'download-document',
   'delete-document',
@@ -538,6 +548,32 @@ defineExpose({
   background: #fff;
   border: 1px solid #edf0f3;
   border-radius: 12px;
+  cursor: pointer;
+}
+
+.document-categories button.active {
+  color: #1677ff;
+  border-color: #1677ff;
+  box-shadow: 0 0 0 2px rgb(22 119 255 / 12%);
+}
+
+.document-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  padding: 0;
+  color: #1677ff;
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+}
+
+.document-name span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 @media (max-width: 1200px) {

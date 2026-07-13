@@ -254,7 +254,7 @@
               <template v-else-if="column.dataIndex === 'operation'">
                 <a-space :size="2" wrap>
                   <a-button type="link" size="small" @click="handleBugDetail(record)">详情</a-button>
-                  <template v-if="record.creatorId === currentUserId">
+                  <template v-if="record.creatorId === currentUserId && record.statusCode !== 'CLOSED'">
                     <a-button type="link" size="small" @click="handleOpenBugModal('edit', record)">编辑</a-button>
                     <a-popconfirm title="确认删除该Bug?" ok-text="删除" cancel-text="取消" @confirm="handleDeleteBug(record)">
                       <a-button type="link" size="small" danger>删除</a-button>
@@ -530,7 +530,7 @@
         <a-button type="link">{{ file.percent === 100 ? '完成' : '取消' }}</a-button>
       </div>
       <a-form class="upload-meta-form" layout="inline">
-        <a-form-item label="存储位置"><a-select value="默认" :options="storeOptions" /></a-form-item>
+        <a-form-item label="存储位置"><a-select value="项目文档库" :options="storeOptions" /></a-form-item>
         <a-form-item label="文件分类"><a-select value="需求类" :options="categoryOptions" /></a-form-item>
         <a-form-item label="版本说明"><a-textarea placeholder="请输入版本更新说明..." :rows="3" /></a-form-item>
       </a-form>
@@ -920,7 +920,7 @@ async function loadMyBugs() {
     bugApiRows.value = bugs.map((bug, index) => ({
       id: bug.id,
       index: index + 1,
-      code: `${bug.id}`,
+      code: bug.bugNo ? String(bug.bugNo) : '-',
       title: bug.title,
       project: getBugProjectName(bug.projectId),
       projectId: bug.projectId,
@@ -1569,8 +1569,8 @@ const priorityOptions = [{ label: '紧急', value: '紧急' }, { label: '高', v
 const bugLevelOptions = [{ label: '严重', value: '严重' }, { label: '致命', value: '致命' }, { label: '一般', value: '一般' }]
 const taskOptions = [{ label: '用户管理模块前端开发', value: '用户管理模块前端开发' }]
 const todayOptions = [{ label: '今天', value: '今天' }, { label: '本周', value: '本周' }, { label: '本月', value: '本月' }]
-const storeOptions = [{ label: '默认', value: '默认' }]
-const categoryOptions = [{ label: '需求类', value: '需求类' }, { label: '设计类', value: '设计类' }]
+const storeOptions = [{ label: '项目文档库', value: '项目文档库' }, { label: '公共文档库', value: '公共文档库' }]
+const categoryOptions = ['合同类', '需求类', '设计类', '开发类', '验收类'].map(value => ({ label: value, value }))
 
 const smallPagination = {
   current: 1,
@@ -1597,7 +1597,6 @@ const personalTaskColumns = [
 ]
 
 const personalBugColumns = [
-  { title: '序号', dataIndex: 'index', width: 70 },
   { title: 'Bug编号', dataIndex: 'code', width: 160 },
   { title: 'Bug标题', dataIndex: 'title', width: 240 },
   { title: '所属项目', dataIndex: 'project', width: 220 },

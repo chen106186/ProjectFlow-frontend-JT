@@ -9,12 +9,16 @@ import LoginView from '@/views/LoginView.vue'
 import ManagementProject from '@/views/management-project/index.vue'
 import ModuleView from '@/views/ModuleView.vue'
 import DailyReportView from '@/views/personal/DailyReportView.vue'
+import PersonalRequirementDetailView from '@/views/personal/PersonalRequirementDetailView.vue'
+import PersonalRequirementView from '@/views/personal/PersonalRequirementView.vue'
 import OperationLogManagement from '@/views/system-settings/OperationLogManagement.vue'
 import RoleManagement from '@/views/system-settings/RoleManagement.vue'
 import UserManagement from '@/views/system-settings/UserManagement.vue'
+import RequirementManagementView from '@/views/requirement-management/index.vue'
 
 const moduleRoutes = [
   { path: 'personal/tasks', name: 'PersonalTasks', title: '我的任务', group: '个人工作' },
+  { path: 'personal/requirements', name: 'PersonalRequirements', title: '我的需求', group: '个人工作' },
   { path: 'personal/bugs', name: 'PersonalBugs', title: '我的 Bug', group: '个人工作' },
   { path: 'personal/statistics', name: 'PersonalStatistics', title: '我的统计', group: '个人工作' },
   { path: 'tasks/all', name: 'AllTasks', title: '全部任务', group: '任务列表' },
@@ -119,6 +123,12 @@ const router = createRouter({
           },
         },
         {
+          path: 'requirements',
+          name: 'RequirementManagement',
+          component: RequirementManagementView,
+          meta: { title: '需求管理', group: '需求管理' },
+        },
+        {
           path: 'settings/logs',
           name: 'OperationLogManagement',
           component: OperationLogManagement,
@@ -133,7 +143,19 @@ const router = createRouter({
           component: DailyReportView,
           meta: { title: '我的日报', group: '个人工作' },
         },
-        ...moduleRoutes.filter(route => route.name !== 'OperationLogManagement').map(route => ({
+        {
+          path: 'personal/requirements',
+          name: 'PersonalRequirements',
+          component: PersonalRequirementView,
+          meta: { title: '我的需求', group: '个人工作' },
+        },
+        {
+          path: 'personal/requirements/:id',
+          name: 'PersonalRequirementDetail',
+          component: PersonalRequirementDetailView,
+          meta: { title: '需求详情', group: '个人工作' },
+        },
+        ...moduleRoutes.filter(route => !['OperationLogManagement', 'PersonalRequirements', 'RequirementManagement'].includes(route.name)).map(route => ({
           path: route.path,
           name: route.name,
           component: ModuleView,
@@ -145,6 +167,23 @@ const router = createRouter({
       ],
     },
   ],
+})
+
+router.beforeEach(to => {
+  const hasToken = Boolean(localStorage.getItem('token'))
+
+  if (to.name === 'Login') {
+    return true
+  }
+
+  if (!hasToken) {
+    return {
+      path: '/login',
+      query: to.fullPath && to.fullPath !== '/' ? { redirect: to.fullPath } : undefined,
+    }
+  }
+
+  return true
 })
 
 router.afterEach(to => {
