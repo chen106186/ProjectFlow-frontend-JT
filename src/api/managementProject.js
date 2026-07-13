@@ -1,6 +1,13 @@
 import { download, request } from '@/utils/request'
 
-export const getProjectList = params => request('/api/projects', { params })
+const normalizePageParams = params => {
+  if (!params) return params
+  const pageSize = Number(params.pageSize)
+  if (!Number.isFinite(pageSize) || pageSize <= 200) return params
+  return { ...params, pageSize: 200 }
+}
+
+export const getProjectList = params => request('/api/projects', { params: normalizePageParams(params) })
 export const getProjectDetail = id => request(`/api/projects/${id}`)
 export const createProject = data => request('/api/projects', { method: 'POST', body: data })
 export const updateProject = (id, data) => request(`/api/projects/${id}`, { method: 'PUT', body: data })

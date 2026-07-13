@@ -31,7 +31,7 @@
           </a-form-item>
 
           <a-form-item class="login-form-card__options">
-            <a-checkbox v-model:checked="formState.remember">记住账号</a-checkbox>
+            <a-checkbox v-model:checked="formState.remember">记住我</a-checkbox>
           </a-form-item>
 
           <a-button class="login-form-card__submit" type="primary" html-type="submit" size="large" :loading="submitLoading">
@@ -49,11 +49,12 @@
 import { LockOutlined, UserOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { login } from '@/api/auth'
 import { useDictStore } from '@/store/dictStore'
 
 const router = useRouter()
+const route = useRoute()
 const dictStore = useDictStore()
 const submitLoading = ref(false)
 const formState = reactive({
@@ -69,7 +70,8 @@ const formRules = {
 
 onMounted(() => {
   const rememberedUsername = localStorage.getItem('rememberedUsername')
-  if (rememberedUsername) {
+  const rememberMe = localStorage.getItem('rememberMe') === 'true'
+  if (rememberMe && rememberedUsername) {
     formState.username = rememberedUsername
     formState.remember = true
   }
@@ -86,6 +88,7 @@ const handleSubmit = async () => {
     const user = await login({
       username: formState.username,
       password: formState.password,
+      rememberMe: formState.remember,
     })
 
     localStorage.setItem('token', user.token)
@@ -100,13 +103,15 @@ const handleSubmit = async () => {
     }
 
     if (formState.remember) {
+      localStorage.setItem('rememberMe', 'true')
       localStorage.setItem('rememberedUsername', formState.username)
     } else {
+      localStorage.removeItem('rememberMe')
       localStorage.removeItem('rememberedUsername')
     }
 
     message.success('登录成功')
-    router.push('/')
+    router.push(typeof route.query.redirect === 'string' ? route.query.redirect : '/')
   } catch (error) {
     message.error(error.message || '登录失败，请检查账号或密码')
   } finally {

@@ -604,6 +604,8 @@ const handleUserMenuClick = ({ key }) => {
 }
 
 .app-content__header {
+  position: sticky;
+  top: 0;
   z-index: 5;
   flex: 0 0 52px;
   display: flex;
@@ -617,19 +619,17 @@ const handleUserMenuClick = ({ key }) => {
   flex: 1;
   min-height: 0;
   width: 100%;
-  overflow: hidden;
+  overflow: auto;
 }
 
 .app-content__spin :deep(.ant-spin-container) {
-  height: 100%;
-  min-height: 0;
+  min-height: 100%;
 }
 
 .app-content__body {
-  height: 100%;
-  min-height: 0;
+  min-height: 100%;
   padding: 18px 18px 22px;
-  overflow: auto;
+  overflow: visible;
 }
 
 .app-content--home .app-content__body {
@@ -638,7 +638,6 @@ const handleUserMenuClick = ({ key }) => {
 }
 
 .app-content__body--fixed {
-  height: 100%;
-  min-height: 0;
+  min-height: 100%;
 }
 </style>

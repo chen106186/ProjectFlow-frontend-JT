@@ -106,7 +106,7 @@
           :report-status-filters="reportStatusFilters"
           :document-categories="documentCategories"
           :document-columns="documentColumns"
-          :document-rows="documentRows"
+          :document-rows="filteredDocumentRows"
           :document-loading="documentLoading"
           :document-row-selection="documentRowSelection"
           :selected-document-ids="selectedDocumentIds"
@@ -115,6 +115,7 @@
           @edit-report="handleEditReport"
           @delete-report="handleDeleteReport"
           @open-upload="handleOpenUploadModal"
+          @select-document-category="handleSelectDocumentCategory"
           @delete-documents="handleDeleteDocuments"
           @download-document="handleDownloadDocument"
           @delete-document="handleDeleteDocument"
@@ -228,6 +229,7 @@ const bugLoading = ref(false)
 const reportLoading = ref(false)
 const documentLoading = ref(false)
 const selectedDocumentIds = ref([])
+const selectedDocumentCategory = ref('全部')
 const editingId = ref(null)
 const currentProject = ref(null)
 const activeTab = ref('gantt')
@@ -406,9 +408,11 @@ const createDefaultReportForm = () => ({ title: '', type: 'WEEKLY', status: 'DRA
 const reportForm = reactive(createDefaultReportForm())
 const reportTaskOptions = computed(() => taskRows.value.map(item => ({ label: item.name, value: item.id })))
 const reportRules = { title: [{ required: true, message: '请输入汇报标题', trigger: 'blur' }], type: [{ required: true, message: '请选择汇报类型', trigger: 'change' }], status: [{ required: true, message: '请选择汇报状态', trigger: 'change' }], planDate: [{ required: true, message: '请选择计划日期', trigger: 'change' }], target: [{ required: true, message: '请输入汇报对象', trigger: 'blur' }], place: [{ required: true, message: '请输入地点或汇报方式', trigger: 'blur' }], description: [{ required: true, message: '请输入汇报描述', trigger: 'blur' }] }
-const documentCategories = computed(() => [{ label: '全部', value: documentRows.value.length, class: 'category-all', icon: FolderOpenOutlined }, ...['合同类', '需求类', '设计类', '开发类', '验收类'].map((label, index) => ({ label, value: documentRows.value.filter(item => item.category === label).length, class: ['category-contract', 'category-requirement', 'category-design', 'category-development', 'category-acceptance'][index], icon: [FileProtectOutlined, FileTextOutlined, SnippetsOutlined, CodeOutlined, FileDoneOutlined][index] }))])
+const documentCategoryLabels = ['合同类', '需求类', '设计类', '开发类', '验收类']
+const documentCategories = computed(() => [{ label: '全部', value: documentRows.value.length, class: 'category-all', icon: FolderOpenOutlined }, ...documentCategoryLabels.map((label, index) => ({ label, value: documentRows.value.filter(item => item.category === label).length, class: ['category-contract', 'category-requirement', 'category-design', 'category-development', 'category-acceptance'][index], icon: [FileProtectOutlined, FileTextOutlined, SnippetsOutlined, CodeOutlined, FileDoneOutlined][index] }))].map(item => ({ ...item, active: item.label === selectedDocumentCategory.value })))
 const documentColumns = [{ title: '文件名', dataIndex: 'name' }, { title: '类型', dataIndex: 'type', width: 90 }, { title: '大小', dataIndex: 'size', width: 90 }, { title: '版本', dataIndex: 'version', width: 80 }, { title: '上传人', dataIndex: 'uploader', width: 80 }, { title: '分类', dataIndex: 'category', width: 90 }, { title: '上传时间', dataIndex: 'uploadTime', width: 130 }, { title: '操作', dataIndex: 'operation', width: 120 }]
 const documentRows = ref([])
+const filteredDocumentRows = computed(() => selectedDocumentCategory.value === '全部' ? documentRows.value : documentRows.value.filter(item => item.category === selectedDocumentCategory.value))
 const documentRowSelection = computed(() => ({
   selectedRowKeys: selectedDocumentIds.value,
   onChange: keys => { selectedDocumentIds.value = keys },
@@ -733,6 +737,11 @@ const handleDelete = async record => {
 const handleOpenUploadModal = () => {
   uploadVisible.value = true
 }
+const handleSelectDocumentCategory = category => {
+  selectedDocumentCategory.value = category
+  const visibleIds = new Set(filteredDocumentRows.value.map(item => item.id))
+  selectedDocumentIds.value = selectedDocumentIds.value.filter(id => visibleIds.has(id))
+}
 const handleDocumentBeforeUpload = file => {
   if (file.size > 50 * 1024 * 1024) { message.warning('单个文件不能超过50MB'); return false }
   uploadFiles.value.push({ uid: file.uid, name: file.name, size: file.size, percent: 0, originFile: file })
@@ -889,7 +898,7 @@ const handleSubmit = async () => {
 </script>
 
 <style scoped>
-.project-page { height: 100%; min-width: 0; overflow-x: hidden; overflow-y: auto; color: #262626; }
+.project-page { min-height: 100%; min-width: 0; overflow: visible; color: #262626; }
 .project-filter, .project-list, .project-form-card { border: 1px solid #edf0f3; box-shadow: 0 2px 8px rgb(0 0 0 / 3%); }
 .project-filter { margin-bottom: 16px; }
 .project-filter :deep(.ant-card-body) { padding: 16px 18px 2px; }
@@ -917,15 +926,15 @@ const handleSubmit = async () => {
 .project-form-card :deep(.ant-checkbox-group) { display: flex; flex-wrap: wrap; gap: 10px 18px; }
 .form-actions { display: flex; justify-content: flex-end; gap: 20px; }
 .form-actions .ant-btn { width: 120px; }
-.project-detail { height: 100%; min-height: 0; overflow: auto; }
+.project-detail { min-height: 100%; overflow: visible; }
 .project-detail__heading { display: flex; align-items: center; gap: 16px; margin-bottom: 6px; }
 .project-detail__heading :deep(.ant-tag) { padding: 6px 14px; font-size: 16px; }
 .project-tabs { display: flex; gap: 44px; height: 44px; padding-left: 8px; }
 .project-tabs button { display: inline-flex; align-items: center; gap: 7px; height: 44px; padding: 0 7px; background: transparent; border: 0; border-bottom: 3px solid transparent; cursor: pointer; }
 .project-tabs button.active { color: #1677ff; border-bottom-color: #1677ff; }
 .project-detail__layout { min-height: 530px; }
-.project-detail__main { min-width: 0; overflow: hidden; background: #fff; }
-.detail-panel { min-height: 530px; padding: 14px; overflow: auto; }
+.project-detail__main { min-width: 0; overflow: visible; background: #fff; }
+.detail-panel { min-height: 530px; padding: 14px; overflow: visible; }
 .detail-panel h3 { margin: 0 0 12px; }
 .gantt-panel { padding: 12px; }
 .project-stat-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 16px; }

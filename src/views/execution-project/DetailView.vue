@@ -136,15 +136,24 @@
         </div>
         <h3>分类导航</h3>
         <div class="document-categories">
-          <button v-for="item in documentCategories" :key="item.label" type="button" :class="item.class">
+          <button v-for="item in documentCategories" :key="item.label" type="button" :class="[item.class, { active: item.active }]" @click="handleSelectDocumentCategory(item.label)">
             <span class="document-category__icon"><component :is="item.icon" /></span>
             <span>{{ item.label }}</span>
             <strong>{{ item.value }}</strong>
           </button>
         </div>
-        <a-table row-key="id" :row-selection="documentRowSelection" :columns="documentColumns" :data-source="documentRows" :loading="documentLoading" :pagination="false">
+        <a-table row-key="id" :row-selection="documentRowSelection" :columns="documentColumns" :data-source="filteredDocumentRows" :loading="documentLoading" :pagination="false">
           <template #bodyCell="{ column, record }">
-            <template v-if="column.dataIndex === 'operation'">
+            <template v-if="column.dataIndex === 'name'">
+              <button type="button" class="document-name" @click="handleDownloadDocument(record)">
+                <FileOutlined />
+                <span>{{ record.name }}</span>
+              </button>
+            </template>
+            <template v-else-if="column.dataIndex === 'category'">
+              <a-tag color="blue">{{ record.category }}</a-tag>
+            </template>
+            <template v-else-if="column.dataIndex === 'operation'">
               <a-space>
                 <a-button type="link" size="small" @click="handleDownloadDocument(record)">下载</a-button>
                 <a-popconfirm title="确定删除该文件吗？" @confirm="handleDeleteDocument(record)"><a-button type="link" size="small" danger>删除</a-button></a-popconfirm>
@@ -180,7 +189,7 @@
           <a-form-item label="存储位置"><a-select v-model:value="uploadForm.location" :options="storageOptions" /></a-form-item>
           <a-form-item label="文件分类"><a-select v-model:value="uploadForm.category" :options="documentCategoryOptions" /></a-form-item>
         </div>
-        <a-form-item label="版本说明"><a-textarea v-model:value="uploadForm.description" :rows="4" placeholder="请输入版本更新说明..." /></a-form-item>
+        <a-form-item label="版本号"><a-input v-model:value="uploadForm.versionNo" placeholder="请输入版本号，如 V1.0 / 初版" /></a-form-item>
       </a-form>
       <div class="upload-modal-actions"><a-button @click="uploadVisible = false">取消</a-button><a-button type="primary" :loading="uploadLoading" @click="handleStartUpload">开始上传</a-button></div>
     </a-modal>
@@ -264,6 +273,7 @@ const bugLoading = ref(false)
 const reportLoading = ref(false)
 const documentLoading = ref(false)
 const selectedDocumentIds = ref([])
+const selectedDocumentCategory = ref('全部')
 const uploadVisible = ref(false)
 const uploadLoading = ref(false)
 const ganttEditVisible = ref(false)
@@ -370,17 +380,19 @@ const bugStatusFilters = toOptions(['全部状态', '待处理', '修复中', '�
 const reportStatusFilters = toOptions(['全部', '准备中', '进行中', '已完成'])
 const reportColumns = [{ title: '汇报标题', dataIndex: 'title', width: 220 }, { title: '汇报类型', dataIndex: 'type', width: 110 }, { title: '状态', dataIndex: 'status', width: 100 }, { title: '计划时间', dataIndex: 'planTime', width: 150 }, { title: '实际时间', dataIndex: 'actualTime', width: 150 }, { title: '汇报对象', dataIndex: 'target', width: 110 }, { title: '地点/方式', dataIndex: 'place', width: 120 }]
 const reportRows = ref([])
-const documentCategories = computed(() => [{ label: '全部', value: documentRows.value.length, class: 'category-all', icon: FolderOpenOutlined }, ...['合同类', '需求类', '设计类', '开发类', '验收类'].map((label, index) => ({ label, value: documentRows.value.filter(item => item.category === label).length, class: ['category-contract', 'category-requirement', 'category-design', 'category-development', 'category-acceptance'][index], icon: [FileProtectOutlined, FileTextOutlined, SnippetsOutlined, CodeOutlined, FileDoneOutlined][index] }))])
+const documentCategoryLabels = ['合同类', '需求类', '设计类', '开发类', '验收类']
+const documentCategories = computed(() => [{ label: '全部', value: documentRows.value.length, class: 'category-all', icon: FolderOpenOutlined }, ...documentCategoryLabels.map((label, index) => ({ label, value: documentRows.value.filter(item => item.category === label).length, class: ['category-contract', 'category-requirement', 'category-design', 'category-development', 'category-acceptance'][index], icon: [FileProtectOutlined, FileTextOutlined, SnippetsOutlined, CodeOutlined, FileDoneOutlined][index] }))].map(item => ({ ...item, active: item.label === selectedDocumentCategory.value })))
 const documentColumns = [{ title: '文件名', dataIndex: 'name' }, { title: '类型', dataIndex: 'type', width: 90 }, { title: '大小', dataIndex: 'size', width: 90 }, { title: '版本', dataIndex: 'version', width: 80 }, { title: '上传人', dataIndex: 'uploader', width: 80 }, { title: '分类', dataIndex: 'category', width: 90 }, { title: '上传时间', dataIndex: 'uploadTime', width: 130 }, { title: '操作', dataIndex: 'operation', width: 120 }]
 const documentRows = ref([])
+const filteredDocumentRows = computed(() => selectedDocumentCategory.value === '全部' ? documentRows.value : documentRows.value.filter(item => item.category === selectedDocumentCategory.value))
 const documentRowSelection = computed(() => ({
   selectedRowKeys: selectedDocumentIds.value,
   onChange: keys => { selectedDocumentIds.value = keys },
 }))
 const pagination = { pageSize: 5, showSizeChanger: false }
-const uploadForm = reactive({ location: '项目文档库', category: '需求类', description: '' })
+const uploadForm = reactive({ location: '项目文档库', category: '需求类', versionNo: 'V1.0' })
 const storageOptions = toOptions(['项目文档库', '公共文档库'])
-const documentCategoryOptions = toOptions(['合同类', '需求类', '设计类', '开发类', '验收类'])
+const documentCategoryOptions = toOptions(documentCategoryLabels)
 const summaryItems = computed(() => [
   { label: '项目名称', value: currentProject.value?.name || '-' },
   { label: '项目类型', value: '执行类项目' },
@@ -505,7 +517,15 @@ const renderGantt = async () => {
 }
 
 const handleOpenUploadModal = () => {
+  uploadFiles.value = []
+  Object.assign(uploadForm, { location: '项目文档库', category: '需求类', versionNo: 'V1.0' })
   uploadVisible.value = true
+}
+
+const handleSelectDocumentCategory = category => {
+  selectedDocumentCategory.value = category
+  const visibleIds = new Set(filteredDocumentRows.value.map(item => item.id))
+  selectedDocumentIds.value = selectedDocumentIds.value.filter(id => visibleIds.has(id))
 }
 
 const handleGanttRow = record => ({
@@ -556,6 +576,11 @@ const handleDocumentBeforeUpload = file => {
     message.warning('单个文件不能超过50MB')
     return false
   }
+  const exists = uploadFiles.value.some(item => item.name === file.name && item.size === file.size)
+  if (exists) {
+    message.warning('该文件已在待上传列表中')
+    return false
+  }
   uploadFiles.value.push({ uid: file.uid, name: file.name, size: file.size, percent: 0, originFile: file })
   return false
 }
@@ -573,12 +598,13 @@ const handleStartUpload = async () => {
   uploadLoading.value = true
   try {
     for (const uploadFile of uploadFiles.value) {
+      uploadFile.percent = 40
       const data = new FormData()
       data.append('businessType', 'PROJECT')
       data.append('businessId', route.params.id)
       data.append('storageLocation', uploadForm.location)
       data.append('fileCategory', uploadForm.category)
-      data.append('versionNo', uploadForm.description)
+      if (uploadForm.versionNo?.trim()) data.append('versionNo', uploadForm.versionNo.trim())
       data.append('file', uploadFile.originFile)
       await uploadProjectFile(data)
       uploadFile.percent = 100
@@ -610,7 +636,8 @@ const handleDownloadDocument = async record => {
 const handleDeleteDocument = async record => {
   try {
     await deleteProjectFile(record.id)
-    documentRows.value = documentRows.value.filter(item => item.id !== record.id)
+    selectedDocumentIds.value = selectedDocumentIds.value.filter(id => id !== record.id)
+    await fetchProjectRelatedData(route.params.id)
     message.success('文件删除成功')
   } catch (error) {
     message.error(error.message)
@@ -622,8 +649,8 @@ const handleDeleteDocuments = async () => {
 
   try {
     await deleteProjectFiles(selectedDocumentIds.value)
-    documentRows.value = documentRows.value.filter(item => !selectedDocumentIds.value.includes(item.id))
     selectedDocumentIds.value = []
+    await fetchProjectRelatedData(route.params.id)
     message.success('文件批量删除成功')
   } catch (error) {
     message.error(error.message)
@@ -639,7 +666,7 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.execution-detail { height: 100%; min-width: 0; overflow: auto; color: #262626; }
+.execution-detail { min-height: 100%; min-width: 0; overflow: visible; color: #262626; }
 .execution-detail__heading { display: flex; align-items: center; gap: 16px; margin-bottom: 8px; }
 .execution-detail__heading :deep(.ant-tag) { padding: 6px 14px; font-size: 16px; }
 .execution-summary { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; margin: 0 0 14px; padding: 16px 18px; background: #fff; border-radius: 8px; }
@@ -658,11 +685,11 @@ onMounted(async () => {
 .summary-metrics span { color: #8c8c8c; font-size: 12px; }
 .summary-metrics strong { font-size: 18px; }
 .summary-metrics .danger { color: #ff4d4f; }
-.execution-detail-card { min-height: 560px; overflow: hidden; background: #fff; }
+.execution-detail-card { min-height: 560px; overflow: visible; background: #fff; }
 .execution-tabs { display: flex; gap: 44px; height: 44px; padding-left: 8px; }
 .execution-tabs button { display: inline-flex; gap: 7px; align-items: center; height: 44px; padding: 0 7px; color: #1f1f1f; background: transparent; border: 0; border-bottom: 3px solid transparent; cursor: pointer; }
 .execution-tabs button.active { color: #1677ff; border-bottom-color: #1677ff; }
-.execution-tab-panel { min-height: 530px; padding: 14px; overflow: auto; }
+.execution-tab-panel { min-height: 530px; padding: 14px; overflow: visible; }
 .execution-tab-panel h3 { margin: 0 0 12px; }
 .gantt-panel { padding: 12px; }
 .execution-stat-row, .risk-grid, .bug-summary, .document-categories { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 22px; }
@@ -717,8 +744,11 @@ onMounted(async () => {
 .document-categories { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 .document-categories button { display: grid; grid-template-columns: 42px 1fr; padding: 15px; color: #1d1d1f; text-align: left; background: #fff; border: 1px solid rgb(0 0 0 / 5%); border-radius: 16px; box-shadow: 0 4px 16px rgb(0 0 0 / 5%); cursor: pointer; transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.28s ease; }
 .document-categories button:first-child { border-color: #1677ff; }
+.document-categories button.active { color: #1677ff; border-color: #1677ff; box-shadow: 0 0 0 2px rgb(22 119 255 / 12%); }
 .document-category__icon { display: inline-flex; grid-row: 1 / 3; align-self: center; align-items: center; justify-content: center; width: 36px; height: 36px; font-size: 20px; border-radius: 11px; }
 .document-categories strong { font-size: 17px; }
+.document-name { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; padding: 0; color: #1677ff; text-align: left; cursor: pointer; background: transparent; border: 0; }
+.document-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .category-all { background: linear-gradient(135deg, #fff 0%, #edf6ff 100%); }
 .category-all .document-category__icon { color: #0066cc; background: #e5f2ff; }
 .category-contract { background: linear-gradient(135deg, #fff 0%, #eefbf2 100%); }

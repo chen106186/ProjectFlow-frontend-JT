@@ -302,9 +302,15 @@ onMounted(async () => {
   summaryLoading.value = true
   todoLoading.value = true
   try {
-    const [s, t] = await Promise.all([getDashboardSummary(), getDashboardTodos()])
-    summary.value = s
-    todos.value = t
+    const [summaryResult, todoResult] = await Promise.allSettled([getDashboardSummary(), getDashboardTodos()])
+
+    if (summaryResult.status === 'fulfilled') {
+      summary.value = summaryResult.value
+    }
+
+    if (todoResult.status === 'fulfilled') {
+      todos.value = todoResult.value
+    }
   } finally {
     summaryLoading.value = false
     todoLoading.value = false

@@ -335,7 +335,8 @@ const loadBugs = async () => {
   listLoading.value = true
   try {
     const res = await getProjectBugs({
-      page: current.value, pageSize: pageSize.value,
+      pageNo: current.value,
+      pageSize: pageSize.value,
       keyword: queryParams.keyword || undefined,
       projectId: queryParams.projectId || undefined,
       priority: queryParams.priority || undefined,
@@ -551,8 +552,8 @@ onBeforeUnmount(() => {
 
 onMounted(async () => {
   const [projectRes, userRes] = await Promise.all([
-    getProjectList({ projectType: 'EXECUTION', pageSize: 500 }).catch(() => ({ records: [] })),
-    getSystemUsers({ pageSize: 500 }).catch(() => ({ records: [] })),
+    getProjectList({ projectType: 'EXECUTION', pageSize: 200 }).catch(() => ({ records: [] })),
+    getSystemUsers({ pageSize: 200 }).catch(() => ({ records: [] })),
   ])
   projects.value = projectRes.records || []
   users.value = userRes.records || []
