@@ -263,6 +263,7 @@ defineExpose({
 
 <style scoped>
 .project-tabs {
+  flex: 0 0 44px;
   display: flex;
   gap: 32px;
   height: 44px;
@@ -287,17 +288,25 @@ defineExpose({
 }
 
 .project-detail__layout {
-  min-height: 530px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .project-detail__main {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   min-width: 0;
+  min-height: 0;
   overflow: hidden;
   background: #fff;
 }
 
 .detail-panel {
-  min-height: 530px;
+  flex: 1;
+  height: 100%;
+  min-height: 0;
   padding: 14px;
   overflow: auto;
 }
@@ -323,10 +332,18 @@ defineExpose({
   align-items: center;
   width: 100%;
   height: 86px;
+  min-height: 0;
   padding: 14px 15px;
+  text-align: left;
   border: 1px solid rgb(0 0 0 / 5%);
   border-radius: 16px;
   box-shadow: 0 4px 16px rgb(0 0 0 / 5%);
+  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.28s ease;
+}
+
+.project-stat-row .semantic-card:hover {
+  box-shadow: 0 14px 28px rgb(0 0 0 / 10%);
+  transform: translateY(-4px);
 }
 
 .gantt-workspace {
@@ -341,12 +358,22 @@ defineExpose({
   border-right: 1px solid #edf0f3;
 }
 
+.gantt-node-table :deep(.ant-table-container),
+.gantt-node-table :deep(.ant-table),
+.gantt-node-table :deep(.ant-table-content) {
+  height: 100%;
+}
+
 .gantt-node-table :deep(.ant-table-thead > tr > th) {
+  height: 86PX;
+  padding: 8PX 6PX;
   text-align: center;
   white-space: nowrap;
 }
 
 .gantt-node-table :deep(.ant-table-tbody > tr > td) {
+  height: 72PX;
+  padding: 6PX;
   text-align: center;
   white-space: nowrap;
 }
@@ -359,12 +386,18 @@ defineExpose({
   background: #edf6ff;
 }
 
+.gantt-node-table :deep(.ant-progress) {
+  min-width: 76px;
+}
+
 .date-range {
   display: inline-flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 4PX;
   align-items: center;
   justify-content: center;
+  height: 48PX;
+  line-height: 20PX;
 }
 
 .date-overdue {
@@ -375,7 +408,107 @@ defineExpose({
   width: 100%;
   min-width: 0;
   height: 100%;
+  min-height: 0;
   overflow: hidden;
+}
+
+.gantt-scroll :deep(.gantt-container) {
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-radius: 0;
+}
+
+.gantt-scroll :deep(.gantt) {
+  display: block;
+  height: 100%;
+}
+
+.gantt-scroll :deep(.popup-wrapper) {
+  padding: 14px 16px;
+  border: 1px solid rgb(0 0 0 / 6%);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 14%);
+}
+
+.gantt-scroll :deep(.popup-wrapper .title) {
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+.gantt-scroll :deep(.gantt-popup__dates) {
+  display: grid;
+  grid-template-columns: 64px 92px;
+  gap: 7px 14px;
+  align-items: center;
+  font-size: 12px;
+}
+
+.gantt-scroll :deep(.gantt-popup__dates span) {
+  color: #86868b;
+}
+
+.gantt-scroll :deep(.gantt-popup__dates strong) {
+  color: #1d1d1f;
+  font-weight: 500;
+}
+
+.gantt-scroll :deep(.bar-wrapper) {
+  cursor: default;
+}
+
+.gantt-scroll :deep(.bar-wrapper.gantt-empty-row),
+.gantt-scroll :deep(.gantt-empty-row .bar-wrapper),
+.gantt-scroll :deep(.gantt-empty-row .bar-group),
+.gantt-scroll :deep(.gantt-empty-row .bar-label) {
+  visibility: hidden;
+}
+
+.gantt-scroll :deep(.gantt-not-started .bar),
+.gantt-scroll :deep(.gantt-not-started .bar-progress) {
+  fill: #aeaeb2;
+  stroke: #aeaeb2;
+}
+
+.gantt-scroll :deep(.gantt-in-progress .bar) {
+  fill: #d6eaff;
+  stroke: #0a84ff;
+}
+
+.gantt-scroll :deep(.gantt-in-progress .bar-progress) {
+  fill: #0a84ff;
+}
+
+.gantt-scroll :deep(.gantt-due-soon .bar),
+.gantt-scroll :deep(.gantt-due-soon .bar-progress) {
+  fill: #ffd60a;
+  stroke: #d6a600;
+}
+
+.gantt-scroll :deep(.gantt-completed .bar),
+.gantt-scroll :deep(.gantt-completed .bar-progress),
+.gantt-scroll :deep(.gantt-milestone .bar),
+.gantt-scroll :deep(.gantt-milestone .bar-progress) {
+  fill: #30d158;
+  stroke: #248a3d;
+}
+
+.gantt-scroll :deep(.gantt-overdue .bar),
+.gantt-scroll :deep(.gantt-overdue .bar-progress) {
+  fill: #ff453a;
+  stroke: #d70015;
+}
+
+.gantt-scroll :deep(.gantt-completed .bar-label),
+.gantt-scroll :deep(.gantt-overdue .bar-label),
+.gantt-scroll :deep(.gantt-in-progress .bar-label),
+.gantt-scroll :deep(.gantt-milestone .bar-label) {
+  fill: #fff;
+}
+
+.gantt-scroll :deep(.gantt-due-soon .bar-label),
+.gantt-scroll :deep(.gantt-not-started .bar-label) {
+  fill: #1d1d1f;
 }
 
 .section-heading,
