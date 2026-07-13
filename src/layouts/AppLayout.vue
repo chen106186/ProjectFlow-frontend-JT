@@ -69,7 +69,10 @@
           </a-breadcrumb>
         </header>
 
-        <a-spin :spinning="profileLoading" class="app-content__spin">
+        <a-spin
+          :spinning="profileLoading"
+          :class="['app-content__spin', { 'app-content__spin--fixed': route.meta.isBugPage || route.meta.isProjectPage }]"
+        >
           <div
             v-if="profileReady"
             :class="['app-content__body', { 'app-content__body--fixed': route.meta.isBugPage || route.meta.isProjectPage }]"
@@ -571,6 +574,7 @@ const handleUserMenuClick = ({ key }) => {
 }
 
 .app-sider {
+  height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
   background: #fff;
@@ -600,7 +604,9 @@ const handleUserMenuClick = ({ key }) => {
   height: 100%;
   min-height: 0;
   min-width: 0;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .app-content__header {
@@ -616,28 +622,31 @@ const handleUserMenuClick = ({ key }) => {
 }
 
 .app-content__spin {
-  flex: 1;
+  flex: none;
   min-height: 0;
-  width: 100%;
-  overflow: auto;
+  overflow: visible;
 }
 
 .app-content__spin :deep(.ant-spin-container) {
-  min-height: 100%;
+  overflow: visible;
 }
 
 .app-content__body {
-  min-height: 100%;
+  flex: none;
+  min-height: 0;
   padding: 18px 18px 22px;
   overflow: visible;
 }
 
-.app-content--home .app-content__body {
-  height: 100%;
-  min-height: 0;
+.app-content__spin--fixed {
+  overflow: visible;
+}
+
+.app-content__spin--fixed :deep(.ant-spin-container) {
+  overflow: visible;
 }
 
 .app-content__body--fixed {
-  min-height: 100%;
+  overflow: visible;
 }
 </style>
