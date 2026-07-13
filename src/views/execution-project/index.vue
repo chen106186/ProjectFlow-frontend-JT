@@ -65,6 +65,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { createProject, deleteProject, getDicts, getProjectDetail, getProjectList, getProjectStats, getSystemUsers, updateProject } from '@/api/managementProject'
+import { OPERATION_ACTIONS, OPERATION_MODULES, recordOperationLog } from '@/utils/operationLog'
 
 const loading = ref(false)
 const submitLoading = ref(false)
@@ -110,7 +111,7 @@ const formRules = {
   description: [{ required: true, message: '请输入项目描述', trigger: 'blur' }],
 }
 
-const visibleProjects = computed(() => appliedQuery.stage === '全部' ? projects.value : projects.value.filter(item => item.stage === appliedQuery.stage))
+const visibleProjects = computed(() => projects.value)
 const groupedProjects = computed(() => {
   const labelMap = { stage: '项目阶段', manager: '项目经理', status: '项目状态' }
   const groups = new Map()
@@ -150,7 +151,15 @@ const fetchReferenceData = async () => {
 const fetchProjects = async () => {
   loading.value = true
   try {
-    const result = await getProjectList({ projectType: 'EXECUTION', keyword: appliedQuery.keyword, managerId: appliedQuery.managerId === '全部' ? undefined : appliedQuery.managerId, status: appliedQuery.status === '全部' ? undefined : appliedQuery.status, pageNo: pagination.current, pageSize: pagination.pageSize })
+    const result = await getProjectList({
+      projectType: 'EXECUTION',
+      keyword: appliedQuery.keyword || undefined,
+      managerId: managerOptions.value.some(item => item.value === appliedQuery.managerId) ? appliedQuery.managerId : undefined,
+      stage: stageOptions.value.some(item => item.value === appliedQuery.stage) ? appliedQuery.stage : undefined,
+      status: statusOptions.value.some(item => item.value === appliedQuery.status) ? appliedQuery.status : undefined,
+      pageNo: pagination.current,
+      pageSize: pagination.pageSize,
+    })
     const ids = result.records.map(p => p.id)
     const statsMap = ids.length
       ? Object.fromEntries((await getProjectStats(ids)).map(s => [s.projectId, s]))
@@ -177,7 +186,19 @@ const fetchProjects = async () => {
   }
 }
 
-const handleSearch = async () => { Object.assign(appliedQuery, query); pagination.current = 1; await fetchProjects() }
+const handleSearch = async () => {
+  Object.assign(appliedQuery, query)
+  pagination.current = 1
+  await fetchProjects()
+  void recordOperationLog({
+    module: OPERATION_MODULES.EXECUTION_PROJECT,
+    action: OPERATION_ACTIONS.QUERY,
+    bizType: 'PROJECT',
+    bizName: '执行类项目列表',
+    detail: { keyword: query.keyword, managerId: query.managerId, stage: query.stage, status: query.status },
+    routeName: 'ExecutionProjects',
+  })
+}
 const handleReset = async () => { Object.assign(query, { keyword: '', managerId: '全部', stage: '全部', status: '全部' }); Object.assign(appliedQuery, query); pagination.current = 1; await fetchProjects() }
 const handleTableChange = async page => { pagination.current = page.current; pagination.pageSize = page.pageSize; await fetchProjects() }
 const handleToggleGroup = value => { collapsedGroups.value = collapsedGroups.value.includes(value) ? collapsedGroups.value.filter(item => item !== value) : [...collapsedGroups.value, value] }
@@ -202,9 +223,33 @@ const handleEdit = async record => {
     formVisible.value = false
   }
 }
-const handleDetail = record => { router.push({ name: 'ExecutionProjectDetail', params: { id: record.id } }) }
+const handleDetail = record => {
+  void recordOperationLog({
+    module: OPERATION_MODULES.EXECUTION_PROJECT,
+    action: OPERATION_ACTIONS.DETAIL,
+    bizType: 'PROJECT',
+    bizId: record.id,
+    bizName: record.name,
+    detail: `查看执行类项目详情：${record.name}`,
+    routeName: 'ExecutionProjectDetail',
+  })
+  router.push({ name: 'ExecutionProjectDetail', params: { id: record.id } })
+}
 const handleDelete = async record => {
-  try { await deleteProject(record.id); message.success('项目删除成功'); await fetchProjects() } catch (error) { message.error(error.message) }
+  try {
+    await deleteProject(record.id)
+    message.success('项目删除成功')
+    void recordOperationLog({
+      module: OPERATION_MODULES.EXECUTION_PROJECT,
+      action: OPERATION_ACTIONS.DELETE,
+      bizType: 'PROJECT',
+      bizId: record.id,
+      bizName: record.name,
+      detail: `删除执行类项目：${record.name}`,
+      routeName: 'ExecutionProjects',
+    })
+    await fetchProjects()
+  } catch (error) { message.error(error.message) }
 }
 const handleSubmit = async () => {
   if (submitLoading.value) return
@@ -237,6 +282,15 @@ const handleSubmit = async () => {
       ? await updateProject(editingId.value, data)
       : await createProject(data)
     message.success(editingId.value ? '项目编辑成功' : '项目新建成功')
+    void recordOperationLog({
+      module: OPERATION_MODULES.EXECUTION_PROJECT,
+      action: editingId.value ? OPERATION_ACTIONS.UPDATE : OPERATION_ACTIONS.CREATE,
+      bizType: 'PROJECT',
+      bizId: savedProject?.id || editingId.value,
+      bizName: data.name,
+      detail: editingId.value ? `编辑执行类项目：${data.name}` : `新建执行类项目：${data.name}`,
+      routeName: editingId.value ? 'ExecutionProjects' : 'ExecutionProjectDetail',
+    })
     formVisible.value = false
     await fetchProjects()
     if (!editingId.value && savedProject?.id) {

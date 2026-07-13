@@ -30,6 +30,7 @@
                 class="todo-card"
                 :class="`todo-card--${todoStatus(item)}`"
                 type="button"
+                @click="handleTodoClick(item)"
               >
                 <span class="todo-card__type" :class="`todo-card__type--${item.itemType === 'BUG' ? 'bug' : 'task'}`">
                   {{ item.itemType === 'BUG' ? 'BUG' : '任务' }}
@@ -78,11 +79,57 @@
     </section>
 
     <TaskCalendarModal v-model:open="isCalendarVisible" />
+
+    <section class="home-stats">
+      <div class="stats-header">
+        <span class="panel-title"><BarChartOutlined />我的统计</span>
+        <div class="stats-period">
+          <button v-for="p in periods" :key="p.value" type="button" :class="['period-btn', { active: statsPeriod === p.value }]" @click="handlePeriodChange(p.value)">{{ p.label }}</button>
+        </div>
+      </div>
+      <div class="stats-kpi">
+        <div class="kpi-card kpi-card--blue">
+          <span class="kpi-label">我的任务</span>
+          <strong class="kpi-value">{{ statsLoading ? '--' : myStats.myTaskTotal }}</strong>
+          <small class="kpi-sub">完成 {{ myStats.myTaskCompleted }} · 逾期 {{ myStats.myTaskOverdue }}</small>
+        </div>
+        <div class="kpi-card kpi-card--red">
+          <span class="kpi-label">我的Bug</span>
+          <strong class="kpi-value">{{ statsLoading ? '--' : myStats.myBugTotal }}</strong>
+          <small class="kpi-sub">待关闭 {{ myStats.myBugOpen }}</small>
+        </div>
+        <div class="kpi-card kpi-card--green">
+          <span class="kpi-label">我的需求</span>
+          <strong class="kpi-value">{{ statsLoading ? '--' : myStats.myRequirementTotal }}</strong>
+          <small class="kpi-sub">已采纳 {{ myStats.myRequirementAccepted }}</small>
+        </div>
+        <div class="kpi-card kpi-card--orange">
+          <span class="kpi-label">未读通知</span>
+          <strong class="kpi-value">{{ statsLoading ? '--' : myStats.unreadNoticeCount }}</strong>
+          <small class="kpi-sub">条未读消息</small>
+        </div>
+      </div>
+      <div class="stats-charts">
+        <a-card class="chart-card" :bordered="false" :body-style="{ padding: '12px 16px' }">
+          <template #title><span class="chart-title">任务完成趋势</span></template>
+          <a-spin :spinning="statsLoading">
+            <div ref="trendChartRef" class="chart-container"></div>
+          </a-spin>
+        </a-card>
+        <a-card class="chart-card" :bordered="false" :body-style="{ padding: '12px 16px' }">
+          <template #title><span class="chart-title">项目任务分布</span></template>
+          <a-spin :spinning="statsLoading">
+            <div ref="distChartRef" class="chart-container"></div>
+          </a-spin>
+        </a-card>
+      </div>
+    </section>
   </div>
 </template>
 
 <script setup>
 import {
+  BarChartOutlined,
   CalendarOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
@@ -95,12 +142,18 @@ import {
   ProfileOutlined,
   RightOutlined,
 } from '@ant-design/icons-vue'
+import * as echarts from 'echarts/core'
+import { BarChart, LineChart } from 'echarts/charts'
+import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
+import { CanvasRenderer } from 'echarts/renderers'
 import dayjs from 'dayjs'
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
-import { getDashboardSummary, getDashboardTodos } from '@/api/dashboard'
+import { getDashboardSummary, getDashboardTodos, getMyStatistics } from '@/api/dashboard'
 import TaskCalendarModal from '@/components/TaskCalendarModal.vue'
+
+echarts.use([BarChart, LineChart, GridComponent, TooltipComponent, LegendComponent, CanvasRenderer])
 
 const router = useRouter()
 const activeTodoTab = ref('all')
@@ -168,6 +221,83 @@ const priorityIcon = priority => {
   return MinusCircleOutlined
 }
 
+const periods = [
+  { label: '本周', value: 'week' },
+  { label: '本月', value: 'month' },
+  { label: '本季度', value: 'quarter' },
+  { label: '本年', value: 'year' },
+]
+const statsPeriod = ref('week')
+const statsLoading = ref(false)
+const myStats = reactive({ myTaskTotal: 0, myTaskCompleted: 0, myTaskOverdue: 0, myBugTotal: 0, myBugOpen: 0, myRequirementTotal: 0, myRequirementAccepted: 0, unreadNoticeCount: 0, completionTrend: [], projectDistribution: {} })
+const trendChartRef = ref()
+const distChartRef = ref()
+let trendChart = null
+let distChart = null
+
+const initCharts = () => {
+  if (trendChartRef.value && !trendChart) {
+    trendChart = echarts.init(trendChartRef.value)
+  }
+  if (distChartRef.value && !distChart) {
+    distChart = echarts.init(distChartRef.value)
+  }
+}
+
+const renderTrendChart = () => {
+  if (!trendChart) return
+  const trend = myStats.completionTrend || []
+  const dates = trend.map(p => p.date)
+  const values = trend.map(p => p.count)
+  trendChart.setOption({
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    grid: { left: 40, right: 16, top: 16, bottom: 40 },
+    xAxis: { type: 'category', data: dates, axisLabel: { fontSize: 11, rotate: dates.length > 14 ? 30 : 0, formatter: v => v.slice(5) } },
+    yAxis: { type: 'value', minInterval: 1, axisLabel: { fontSize: 11 } },
+    series: [{ name: '完成任务', type: 'line', data: values, smooth: true, symbol: 'circle', symbolSize: 5, itemStyle: { color: '#1677ff' }, areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(22,119,255,0.22)' }, { offset: 1, color: 'rgba(22,119,255,0)' }] } } }],
+  }, true)
+}
+
+const renderDistChart = () => {
+  if (!distChart) return
+  const dist = myStats.projectDistribution || {}
+  const names = Object.keys(dist)
+  const values = Object.values(dist)
+  if (!names.length) {
+    distChart.setOption({ title: { text: '暂无数据', left: 'center', top: 'middle', textStyle: { color: '#bfbfbf', fontSize: 14, fontWeight: 'normal' } } }, true)
+    return
+  }
+  distChart.setOption({
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    grid: { left: 16, right: 16, top: 16, bottom: 60, containLabel: true },
+    xAxis: { type: 'category', data: names, axisLabel: { fontSize: 11, rotate: names.length > 4 ? 30 : 0, overflow: 'truncate', width: 80 } },
+    yAxis: { type: 'value', minInterval: 1, axisLabel: { fontSize: 11 } },
+    series: [{ name: '完成任务', type: 'bar', data: values, barMaxWidth: 40, itemStyle: { color: '#52c41a', borderRadius: [4, 4, 0, 0] } }],
+  }, true)
+}
+
+const fetchMyStats = async () => {
+  statsLoading.value = true
+  try {
+    const data = await getMyStatistics(statsPeriod.value)
+    Object.assign(myStats, data)
+    await nextTick()
+    initCharts()
+    renderTrendChart()
+    renderDistChart()
+  } catch {
+    // silent
+  } finally {
+    statsLoading.value = false
+  }
+}
+
+const handlePeriodChange = period => {
+  statsPeriod.value = period
+}
+
+watch(statsPeriod, fetchMyStats)
+
 onMounted(async () => {
   summaryLoading.value = true
   todoLoading.value = true
@@ -179,6 +309,12 @@ onMounted(async () => {
     summaryLoading.value = false
     todoLoading.value = false
   }
+  fetchMyStats()
+})
+
+onBeforeUnmount(() => {
+  trendChart?.dispose()
+  distChart?.dispose()
 })
 
 const handleMetricClick = path => {
@@ -191,6 +327,14 @@ const handleCalendarClick = () => {
 
 const handleCalendarMonthChange = (value, onChange, offset) => {
   onChange(value.clone().add(offset, 'month'))
+}
+
+const handleTodoClick = item => {
+  if (item.itemType === 'BUG') {
+    router.push({ name: 'BugDetail', params: { id: item.businessId } })
+  } else {
+    router.push({ name: 'PersonalTasks', query: { detail: 'task', taskId: item.businessId } })
+  }
 }
 </script>
 
@@ -268,8 +412,9 @@ const handleCalendarMonthChange = (value, onChange, offset) => {
 
 .home-workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 282px;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 360px);
   gap: 18px;
+  align-items: start;
 }
 
 .todo-panel,
@@ -513,9 +658,134 @@ const handleCalendarMonthChange = (value, onChange, offset) => {
   padding: 12px 18px 18px;
 }
 
+.home-stats {
+  margin-top: 18px;
+}
+
+.stats-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.stats-period {
+  display: flex;
+  gap: 4px;
+}
+
+.period-btn {
+  padding: 4px 14px;
+  color: #595959;
+  font-size: 13px;
+  background: #fff;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.period-btn:hover {
+  color: #1677ff;
+  border-color: #1677ff;
+}
+
+.period-btn.active {
+  color: #fff;
+  background: #1677ff;
+  border-color: #1677ff;
+}
+
+.stats-kpi {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.kpi-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 18px;
+  background: #fff;
+  border: 1px solid #eef1f4;
+  border-left-width: 4px;
+  border-radius: 7px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 3%);
+}
+
+.kpi-card--blue { border-left-color: #1677ff; }
+.kpi-card--red  { border-left-color: #f5222d; }
+.kpi-card--green { border-left-color: #52c41a; }
+.kpi-card--orange { border-left-color: #fa8c16; }
+
+.kpi-label {
+  color: #8c8c8c;
+  font-size: 13px;
+}
+
+.kpi-value {
+  color: #262626;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.kpi-sub {
+  color: #bfbfbf;
+  font-size: 11px;
+}
+
+.stats-charts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.chart-card {
+  border: 1px solid #eef1f4;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 3%);
+}
+
+.chart-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.chart-container {
+  height: 220px;
+}
+
 @media (max-width: 1200px) {
   .home-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .home-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .calendar-panel {
+    min-height: auto;
+  }
+
+  .stats-kpi {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stats-charts {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .home-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .stats-kpi {
+    grid-template-columns: 1fr;
   }
 }
 </style>

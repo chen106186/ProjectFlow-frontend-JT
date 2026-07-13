@@ -27,3 +27,6 @@ export const assignRoleMenus = (id, menuIds) => request(`/api/system/roles/${id}
 
 // 菜单管理
 export const getMenuList = () => request('/api/system/menus')
+
+// 操作日志
+export const getOperationLogs = params => request('/api/system/logs', { params })

@@ -251,6 +251,7 @@ import {
   updateGanttNode,
   uploadProjectFile,
 } from '@/api/managementProject'
+import { OPERATION_ACTIONS, OPERATION_MODULES, recordOperationLog } from '@/utils/operationLog'
 
 const route = useRoute()
 const router = useRouter()
@@ -443,6 +444,15 @@ const fetchProjectRelatedData = async projectId => {
       getProjectFiles({ businessType: 'PROJECT', businessId: projectId }),
     ])
     currentProject.value = mapProject(project)
+    void recordOperationLog({
+      module: OPERATION_MODULES.EXECUTION_PROJECT,
+      action: OPERATION_ACTIONS.DETAIL,
+      bizType: 'PROJECT',
+      bizId: projectId,
+      bizName: currentProject.value?.name,
+      detail: `查看执行类项目详情：${currentProject.value?.name || projectId}`,
+      routeName: 'ExecutionProjectDetail',
+    })
     Object.assign(ganttSummaryData, ganttResult)
     ganttNodeRows.value = nodes.map(node => {
       const planStart = node.plannedStartDate?.replaceAll('-', '/') || '-'

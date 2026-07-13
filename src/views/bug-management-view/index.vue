@@ -41,7 +41,7 @@
           >
             <template #bodyCell="{ column, record, text, index }">
               <template v-if="column.dataIndex === 'index'">{{ (current - 1) * pageSize + index + 1 }}</template>
-              <template v-else-if="column.dataIndex === 'id'"><span class="bug-id">{{ text }}</span></template>
+              <template v-else-if="column.dataIndex === 'bugNo'"><span class="bug-no">{{ text ? '#' + String(text).padStart(3, '0') : '-' }}</span></template>
               <template v-else-if="column.dataIndex === 'title'">
                 <a-button type="link" class="bug-title-link" @click="handleDetail(record)">{{ text }}</a-button>
               </template>
@@ -75,7 +75,7 @@
               size="middle"
             >
               <template #bodyCell="{ column, record, text }">
-                <template v-if="column.dataIndex === 'id'"><span class="bug-id">{{ text }}</span></template>
+                <template v-if="column.dataIndex === 'bugNo'"><span class="bug-no">{{ text ? '#' + String(text).padStart(3, '0') : '-' }}</span></template>
                 <template v-else-if="column.dataIndex === 'title'">
                   <a-button type="link" class="bug-title-link" @click="handleDetail(record)">{{ text }}</a-button>
                 </template>
@@ -125,60 +125,115 @@
 
     <template v-else>
       <div class="detail-page">
-        <a-button class="detail-back" @click="handleBack"><ArrowLeftOutlined />返回</a-button>
         <a-spin :spinning="detailLoading">
-          <div v-if="selectedBug" class="detail-content">
-            <section class="detail-section detail-basic">
-              <h2>基本信息</h2>
-              <a-descriptions bordered :column="2">
-                <a-descriptions-item label="Bug ID">{{ selectedBug.id }}</a-descriptions-item>
-                <a-descriptions-item label="标题">{{ selectedBug.title }}</a-descriptions-item>
-                <a-descriptions-item label="所属项目">{{ selectedBug.projectName || '-' }}</a-descriptions-item>
-                <a-descriptions-item label="优先级">
-                  <a-tag :color="priorityColors[selectedBug.priority]">{{ priorityLabels[selectedBug.priority] || selectedBug.priority }}</a-tag>
-                </a-descriptions-item>
-                <a-descriptions-item label="状态">
-                  <a-tag :color="statusColors[selectedBug.status]">{{ statusLabels[selectedBug.status] || selectedBug.status }}</a-tag>
-                </a-descriptions-item>
-                <a-descriptions-item label="负责人">{{ selectedBug.assigneeName || '-' }}</a-descriptions-item>
-                <a-descriptions-item label="创建人">{{ selectedBug.creatorName || '-' }}</a-descriptions-item>
-                <a-descriptions-item label="创建时间">{{ selectedBug.createdAt ? selectedBug.createdAt.slice(0, 10) : '-' }}</a-descriptions-item>
-              </a-descriptions>
-              <h3>问题描述</h3><p>{{ selectedBug.description }}</p>
-              <h3>重现步骤</h3><div class="detail-steps" v-html="selectedBug.reproduceSteps"></div>
-              <template v-if="selectedBug.fixAnalysis || selectedBug.fixDetail">
-                <h3>修复记录</h3>
-                <div v-if="selectedBug.fixAnalysis"><b>问题分析：</b><p>{{ selectedBug.fixAnalysis }}</p></div>
-                <div v-if="selectedBug.fixDetail"><b>修复细节：</b><p>{{ selectedBug.fixDetail }}</p></div>
-              </template>
-            </section>
+          <!-- Header -->
+          <div class="detail-header">
+            <a-button class="detail-back" @click="handleBack"><ArrowLeftOutlined />返回</a-button>
+            <template v-if="selectedBug">
+              <span class="detail-bug-no">{{ selectedBug.bugNo ? '#' + String(selectedBug.bugNo).padStart(3, '0') : '' }}</span>
+              <h1 class="detail-title">{{ selectedBug.title }}</h1>
+              <div class="detail-header__tags">
+                <a-tag :color="priorityColors[selectedBug.priority]">{{ priorityLabels[selectedBug.priority] || selectedBug.priority }}</a-tag>
+                <a-tag :color="statusColors[selectedBug.status]">{{ statusLabels[selectedBug.status] || selectedBug.status }}</a-tag>
+              </div>
+            </template>
+          </div>
 
-            <section class="detail-section">
-              <h3>评论</h3>
-              <a-spin :spinning="commentsLoading">
-                <div class="comment-list">
-                  <div v-for="comment in comments" :key="comment.id" class="comment-item">
-                    <b>{{ comment.authorName || ('用户' + comment.userId) }}</b>
-                    <small>{{ comment.createdAt ? String(comment.createdAt).slice(0, 16).replace('T', ' ') : '' }}</small>
-                    <div class="comment-item__content" v-html="comment.content"></div>
+          <div v-if="selectedBug" class="detail-body">
+            <!-- Left: main content -->
+            <div class="detail-main">
+              <!-- 基本信息 -->
+              <a-card class="detail-card" :bordered="false">
+                <template #title><span class="detail-card__title">基本信息</span></template>
+                <div class="info-grid">
+                  <div class="info-item">
+                    <span class="info-label">所属项目</span>
+                    <span class="info-value">{{ selectedBug.projectName || '-' }}</span>
                   </div>
-                  <div v-if="!comments.length" style="padding: 12px; color: #999; text-align: center;">暂无评论</div>
+                  <div class="info-item">
+                    <span class="info-label">负责人</span>
+                    <span class="info-value">{{ selectedBug.assigneeName || '-' }}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">创建人</span>
+                    <span class="info-value">{{ selectedBug.creatorName || '-' }}</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">创建时间</span>
+                    <span class="info-value">{{ selectedBug.createdAt ? String(selectedBug.createdAt).slice(0, 10) : '-' }}</span>
+                  </div>
+                  <div v-if="selectedBug.closedAt" class="info-item">
+                    <span class="info-label">关闭时间</span>
+                    <span class="info-value">{{ String(selectedBug.closedAt).slice(0, 10) }}</span>
+                  </div>
                 </div>
-              </a-spin>
-              <template v-if="!isClosedBug(selectedBug)">
-                <div class="comment-rich-editor">
-                  <Toolbar :editor="commentEditorRef" :default-config="toolbarConfig" mode="default" />
-                  <Editor v-model="commentContent" :default-config="commentEditorConfig" mode="default" @on-created="handleCommentEditorCreated" />
-                </div>
-                <div class="send-row"><a-button type="primary" :loading="commentLoading" @click="handleSendComment">发送</a-button></div>
-              </template>
-            </section>
+              </a-card>
 
-            <div v-if="!isClosedBug(selectedBug)" class="detail-actions">
-              <a-button type="primary" @click="handleEditFromDetail">编辑</a-button>
-              <a-button @click="assignVisible = true">指派</a-button>
-              <a-button danger :loading="closeLoading" @click="handleCloseBug">关闭Bug</a-button>
+              <!-- 问题描述 -->
+              <a-card class="detail-card" :bordered="false">
+                <template #title><span class="detail-card__title">问题描述</span></template>
+                <p class="detail-text">{{ selectedBug.description || '-' }}</p>
+              </a-card>
+
+              <!-- 重现步骤 -->
+              <a-card class="detail-card" :bordered="false">
+                <template #title><span class="detail-card__title">重现步骤</span></template>
+                <div class="detail-rich" v-html="selectedBug.reproduceSteps || '<p>-</p>'"></div>
+              </a-card>
+
+              <!-- 修复记录 -->
+              <a-card v-if="selectedBug.fixAnalysis || selectedBug.fixDetail" class="detail-card" :bordered="false">
+                <template #title><span class="detail-card__title">修复记录</span></template>
+                <div v-if="selectedBug.fixAnalysis" class="fix-block">
+                  <div class="fix-label">问题分析</div>
+                  <p class="detail-text">{{ selectedBug.fixAnalysis }}</p>
+                </div>
+                <div v-if="selectedBug.fixDetail" class="fix-block">
+                  <div class="fix-label">修复细节</div>
+                  <p class="detail-text">{{ selectedBug.fixDetail }}</p>
+                </div>
+              </a-card>
+
+              <!-- 评论 -->
+              <a-card class="detail-card" :bordered="false">
+                <template #title><span class="detail-card__title">评论</span></template>
+                <a-spin :spinning="commentsLoading">
+                  <div class="comment-list">
+                    <div v-for="comment in comments" :key="comment.id" class="comment-item">
+                      <div class="comment-item__meta">
+                        <b>{{ comment.authorName || ('用户' + comment.userId) }}</b>
+                        <small>{{ comment.createdAt ? String(comment.createdAt).slice(0, 16).replace('T', ' ') : '' }}</small>
+                      </div>
+                      <div class="comment-item__content" v-html="comment.content"></div>
+                    </div>
+                    <a-empty v-if="!comments.length && !commentsLoading" :image="null" description="暂无评论" class="comment-empty" />
+                  </div>
+                </a-spin>
+                <template v-if="!isClosedBug(selectedBug)">
+                  <div class="comment-rich-editor">
+                    <Toolbar :editor="commentEditorRef" :default-config="toolbarConfig" mode="default" />
+                    <Editor v-model="commentContent" :default-config="commentEditorConfig" mode="default" @on-created="handleCommentEditorCreated" />
+                  </div>
+                  <div class="send-row"><a-button type="primary" :loading="commentLoading" @click="handleSendComment">发送</a-button></div>
+                </template>
+              </a-card>
             </div>
+
+            <!-- Right: sidebar -->
+            <aside class="detail-sidebar">
+              <a-card class="detail-card" :bordered="false">
+                <template #title><span class="detail-card__title">操作</span></template>
+                <div v-if="!isClosedBug(selectedBug)" class="action-list">
+                  <a-button block type="primary" @click="handleEditFromDetail">编辑 Bug</a-button>
+                  <a-button block @click="assignVisible = true">重新指派</a-button>
+                  <a-button block danger :loading="closeLoading" @click="handleCloseBug">关闭 Bug</a-button>
+                </div>
+                <div v-else class="closed-tip">
+                  <a-tag color="green" style="font-size:13px;padding:4px 10px">已关闭</a-tag>
+                  <p>该 Bug 已关闭，不可再进行操作。</p>
+                </div>
+              </a-card>
+            </aside>
           </div>
         </a-spin>
       </div>
@@ -249,7 +304,7 @@ const queryParams = reactive({ keyword: '', projectId: undefined, priority: unde
 
 const columns = [
   { title: '序号', dataIndex: 'index', width: 60, fixed: 'left' },
-  { title: 'Bug ID', dataIndex: 'id', width: 100 },
+  { title: '编号', dataIndex: 'bugNo', width: 80 },
   { title: 'Bug标题', dataIndex: 'title', width: 240 },
   { title: '所属项目', dataIndex: 'projectName', width: 210 },
   { title: '优先级', dataIndex: 'priority', width: 110 },
@@ -522,7 +577,7 @@ onMounted(async () => {
 .bug-list :deep(.ant-card-body) { padding: 18px; }
 .bug-list :deep(.ant-table-cell) { white-space: nowrap; }
 .bug-title-link { height: auto; padding: 0; }
-.bug-id { color: #888; font-size: 13px; }
+.bug-no { color: #1677ff; font-size: 12px; font-weight: 600; font-family: monospace; }
 .bug-group { margin-bottom: 24px; }
 .bug-group__title { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: #333; }
 .bug-form-card { width: min(1100px, 100%); min-height: 538px; margin: 0 auto; }
@@ -538,26 +593,160 @@ onMounted(async () => {
 .bug-rich-editor :deep(.w-e-text-container img) { max-width: 100%; height: auto; }
 .form-actions { display: flex; justify-content: flex-end; gap: 20px; margin-top: 18px; }
 .form-actions .ant-btn { width: 120px; }
-.detail-page { width: min(1100px, 100%); margin: 0 auto; }
-.detail-back { margin: 0 0 14px 4px; }
-.detail-content { background: #fff; }
-.detail-section { padding: 18px 28px 28px; border-bottom: 14px solid #f2f3f5; }
-.detail-section h2 { margin: 0 0 22px; font-size: 18px; }
-.detail-section h3 { margin: 22px 0 18px; text-align: center; font-size: 16px; font-weight: 500; }
-.detail-basic > p { min-height: 34px; margin: 0 10px; color: #555; white-space: pre-line; }
-.detail-steps { max-width: 760px; }
-.comment-list { max-height: 150px; overflow-y: auto; border: 1px solid #f0f0f0; }
-.comment-item { padding: 12px; background: #fafafa; border-bottom: 1px solid #fff; }
-.comment-item small { margin-left: 12px; color: #999; }
-.comment-item__content { margin-top: 5px; color: #555; }
+/* ── Detail page ── */
+.detail-page { width: 100%; }
+
+.detail-header {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-height: 56px;
+  padding: 0 4px 16px;
+  border-bottom: 1px solid #edf0f3;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.detail-back { flex-shrink: 0; }
+
+.detail-bug-no {
+  flex-shrink: 0;
+  padding: 2px 10px;
+  color: #1677ff;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: monospace;
+  background: #e6f4ff;
+  border-radius: 5px;
+}
+
+.detail-title {
+  flex: 1;
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #1f1f1f;
+  line-height: 1.35;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detail-header__tags { display: flex; gap: 6px; flex-shrink: 0; }
+
+.detail-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 240px;
+  gap: 18px;
+  align-items: start;
+}
+
+.detail-main { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+.detail-card {
+  border: 1px solid #edf0f3 !important;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 4%);
+}
+
+.detail-card :deep(.ant-card-head) {
+  min-height: 44px;
+  padding: 0 18px;
+  border-bottom: 1px solid #f2f4f6;
+}
+
+.detail-card :deep(.ant-card-body) { padding: 16px 18px; }
+
+.detail-card__title { font-size: 14px; font-weight: 600; color: #1f1f1f; }
+
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+
+.info-item {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  padding: 9px 12px;
+  border-bottom: 1px solid #f5f6f8;
+  border-right: 1px solid #f5f6f8;
+}
+
+.info-item:nth-child(even) { border-right: none; }
+.info-item:nth-last-child(-n+2) { border-bottom: none; }
+
+.info-label {
+  flex-shrink: 0;
+  width: 70px;
+  color: #8c8c8c;
+  font-size: 13px;
+}
+
+.info-value { color: #262626; font-size: 13px; }
+
+.detail-text {
+  margin: 0;
+  color: #434343;
+  font-size: 14px;
+  line-height: 1.75;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.detail-rich { color: #434343; font-size: 14px; line-height: 1.75; }
+.detail-rich :deep(p) { margin: 0 0 6px; }
+.detail-rich :deep(img) { max-width: 100%; height: auto; }
+
+.fix-block { margin-bottom: 16px; }
+.fix-block:last-child { margin-bottom: 0; }
+.fix-label {
+  margin-bottom: 6px;
+  color: #8c8c8c;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.comment-list { display: flex; flex-direction: column; gap: 1px; margin-bottom: 16px; }
+.comment-item {
+  padding: 12px 14px;
+  background: #fafafa;
+  border-radius: 6px;
+}
+.comment-item__meta { display: flex; gap: 10px; align-items: baseline; margin-bottom: 6px; }
+.comment-item__meta b { font-size: 13px; color: #262626; }
+.comment-item__meta small { color: #bfbfbf; font-size: 12px; }
+.comment-item__content { color: #555; font-size: 13px; line-height: 1.65; }
 .comment-item__content :deep(p) { margin: 0; }
-.comment-rich-editor { margin-top: 18px; overflow: hidden; background: #fff; border: 1px solid #d9d9d9; border-radius: 4px; }
+.comment-item__content :deep(img) { max-width: 100%; height: auto; }
+.comment-empty { padding: 16px 0; }
+
+.comment-rich-editor {
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+}
 .comment-rich-editor :deep(.w-e-toolbar) { border-bottom: 1px solid #d9d9d9; }
-.comment-rich-editor :deep(.w-e-text-container) { min-height: 180px; }
-.comment-rich-editor :deep(.w-e-text-container img), .comment-item__content :deep(img) { max-width: 100%; height: auto; }
-.send-row { display: flex; justify-content: flex-end; margin-top: 12px; }
-.detail-actions { display: flex; justify-content: center; gap: 28px; padding: 16px; background: #f5f5f5; }
-.detail-actions .ant-btn { min-width: 84px; }
+.comment-rich-editor :deep(.w-e-text-container) { min-height: 120px; }
+.comment-rich-editor :deep(.w-e-text-container img) { max-width: 100%; height: auto; }
+
+.send-row { display: flex; justify-content: flex-end; margin-top: 10px; }
+
+.detail-sidebar { position: sticky; top: 16px; display: flex; flex-direction: column; gap: 14px; }
+
+.action-list { display: flex; flex-direction: column; gap: 10px; }
+
+.closed-tip { text-align: center; }
+.closed-tip p { margin: 10px 0 0; color: #8c8c8c; font-size: 13px; }
+
+@media (max-width: 1000px) {
+  .detail-body { grid-template-columns: 1fr; }
+  .detail-sidebar { position: static; }
+}
 :deep(.ant-modal-body) { padding-top: 10px; }
 @media (max-width: 1200px) {
   .bug-filter__form { grid-template-columns: repeat(2, minmax(0, 1fr)); }

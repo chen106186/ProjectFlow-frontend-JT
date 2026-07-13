@@ -9,6 +9,7 @@ import LoginView from '@/views/LoginView.vue'
 import ManagementProject from '@/views/management-project/index.vue'
 import ModuleView from '@/views/ModuleView.vue'
 import DailyReportView from '@/views/personal/DailyReportView.vue'
+import OperationLogManagement from '@/views/system-settings/OperationLogManagement.vue'
 import RoleManagement from '@/views/system-settings/RoleManagement.vue'
 import UserManagement from '@/views/system-settings/UserManagement.vue'
 
@@ -118,12 +119,21 @@ const router = createRouter({
           },
         },
         {
+          path: 'settings/logs',
+          name: 'OperationLogManagement',
+          component: OperationLogManagement,
+          meta: {
+            title: '操作日志',
+            group: '系统设置',
+          },
+        },
+        {
           path: 'personal/daily',
           name: 'PersonalDaily',
           component: DailyReportView,
           meta: { title: '我的日报', group: '个人工作' },
         },
-        ...moduleRoutes.map(route => ({
+        ...moduleRoutes.filter(route => route.name !== 'OperationLogManagement').map(route => ({
           path: route.path,
           name: route.name,
           component: ModuleView,
