@@ -138,7 +138,7 @@
             <a-button :disabled="!canBatchDownload" @click="handleBatchDownload"><DownloadOutlined />批量下载</a-button>
             <a-popconfirm title="确定删除选中的文件吗？" @confirm="handleDeleteDocuments"><a-button danger :disabled="selectedDocumentIds.length === 0"><DeleteOutlined />批量删除</a-button></a-popconfirm>
           </a-space>
-          <a-input-search placeholder="搜索文件名、上传人、分类..." />
+          <a-input-search v-model:value="documentSearch" placeholder="搜索文件名、上传人、分类..." />
         </div>
         <div class="document-breadcrumb">
           <span>文件夹支持展开查看，上传时可选择目标文件夹。</span>
@@ -151,7 +151,7 @@
             <strong>{{ item.count }}</strong>
           </button>
         </div>
-        <a-table row-key="id" :row-selection="documentRowSelection" :columns="documentColumns" :data-source="filteredDocumentRows" :loading="documentLoading" :pagination="false">
+        <a-table row-key="id" :row-selection="documentRowSelection" :columns="documentColumns" :data-source="filteredDocsBySearch" :loading="documentLoading" :pagination="false">
           <template #bodyCell="{ column, record }">
             <template v-if="column.dataIndex === 'name'">
               <button type="button" class="document-name" :class="{ 'document-name--folder': record.isFolder, 'document-name--child': record.isChildFile }" @click="record.isFolder ? handleToggleFolder(record) : handleDownloadDocument(record)">
@@ -201,7 +201,7 @@
           <a-form-item label="目标文件夹"><a-select v-model:value="uploadForm.folderId" allow-clear :options="folderOptions" placeholder="请选择目标文件夹" /></a-form-item>
           <a-form-item label="文件分类"><a-select v-model:value="uploadForm.category" :options="documentCategoryOptions" /></a-form-item>
         </div>
-        <a-form-item label="版本号"><a-input v-model:value="uploadForm.versionNo" placeholder="请输入版本号，如 V1.0 / 初版" /></a-form-item>
+        <a-form-item label="版本说明"><a-textarea v-model:value="uploadForm.description" :rows="4" placeholder="请输入版本更新说明..." /></a-form-item>
       </a-form>
       <div class="upload-modal-actions"><a-button @click="uploadVisible = false">取消</a-button><a-button type="primary" :loading="uploadLoading" @click="handleStartUpload">开始上传</a-button></div>
     </a-modal>
@@ -358,6 +358,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } 
 import { useRoute, useRouter } from 'vue-router'
 
 import {
+  createProjectFolder,
   createProjectReport,
   deleteProjectReport,
   deleteProjectFile,
@@ -394,6 +395,7 @@ const reportLoading = ref(false)
 const documentLoading = ref(false)
 const selectedDocumentIds = ref([])
 const selectedDocumentCategory = ref('全部')
+const documentSearch = ref('')
 const uploadVisible = ref(false)
 const uploadLoading = ref(false)
 
@@ -655,7 +657,14 @@ const documentRowSelection = computed(() => ({
   onSelectAll: handleDocumentSelectAll,
 }))
 const pagination = { pageSize: 5, showSizeChanger: false }
-const uploadForm = reactive({ location: '项目文档库', folderId: undefined, category: 'REQUIREMENT', versionNo: 'V1.0' })
+const filteredDocsBySearch = computed(() => {
+  const q = documentSearch.value.trim().toLowerCase()
+  if (!q) return filteredDocumentRows.value
+  return filteredDocumentRows.value.filter(row =>
+    [row.name, row.uploader, row.category].some(v => v && v.toLowerCase().includes(q))
+  )
+})
+const uploadForm = reactive({ location: '项目文档库', folderId: undefined, category: 'REQUIREMENT', description: '' })
 const storageOptions = toOptions(['项目文档库', '公共文档库'])
 const documentCategoryOptions = computed(() => documentCategoryMeta.value.map(item => ({ label: item.label, value: item.value })))
 const summaryItems = computed(() => [
@@ -840,8 +849,6 @@ const refreshFolders = async () => {
 }
 
 const handleOpenUploadModal = async () => {
-  uploadFiles.value = []
-  Object.assign(uploadForm, { location: '项目文档库', folderId: undefined, category: 'REQUIREMENT', versionNo: 'V1.0' })
   try {
     await refreshFolders()
   } catch (error) {
@@ -943,15 +950,7 @@ const handleSaveGanttNode = async () => {
 }
 
 const handleDocumentBeforeUpload = file => {
-  if (file.size > 50 * 1024 * 1024) {
-    message.warning('单个文件不能超过50MB')
-    return false
-  }
-  const exists = uploadFiles.value.some(item => item.name === file.name && item.size === file.size)
-  if (exists) {
-    message.warning('该文件已在待上传列表中')
-    return false
-  }
+  if (file.size > 50 * 1024 * 1024) { message.warning('单个文件不能超过50MB'); return false }
   uploadFiles.value.push({ uid: file.uid, name: file.name, size: file.size, percent: 0, originFile: file })
   return false
 }
@@ -969,14 +968,13 @@ const handleStartUpload = async () => {
   uploadLoading.value = true
   try {
     for (const uploadFile of uploadFiles.value) {
-      uploadFile.percent = 40
       const data = new FormData()
       data.append('businessType', 'PROJECT')
       data.append('businessId', route.params.id)
       data.append('storageLocation', uploadForm.location)
       data.append('fileCategory', uploadForm.category)
       if (uploadForm.folderId) data.append('folderId', uploadForm.folderId)
-      if (uploadForm.versionNo?.trim()) data.append('versionNo', uploadForm.versionNo.trim())
+      data.append('versionNo', uploadForm.description)
       data.append('file', uploadFile.originFile)
       await uploadProjectFile(data)
       uploadFile.percent = 100
@@ -1038,8 +1036,7 @@ const handleBatchDownload = async () => {
 const handleDeleteDocument = async record => {
   try {
     await deleteProjectFile(record.id)
-    selectedDocumentIds.value = selectedDocumentIds.value.filter(id => id !== record.id)
-    await fetchProjectRelatedData(route.params.id)
+    documentRows.value = documentRows.value.filter(item => item.id !== record.id)
     message.success('文件删除成功')
   } catch (error) {
     message.error(error.message)
@@ -1060,8 +1057,8 @@ const handleDeleteDocuments = async () => {
 
   try {
     await deleteProjectFiles(fileIds)
+    documentRows.value = documentRows.value.filter(item => !fileIds.includes(item.id))
     selectedDocumentIds.value = []
-    await fetchProjectRelatedData(route.params.id)
     message.success('文件批量删除成功')
   } catch (error) {
     message.error(error.message)
@@ -1308,18 +1305,24 @@ onMounted(async () => {
 .category-development .document-category__icon { color: #b25d00; background: #ffedcf; }
 .category-acceptance { background: linear-gradient(135deg, #fff 0%, #eafbf7 100%); }
 .category-acceptance .document-category__icon { color: #00856a; background: #dff8f1; }
-.upload-drag-icon { margin: 0 0 8px; color: #1677ff; font-size: 40px; text-align: center; }
-.upload-drag-title, .upload-drag-hint { margin: 0; text-align: center; }
+.document-upload-modal :deep(.ant-modal-body) { padding-top: 8px; }
+.document-upload-modal :deep(.ant-upload-drag) { padding: 18px; border: 2px dashed #91caff; background: #fbfdff; }
+.upload-drag-icon { margin: 0 !important; color: #1677ff; font-size: 48px; text-align: center; }
+.upload-drag-title { margin: 8px 0 4px !important; font-size: 17px; font-weight: 500; text-align: center; }
+.upload-drag-hint { margin: 2px 0 !important; color: #8c8c8c; text-align: center; }
 .upload-drag-title span { color: #1677ff; }
-.upload-drag-hint { color: #8c8c8c; }
 .upload-list-title { margin: 18px 0 10px; }
-.upload-file-list { min-height: 80px; }
-.upload-file-item { display: grid; grid-template-columns: 24px minmax(0, 1fr) 70px 120px 42px 48px; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+.upload-file-list { min-height: 70px; padding-bottom: 14px; border-bottom: 1px solid #edf0f3; }
+.upload-file-item { display: grid; grid-template-columns: 28px minmax(180px, 1fr) 72px 160px 48px 46px; gap: 10px; align-items: center; min-height: 42px; }
+.upload-file-item__icon { color: #1677ff; font-size: 22px; }
 .upload-file-item__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .upload-file-item__success { color: #52c41a; }
-.upload-form { margin-top: 16px; }
-.upload-form__row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.upload-modal-actions, .gantt-edit-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 8px; }
+.upload-form { margin-top: 18px; }
+.upload-form__row { display: block; }
+.upload-form :deep(.ant-form-item) { margin-bottom: 18px; }
+.upload-form :deep(.ant-select) { width: 100%; }
+.upload-modal-actions, .gantt-edit-actions { display: flex; justify-content: flex-end; gap: 16px; margin-top: 8px; }
+.upload-modal-actions .ant-btn { width: 118px; }
 @media (max-width: 1280px) {
   .execution-tabs { gap: 20px; }
   .execution-summary { grid-template-columns: 1fr; }
