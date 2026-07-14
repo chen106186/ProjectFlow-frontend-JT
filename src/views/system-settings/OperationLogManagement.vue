@@ -239,8 +239,8 @@ onMounted(fetchLogs)
 .log-filter :deep(.ant-picker) { width: 100%; }
 
 .filter-actions {
-  grid-column: 1 / -1;
-  justify-self: center;
+  grid-column: 3 / 5;
+  justify-self: end;
   min-width: 0;
 }
 
@@ -276,6 +276,7 @@ onMounted(fetchLogs)
 
 @media (max-width: 1440px) {
   .log-filter { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .filter-actions { grid-column: 1 / -1; }
 }
 
 @media (max-width: 900px) {

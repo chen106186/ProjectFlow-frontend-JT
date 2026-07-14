@@ -276,6 +276,17 @@ const handleClose = () => {
   flex-direction: column;
 }
 
+.task-calendar-modal__calendar :deep(.ant-spin-nested-loading),
+.task-calendar-modal__calendar :deep(.ant-spin-container) {
+  flex: 1;
+  min-height: 0;
+}
+
+.task-calendar-modal__calendar :deep(.ant-spin-container) {
+  display: flex;
+  flex-direction: column;
+}
+
 .task-calendar-modal__calendar :deep(.ant-picker-calendar) {
   flex: 1;
   min-height: 0;
@@ -286,11 +297,12 @@ const handleClose = () => {
 }
 
 .task-calendar-modal__calendar :deep(.ant-picker-content) {
-  height: calc(100vh - 230px);
+  height: auto;
 }
 
 .task-calendar-modal__calendar :deep(.ant-picker-cell-inner) {
-  min-height: 96px;
+  height: calc((100vh - 248px) / 6);
+  min-height: 70px;
   padding: 4px 5px;
   border-radius: 6px;
 }
@@ -370,6 +382,7 @@ const handleClose = () => {
 
 .calendar-legend {
   display: flex;
+  flex: 0 0 28px;
   gap: 14px;
   align-items: center;
   height: 28px;
@@ -389,6 +402,9 @@ const handleClose = () => {
 }
 
 .daily-task-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   min-width: 0;
   overflow: hidden;
 }
@@ -411,10 +427,11 @@ const handleClose = () => {
 
 .daily-task-panel__list {
   display: grid;
+  flex: 1;
   gap: 8px;
   padding-top: 10px;
   overflow-y: auto;
-  max-height: calc(100vh - 220px);
+  max-height: none;
 }
 
 .daily-task-card {
