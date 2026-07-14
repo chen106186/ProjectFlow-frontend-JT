@@ -5,7 +5,7 @@
         <a-avatar :size="72"><UserOutlined /></a-avatar>
         <div>
           <h2>{{ profile.realName || profile.username || '-' }}</h2>
-          <p>{{ profile.position || profile.roleName || '-' }}</p>
+          <p>{{ profile.positionName || profile.position || profile.roleName || '-' }}</p>
         </div>
       </div>
 
@@ -47,9 +47,9 @@ const maskPhone = phone => {
 
 const profileItems = computed(() => [
   { label: '姓名', value: profile.value.realName || profile.value.name },
-  { label: '工号', value: profile.value.employeeNo || profile.value.employeeNumber || profile.value.workNo },
+  { label: '工号', value: profile.value.jobNo || profile.value.employeeNo || profile.value.employeeNumber || profile.value.workNo },
   { label: '部门', value: profile.value.departmentName || profile.value.department },
-  { label: '岗位', value: profile.value.position || profile.value.postName || profile.value.roleName },
+  { label: '岗位', value: profile.value.positionName || profile.value.position || profile.value.postName },
   { label: '邮箱', value: profile.value.email },
   { label: '手机', value: maskPhone(profile.value.phone || profile.value.mobile) },
   { label: '入职日期', value: profile.value.entryDate || profile.value.hireDate },
