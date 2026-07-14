@@ -125,10 +125,13 @@ const groupedProjects = computed(() => {
 
 const getManagerName = id => managerOptions.value.find(item => item.value === id)?.label || (id ? `用户 ${id}` : '-')
 const filterOption = (input, option) => option.label.toLowerCase().includes(input.toLowerCase())
-const managementProjectNameOptions = computed(() => managementProjectOptions.value.map(item => ({ label: item.label, value: item.label, projectId: item.value })))
+const managementProjectNameOptions = computed(() => managementProjectOptions.value.map(item => ({ label: item.label, value: item.label, projectId: item.value, managerId: item.managerId })))
 const handleProjectNameChange = value => {
   const selectedProject = managementProjectNameOptions.value.find(item => item.value === value)
-  if (selectedProject) formState.managementProjectId = selectedProject.projectId
+  if (selectedProject) {
+    formState.managementProjectId = selectedProject.projectId
+    if (selectedProject.managerId != null) formState.managerId = selectedProject.managerId
+  }
 }
 const fetchReferenceData = async () => {
   try {
@@ -142,7 +145,7 @@ const fetchReferenceData = async () => {
     statusOptions.value = projectStatus
     Object.assign(statusLabels, Object.fromEntries(projectStatus.map(item => [item.value, item.label])))
     managerOptions.value = users.records.map(user => ({ label: user.realName, value: user.id }))
-    managementProjectOptions.value = managementProjects.records.map(project => ({ label: project.name, value: project.id }))
+    managementProjectOptions.value = managementProjects.records.map(project => ({ label: project.name, value: project.id, managerId: project.managerId }))
   } catch (error) {
     message.error(error.message)
   }

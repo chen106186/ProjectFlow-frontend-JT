@@ -230,10 +230,23 @@
               </a-card>
             </div>
 
-            <!-- Right: sidebar -->
-            <div v-if="isClosedBug(selectedBug)" class="closed-tip detail-closed-tip">
-              <a-tag color="green" style="font-size:13px;padding:4px 10px">已关闭</a-tag>
-              <p>该 Bug 已关闭，不可再进行操作。</p>
+            <!-- Right: sidebar (always visible) -->
+            <div class="detail-sidebar">
+              <div v-if="isClosedBug(selectedBug)" class="closed-tip detail-closed-tip">
+                <a-tag color="green" style="font-size:13px;padding:4px 10px">已关闭</a-tag>
+                <p>该 Bug 已关闭，不可再进行操作。</p>
+              </div>
+              <a-card class="detail-card lifecycle-card" :bordered="false">
+                <template #title><span class="detail-card__title">Bug的一生</span></template>
+                <a-empty v-if="!selectedBug.logs?.length" description="暂无流转记录" style="padding: 16px 0" />
+                <a-timeline v-else class="lifecycle-timeline">
+                  <a-timeline-item v-for="log in selectedBug.logs" :key="log.id">
+                    <div class="timeline-action">{{ log.operatorName }} · {{ operationLabel(log.operationType) }}</div>
+                    <div v-if="log.content" class="timeline-content">{{ log.content }}</div>
+                    <div class="timeline-time">{{ formatDateTime(log.createdAt) }}</div>
+                  </a-timeline-item>
+                </a-timeline>
+              </a-card>
             </div>
           </div>
           <div v-if="selectedBug && !isClosedBug(selectedBug)" class="detail-floating-actions">
@@ -337,6 +350,13 @@ const isClosedBug = bug => {
   if (!bug) return false
   return bug.status === 'CLOSED' || bug.status === '已关闭' || bug.statusCode === 'CLOSED'
 }
+
+const OPERATION_LABELS = {
+  CREATE: '创建', UPDATE: '更新', DELETE: '删除',
+  ASSIGN: '指派', FIX: '修复', CLOSE: '关闭', REOPEN: '重开',
+  COMMENT: '评论', EXPORT: '导出',
+}
+const operationLabel = type => OPERATION_LABELS[type] || type || '操作'
 
 const loadBugs = async () => {
   listLoading.value = true
@@ -760,11 +780,26 @@ onMounted(async () => {
 .detail-header__tags { display: flex; gap: 6px; flex-shrink: 0; }
 
 .detail-body {
-  display: block;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 16px;
   align-items: start;
 }
 
 .detail-main { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+.detail-sidebar { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+.lifecycle-card :deep(.ant-card-body) { padding: 14px 16px; }
+
+.lifecycle-timeline { margin-top: 4px; }
+.lifecycle-timeline :deep(.ant-timeline-item-tail) { border-inline-start-color: #e0e7ef; }
+.lifecycle-timeline :deep(.ant-timeline-item-head) { background: #1677ff; border-color: #1677ff; width: 9px; height: 9px; }
+.lifecycle-timeline :deep(.ant-timeline-item-content) { inset-inline-start: 20px; margin-inline-start: 20px; }
+
+.timeline-action { font-size: 13px; font-weight: 600; color: #1f2937; line-height: 1.4; }
+.timeline-content { margin-top: 3px; font-size: 12px; color: #6b7280; line-height: 1.5; word-break: break-word; }
+.timeline-time { margin-top: 2px; font-size: 11px; color: #bfbfbf; }
 
 .detail-card {
   border: 1px solid #edf0f3 !important;
