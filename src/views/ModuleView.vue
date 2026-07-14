@@ -92,15 +92,15 @@
       </section>
 
       <section v-else class="personal-page">
-        <a-card class="prototype-card filter-panel" :bordered="false">
-          <a-form class="prototype-filter" layout="inline">
+        <a-card class="prototype-card filter-panel app-filter-card" :bordered="false">
+          <a-form class="prototype-filter app-filter-form" layout="inline">
             <a-form-item label="任务名称"><a-input v-model:value="taskFilter.keyword" placeholder="请输入任务名称" /></a-form-item>
             <a-form-item label="所属项目"><a-select v-model:value="taskFilter.projectId" allow-clear placeholder="全部" :options="taskFilterProjectOptions" /></a-form-item>
             <a-form-item v-if="!isPersonalTasks" label="负责人"><a-select v-model:value="taskFilter.assigneeId" allow-clear placeholder="全部" :options="taskUserOptions" /></a-form-item>
             <a-form-item label="优先级"><a-select v-model:value="taskFilter.priority" allow-clear placeholder="全部" :options="taskPrioritySelectOptions" /></a-form-item>
             <a-form-item label="状态"><a-select v-model:value="taskFilter.status" allow-clear placeholder="全部" :options="taskStatusSelectOptions" /></a-form-item>
             <a-form-item label="计划结束日期"><a-date-picker v-model:value="taskFilter.plannedEndDate" /></a-form-item>
-            <a-form-item class="filter-buttons">
+            <a-form-item class="filter-buttons app-filter-actions">
               <a-space>
                 <a-button type="primary" @click="handleTaskSearch">查询</a-button>
                 <a-button @click="handleTaskReset">重置</a-button>
@@ -255,8 +255,8 @@
       </section>
 
       <section v-else class="personal-page">
-        <a-card class="prototype-card filter-panel" :bordered="false">
-          <a-form class="prototype-filter bug-filter" layout="inline">
+        <a-card class="prototype-card filter-panel app-filter-card" :bordered="false">
+          <a-form class="prototype-filter bug-filter app-filter-form" layout="inline">
             <a-form-item label="搜索"><a-input v-model:value="bugFilter.keyword" placeholder="请输入关键字" allow-clear /></a-form-item>
             <a-form-item label="所属项目">
               <a-select v-model:value="bugFilter.projectId" placeholder="全部" allow-clear :options="bugProjects.map(p => ({ label: p.name, value: p.id }))" style="width:160px" />
@@ -271,7 +271,7 @@
                 :options="Object.entries(BUG_STATUS_LABELS).map(([value, label]) => ({ label, value }))"
                 style="width:120px" />
             </a-form-item>
-            <a-form-item class="filter-buttons">
+            <a-form-item class="filter-buttons app-filter-actions">
               <a-space>
                 <a-button type="primary" @click="handleBugSearch">查询</a-button>
                 <a-button @click="handleBugReset">重置</a-button>

@@ -1,7 +1,7 @@
 <template>
   <section class="operation-log-page">
-    <a-card class="log-filter-card" :bordered="false">
-      <a-form class="log-filter" layout="inline">
+    <a-card class="log-filter-card app-filter-card" :bordered="false">
+      <a-form class="log-filter app-filter-form" layout="inline">
         <a-form-item label="关键字">
           <a-input v-model:value="query.keyword" allow-clear placeholder="日志内容关键字" />
         </a-form-item>
@@ -20,7 +20,7 @@
         <a-form-item label="时间范围">
           <a-range-picker v-model:value="query.range" value-format="YYYY-MM-DD" style="width:100%" />
         </a-form-item>
-        <a-form-item class="filter-actions">
+        <a-form-item class="filter-actions app-filter-actions">
           <a-space>
             <a-button type="primary" @click="handleSearch">查询</a-button>
             <a-button @click="handleReset">重置</a-button>

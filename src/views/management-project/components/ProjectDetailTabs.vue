@@ -122,7 +122,7 @@
             </a-button>
           </div>
 
-          <a-form class="report-filter" layout="inline">
+          <a-form class="report-filter app-filter-form" layout="inline">
             <a-form-item>
               <a-input v-model:value="reportFilter.keyword" allow-clear placeholder="搜索汇报标题 / 汇报对象 / 地点方式" />
             </a-form-item>

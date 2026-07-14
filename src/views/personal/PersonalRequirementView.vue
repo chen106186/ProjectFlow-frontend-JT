@@ -1,7 +1,7 @@
 <template>
   <section class="requirement-page">
-    <a-card class="requirement-filter" :bordered="false">
-      <a-form class="requirement-filter__form" layout="inline">
+    <a-card class="requirement-filter app-filter-card" :bordered="false">
+      <a-form class="requirement-filter__form app-filter-form" layout="inline">
         <a-form-item label="搜索">
           <a-input v-model:value="query.keyword" allow-clear placeholder="请输入关键字" />
         </a-form-item>
@@ -17,7 +17,7 @@
         <a-form-item label="需求状态">
           <a-select v-model:value="query.status" allow-clear placeholder="全部" :options="statusFilterOptions" />
         </a-form-item>
-        <a-form-item class="requirement-filter__actions">
+        <a-form-item class="requirement-filter__actions app-filter-actions">
           <a-space>
             <a-button type="primary" @click="handleSearch">查询</a-button>
             <a-button @click="handleReset">重置</a-button>

@@ -1,12 +1,12 @@
 <template>
   <div class="execution-project-page">
-    <a-card class="execution-filter" :bordered="false">
-      <a-form class="execution-filter__form" layout="inline">
+    <a-card class="execution-filter app-filter-card" :bordered="false">
+      <a-form class="execution-filter__form app-filter-form" layout="inline">
         <a-form-item label="项目名称"><a-input v-model:value="query.keyword" allow-clear placeholder="请输入项目名称" /></a-form-item>
         <a-form-item label="项目经理"><a-select v-model:value="query.managerId" :options="managerFilterOptions" /></a-form-item>
         <a-form-item label="项目阶段"><a-select v-model:value="query.stage" :options="stageFilterOptions" /></a-form-item>
         <a-form-item label="项目状态"><a-select v-model:value="query.status" :options="statusFilterOptions" /></a-form-item>
-        <a-form-item class="execution-filter__actions"><a-space><a-button type="primary" @click="handleSearch">查询</a-button><a-button @click="handleReset">重置</a-button></a-space></a-form-item>
+        <a-form-item class="execution-filter__actions app-filter-actions"><a-space><a-button type="primary" @click="handleSearch">查询</a-button><a-button @click="handleReset">重置</a-button></a-space></a-form-item>
       </a-form>
     </a-card>
 

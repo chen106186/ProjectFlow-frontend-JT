@@ -1,14 +1,14 @@
 <template>
   <section class="user-management">
-    <a-card class="prototype-card filter-panel" :bordered="false">
-      <a-form class="user-filter" layout="inline">
+    <a-card class="prototype-card filter-panel app-filter-card" :bordered="false">
+      <a-form class="user-filter app-filter-form" layout="inline">
         <a-form-item label="搜索">
           <a-input v-model:value="queryParams.keyword" class="filter-input" placeholder="请输入账号/姓名" allow-clear />
         </a-form-item>
         <a-form-item label="状态">
           <a-select v-model:value="queryParams.enabled" class="filter-select" :options="statusOptions" allow-clear placeholder="全部" />
         </a-form-item>
-        <a-form-item class="filter-actions">
+        <a-form-item class="filter-actions app-filter-actions">
           <a-space>
             <a-button type="primary" @click="handleSearch">查询</a-button>
             <a-button @click="handleReset">重置</a-button>

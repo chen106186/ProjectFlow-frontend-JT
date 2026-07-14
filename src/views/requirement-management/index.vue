@@ -1,7 +1,7 @@
 <template>
   <section class="req-mgmt-page">
-    <a-card class="req-filter-card" :bordered="false">
-      <a-form class="req-filter" layout="inline">
+    <a-card class="req-filter-card app-filter-card" :bordered="false">
+      <a-form class="req-filter app-filter-form" layout="inline">
         <a-form-item label="关键字">
           <a-input v-model:value="query.keyword" allow-clear placeholder="标题/描述关键字" />
         </a-form-item>
@@ -17,7 +17,7 @@
         <a-form-item label="需求状态">
           <a-select v-model:value="query.status" allow-clear placeholder="全部" :options="statusOptions" />
         </a-form-item>
-        <a-form-item class="filter-actions">
+        <a-form-item class="filter-actions app-filter-actions">
           <a-space>
             <a-button type="primary" @click="handleSearch">查询</a-button>
             <a-button @click="handleReset">重置</a-button>

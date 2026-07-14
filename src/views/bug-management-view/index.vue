@@ -1,13 +1,13 @@
 <template>
   <div class="bug-page">
     <template v-if="viewMode === 'list'">
-      <a-card class="bug-filter" :bordered="false">
-        <a-form :model="queryParams" class="bug-filter__form" layout="inline">
+      <a-card class="bug-filter app-filter-card" :bordered="false">
+        <a-form :model="queryParams" class="bug-filter__form app-filter-form" layout="inline">
           <a-form-item label="搜索"><a-input v-model:value="queryParams.keyword" allow-clear /></a-form-item>
           <a-form-item label="所属项目"><a-select v-model:value="queryParams.projectId" :options="projectOptions" placeholder="全部" allow-clear /></a-form-item>
           <a-form-item label="优先级"><a-select v-model:value="queryParams.priority" :options="priorityFilterOptions" placeholder="全部" allow-clear /></a-form-item>
           <a-form-item label="状态"><a-select v-model:value="queryParams.status" :options="statusFilterOptions" placeholder="全部" allow-clear /></a-form-item>
-          <a-form-item class="bug-filter__actions">
+          <a-form-item class="bug-filter__actions app-filter-actions">
             <a-space><a-button type="primary" @click="handleSearch">查询</a-button><a-button @click="handleReset">重置</a-button></a-space>
           </a-form-item>
         </a-form>
