@@ -459,8 +459,9 @@ onMounted(initPage)
 
 .requirement-filter__form {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  column-gap: 24px;
+  grid-template-columns: minmax(180px, 1.2fr) repeat(4, minmax(160px, 1fr)) max-content;
+  column-gap: 16px;
+  align-items: end;
 }
 
 .requirement-filter__form :deep(.ant-form-item) {
@@ -483,7 +484,6 @@ onMounted(initPage)
 }
 
 .requirement-filter__actions {
-  grid-column: 5;
   justify-self: end;
 }
 
@@ -525,7 +525,7 @@ onMounted(initPage)
   margin-bottom: 10px;
 }
 
-@media (max-width: 1400px) {
+@media (max-width: 1100px) {
   .requirement-filter__form {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }

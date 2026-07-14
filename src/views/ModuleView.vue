@@ -7,32 +7,48 @@
             <template #icon><LeftOutlined /></template>
             返回
           </a-button>
-          <template v-if="selectedTaskDetail">
-            <a-tag :color="getTaskStatusColor(selectedTaskDetail.status)">{{ getTaskLabel('taskStatus', selectedTaskDetail.status) || selectedTaskDetail.status }}</a-tag>
-            <a-tag :color="getTaskPriorityColor(selectedTaskDetail.priority)">{{ getTaskLabel('taskPriority', selectedTaskDetail.priority) || selectedTaskDetail.priority }}</a-tag>
-          </template>
         </div>
 
         <a-card class="prototype-card task-info-card" :bordered="false">
           <a-spin :spinning="taskDetailLoading">
-            <a-descriptions v-if="selectedTaskDetail" :column="4" size="small">
-              <a-descriptions-item label="任务名称">{{ selectedTaskDetail.name }}</a-descriptions-item>
-              <a-descriptions-item label="所属项目">{{ getTaskProjectName(selectedTaskDetail.projectId) }}</a-descriptions-item>
-              <a-descriptions-item label="负责人">{{ getTaskUserName(selectedTaskDetail.assigneeId) }}</a-descriptions-item>
-              <a-descriptions-item label="角色">{{ selectedTaskDetail.roleName || '-' }}</a-descriptions-item>
-              <a-descriptions-item label="优先级">
-                <a-tag :color="getTaskPriorityColor(selectedTaskDetail.priority)">{{ getTaskLabel('taskPriority', selectedTaskDetail.priority) || selectedTaskDetail.priority }}</a-tag>
-              </a-descriptions-item>
-              <a-descriptions-item label="状态">
-                <a-tag :color="getTaskStatusColor(selectedTaskDetail.status)">{{ getTaskLabel('taskStatus', selectedTaskDetail.status) || selectedTaskDetail.status }}</a-tag>
-              </a-descriptions-item>
-              <a-descriptions-item label="计划开始日期">{{ selectedTaskDetail.plannedStartDate || '-' }}</a-descriptions-item>
-              <a-descriptions-item label="计划结束日期">{{ selectedTaskDetail.plannedEndDate || '-' }}</a-descriptions-item>
-              <a-descriptions-item label="实际开始日期">{{ selectedTaskDetail.actualStartDate || '-' }}</a-descriptions-item>
-              <a-descriptions-item label="实际结束日期">{{ selectedTaskDetail.actualEndDate || '-' }}</a-descriptions-item>
-              <a-descriptions-item label="任务描述" :span="3">{{ selectedTaskDetail.description || '-' }}</a-descriptions-item>
-              <a-descriptions-item label="标签">{{ selectedTaskDetail.tags || '-' }}</a-descriptions-item>
-            </a-descriptions>
+            <table v-if="selectedTaskDetail" class="native-info-table">
+              <tbody>
+                <tr>
+                  <th>任务名称</th>
+                  <td>{{ selectedTaskDetail.name || '-' }}</td>
+                  <th>所属项目</th>
+                  <td>{{ getTaskProjectName(selectedTaskDetail.projectId) }}</td>
+                  <th>负责人</th>
+                  <td>{{ getTaskUserName(selectedTaskDetail.assigneeId) }}</td>
+                </tr>
+                <tr>
+                  <th>角色</th>
+                  <td>{{ selectedTaskDetail.roleName || '-' }}</td>
+                  <th>优先级</th>
+                  <td><a-tag :color="getTaskPriorityColor(selectedTaskDetail.priority)">{{ getTaskLabel('taskPriority', selectedTaskDetail.priority) || selectedTaskDetail.priority || '-' }}</a-tag></td>
+                  <th>状态</th>
+                  <td><a-tag :color="getTaskStatusColor(selectedTaskDetail.status)">{{ getTaskLabel('taskStatus', selectedTaskDetail.status) || selectedTaskDetail.status || '-' }}</a-tag></td>
+                </tr>
+                <tr>
+                  <th>计划开始日期</th>
+                  <td>{{ selectedTaskDetail.plannedStartDate || '-' }}</td>
+                  <th>计划结束日期</th>
+                  <td>{{ selectedTaskDetail.plannedEndDate || '-' }}</td>
+                  <th>实际开始日期</th>
+                  <td>{{ selectedTaskDetail.actualStartDate || '-' }}</td>
+                </tr>
+                <tr>
+                  <th>实际结束日期</th>
+                  <td>{{ selectedTaskDetail.actualEndDate || '-' }}</td>
+                  <th>标签</th>
+                  <td colspan="3">{{ selectedTaskDetail.tags || '-' }}</td>
+                </tr>
+                <tr>
+                  <th>任务描述</th>
+                  <td colspan="5">{{ selectedTaskDetail.description || '-' }}</td>
+                </tr>
+              </tbody>
+            </table>
             <a-empty v-else-if="!taskDetailLoading" description="暂无任务数据" />
           </a-spin>
         </a-card>
@@ -282,7 +298,7 @@
 
         <a-card class="prototype-card list-card bug-list-card" :bordered="false">
           <div class="list-toolbar">
-            <a-button type="primary" @click="handleOpenBugModal('create')">
+            <a-button type="primary" @click="handleCreateBug">
               <template #icon><PlusOutlined /></template>
               新增Bug
             </a-button>
@@ -310,7 +326,7 @@
                 <a-space :size="2" wrap>
                   <a-button type="link" size="small" @click="handleBugDetail(record)">详情</a-button>
                   <template v-if="record.creatorId === currentUserId && record.statusCode !== 'CLOSED'">
-                    <a-button type="link" size="small" @click="handleOpenBugModal('edit', record)">编辑</a-button>
+                    <a-button type="link" size="small" @click="handleOpenBugEditModal(record)">编辑</a-button>
                     <a-popconfirm title="确认删除该Bug?" ok-text="删除" cancel-text="取消" @confirm="handleDeleteBug(record)">
                       <a-button type="link" size="small" danger>删除</a-button>
                     </a-popconfirm>
@@ -514,7 +530,7 @@
       </a-form>
     </a-modal>
 
-    <a-modal v-model:open="bugEditOpen" width="640px" :title="bugFormMode === 'edit' ? '编辑Bug' : '新增Bug'" centered>
+    <a-modal v-model:open="bugEditOpen" width="640px" title="编辑Bug" centered>
       <template #footer>
         <a-space>
           <a-button @click="bugEditOpen = false">取消</a-button>
@@ -623,7 +639,7 @@ import dayjs from 'dayjs'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { createDailyReport, fetchDailyReports } from '@/api/dailyReports'
-import { closeBug, createBug, createTask, deleteBug, deleteTask, fixBug, getDicts, getMyStatistics, getProjectBugs, getProjectList, getProjectTasks, getSystemUsers, getTaskById, updateBug, updateTask } from '@/api/managementProject'
+import { closeBug, createTask, deleteBug, deleteTask, fixBug, getDicts, getMyStatistics, getProjectBugs, getProjectList, getProjectTasks, getSystemUsers, getTaskById, updateBug, updateTask } from '@/api/managementProject'
 import { formatDateTime } from '@/utils/dateTime'
 import { OPERATION_ACTIONS, OPERATION_MODULES, recordOperationLog } from '@/utils/operationLog'
 
@@ -633,7 +649,6 @@ const personalMode = ref('task-list')
 const taskEditOpen = ref(false)
 const taskModalMode = ref('edit')
 const bugEditOpen = ref(false)
-const bugFormMode = ref('create')
 const bugForm = ref({ projectId: undefined, title: '', priority: undefined, assigneeId: undefined, description: '', reproduceSteps: '' })
 const bugEditingId = ref(null)
 const bugSubmitLoading = ref(false)
@@ -1404,21 +1419,19 @@ const handleBackToBugList = () => {
   updateDetailQuery()
 }
 
-const handleOpenBugModal = (mode, record) => {
-  bugFormMode.value = mode
-  if (mode === 'edit' && record) {
-    bugEditingId.value = record.id
-    bugForm.value = {
-      projectId: record.projectId,
-      title: record.title,
-      priority: record.priorityCode || undefined,
-      assigneeId: record.assigneeId || undefined,
-      description: record.description || '',
-      reproduceSteps: record.reproduceSteps || '',
-    }
-  } else {
-    bugEditingId.value = null
-    bugForm.value = { projectId: undefined, title: '', priority: undefined, assigneeId: undefined, description: '', reproduceSteps: '' }
+const handleCreateBug = () => {
+  router.push({ name: 'BugCreate' })
+}
+
+const handleOpenBugEditModal = record => {
+  bugEditingId.value = record.id
+  bugForm.value = {
+    projectId: record.projectId,
+    title: record.title,
+    priority: record.priorityCode || undefined,
+    assigneeId: record.assigneeId || undefined,
+    description: record.description || '',
+    reproduceSteps: record.reproduceSteps || '',
   }
   bugEditOpen.value = true
 }
@@ -1436,17 +1449,12 @@ const handleBugSubmit = async () => {
       description: f.description || undefined,
       reproduceSteps: f.reproduceSteps || undefined,
     }
-    if (bugEditingId.value) {
-      await updateBug(bugEditingId.value, body)
-      message.success('Bug更新成功')
-    } else {
-      await createBug(body)
-      message.success('Bug提交成功')
-    }
+    await updateBug(bugEditingId.value, body)
+    message.success('Bug更新成功')
     bugEditOpen.value = false
     await loadMyBugs()
   } catch (error) {
-    message.error(error.message || (bugEditingId.value ? 'Bug更新失败' : 'Bug提交失败'))
+    message.error(error.message || 'Bug更新失败')
   } finally {
     bugSubmitLoading.value = false
   }
@@ -1920,7 +1928,12 @@ const trendPoints = [
 }
 
 .bug-filter {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: minmax(150px, 1.2fr) minmax(150px, 1fr) minmax(120px, 0.8fr) minmax(120px, 0.8fr) max-content;
+  gap: 18px 24px;
+}
+
+.bug-filter .filter-buttons {
+  grid-column: auto;
 }
 
 .list-card {
@@ -2108,9 +2121,34 @@ const trendPoints = [
   margin-bottom: 12px;
 }
 
-.task-info-card :deep(.ant-descriptions-item-label) {
-  color: #111;
-  font-weight: 500;
+.native-info-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  color: #111827;
+}
+
+.native-info-table th,
+.native-info-table td {
+  height: 48px;
+  padding: 12px 14px;
+  font-size: 14px;
+  text-align: left;
+  border: 1px solid #e6ebf1;
+  word-break: break-word;
+}
+
+.native-info-table th {
+  width: 12%;
+  color: #334155;
+  font-weight: 700;
+  background: #f3f6fa;
+}
+
+.native-info-table td {
+  width: 21.333%;
+  background: #fff;
+  font-weight: 400;
 }
 
 .task-detail-grid {

@@ -60,8 +60,8 @@
           </table>
 
           <section class="description-section">
-            <h3>需求描述</h3>
-            <p>{{ requirement.description || '-' }}</p>
+            <h3 class="desciption-sub-title">需求描述</h3>
+            <p class="description-section-detail">{{ requirement.description || '-' }}</p>
           </section>
         </template>
         <a-empty v-else-if="!loading" description="暂无需求详情" />
@@ -376,8 +376,8 @@ onMounted(initPage)
 
 .native-info-table th,
 .native-info-table td {
-  height: 84px;
-  padding: 18px 26px;
+  height: 34px;
+  padding:8px 11px;
   font-size: 14px;
   text-align: left;
   border: 1px solid #edf0f3;
@@ -385,20 +385,35 @@ onMounted(initPage)
 }
 
 .native-info-table th {
-  width: 13%;
+  width: 10%;
   color: #111827;
   font-weight: 500;
   background: #fafafa;
 }
 
 .native-info-table td {
-  width: 20.333%;
+  width: 20%;
   background: #fff;
 }
 
 .description-section {
-  margin-top: 32px;
+  margin-top: 16px;
   color: #333;
+}
+
+.description-section .desciption-sub-title{
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.description-section .description-section-detail{
+
+  background: #f5f5f7;
+  border-radius: 8px;
+  color: #1d1d1f;
+  padding: 14px;
+  font-size: 14px;
+  line-height: 1.7;
 }
 
 .description-section h3 {
