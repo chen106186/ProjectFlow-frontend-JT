@@ -1178,6 +1178,11 @@ const updateDetailQuery = detail => {
 }
 
 const handleTaskDetail = async record => {
+  if (route.name === 'PersonalTasks') {
+    router.push(`/personal/tasks/${record.id}`)
+    return
+  }
+
   selectedTaskDetail.value = null
   personalMode.value = 'task-detail'
   updateDetailQuery('task')

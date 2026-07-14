@@ -150,28 +150,34 @@
               <!-- 基本信息 -->
               <a-card class="detail-card" :bordered="false">
                 <template #title><span class="detail-card__title">基本信息</span></template>
-                <div class="info-grid">
-                  <div class="info-item">
-                    <span class="info-label">所属项目</span>
-                    <span class="info-value">{{ selectedBug.projectName || '-' }}</span>
-                  </div>
-                  <div class="info-item">
-                    <span class="info-label">负责人</span>
-                    <span class="info-value">{{ selectedBug.assigneeName || '-' }}</span>
-                  </div>
-                  <div class="info-item">
-                    <span class="info-label">创建人</span>
-                    <span class="info-value">{{ selectedBug.creatorName || '-' }}</span>
-                  </div>
-                  <div class="info-item">
-                    <span class="info-label">创建时间</span>
-                    <span class="info-value">{{ formatDateTime(selectedBug.createdAt) }}</span>
-                  </div>
-                  <div v-if="selectedBug.closedAt" class="info-item">
-                    <span class="info-label">关闭时间</span>
-                    <span class="info-value">{{ formatDateTime(selectedBug.closedAt) }}</span>
-                  </div>
-                </div>
+                <table class="native-info-table">
+                  <tbody>
+                    <tr>
+                      <th>所属项目</th>
+                      <td>{{ selectedBug.projectName || '-' }}</td>
+                      <th>负责人</th>
+                      <td>{{ selectedBug.assigneeName || '-' }}</td>
+                    </tr>
+                    <tr>
+                      <th>创建人</th>
+                      <td>{{ selectedBug.creatorName || '-' }}</td>
+                      <th>创建时间</th>
+                      <td>{{ formatDateTime(selectedBug.createdAt) }}</td>
+                    </tr>
+                    <tr>
+                      <th>优先级</th>
+                      <td><a-tag :color="priorityColors[selectedBug.priority]">{{ priorityLabels[selectedBug.priority] || selectedBug.priority || '-' }}</a-tag></td>
+                      <th>状态</th>
+                      <td><a-tag :color="statusColors[selectedBug.status]">{{ statusLabels[selectedBug.status] || selectedBug.status || '-' }}</a-tag></td>
+                    </tr>
+                    <tr v-if="selectedBug.closedAt">
+                      <th>关闭时间</th>
+                      <td>{{ formatDateTime(selectedBug.closedAt) }}</td>
+                      <th>Bug编号</th>
+                      <td>{{ selectedBug.bugNo ? '#' + String(selectedBug.bugNo).padStart(3, '0') : '-' }}</td>
+                    </tr>
+                  </tbody>
+                </table>
               </a-card>
 
               <!-- 问题描述 -->
@@ -775,32 +781,35 @@ onMounted(async () => {
 
 .detail-card__title { font-size: 14px; font-weight: 600; color: #1f1f1f; }
 
-.info-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0;
+.native-info-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  color: #111827;
 }
 
-.info-item {
-  display: flex;
-  gap: 8px;
-  align-items: baseline;
-  padding: 9px 12px;
-  border-bottom: 1px solid #f5f6f8;
-  border-right: 1px solid #f5f6f8;
+.native-info-table th,
+.native-info-table td {
+  height: 48px;
+  padding: 12px 14px;
+  font-size: 14px;
+  text-align: left;
+  border: 1px solid #e6ebf1;
+  word-break: break-word;
 }
 
-.info-item:nth-child(even) { border-right: none; }
-.info-item:nth-last-child(-n+2) { border-bottom: none; }
-
-.info-label {
-  flex-shrink: 0;
-  width: 70px;
-  color: #8c8c8c;
-  font-size: 13px;
+.native-info-table th {
+  width: 22%;
+  color: #334155;
+  font-weight: 700;
+  background: #f3f6fa;
 }
 
-.info-value { color: #262626; font-size: 13px; }
+.native-info-table td {
+  width: 28%;
+  background: #fff;
+  font-weight: 400;
+}
 
 .detail-text {
   margin: 0;

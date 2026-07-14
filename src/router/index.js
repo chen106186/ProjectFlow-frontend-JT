@@ -1,6 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 import AppLayout from '@/layouts/AppLayout.vue'
+import ChangePasswordView from '@/views/account/ChangePasswordView.vue'
+import NotificationCenter from '@/views/account/NotificationCenter.vue'
+import ProfileView from '@/views/account/ProfileView.vue'
 import BugManagementView from '@/views/bug-management-view/index.vue'
 import ExecutionProject from '@/views/execution-project/index.vue'
 import ExecutionProjectDetail from '@/views/execution-project/DetailView.vue'
@@ -11,6 +14,7 @@ import ModuleView from '@/views/ModuleView.vue'
 import DailyReportView from '@/views/personal/DailyReportView.vue'
 import PersonalRequirementDetailView from '@/views/personal/PersonalRequirementDetailView.vue'
 import PersonalRequirementView from '@/views/personal/PersonalRequirementView.vue'
+import TaskDetailView from '@/views/personal/TaskDetailView.vue'
 import OperationLogManagement from '@/views/system-settings/OperationLogManagement.vue'
 import RoleManagement from '@/views/system-settings/RoleManagement.vue'
 import UserManagement from '@/views/system-settings/UserManagement.vue'
@@ -63,6 +67,24 @@ const router = createRouter({
           name: 'Home',
           component: HomeView,
           meta: { title: '首页' },
+        },
+        {
+          path: 'notifications',
+          name: 'NotificationCenter',
+          component: NotificationCenter,
+          meta: { title: '通知中心', hideInMenu: true },
+        },
+        {
+          path: 'account/profile',
+          name: 'Profile',
+          component: ProfileView,
+          meta: { title: '个人信息', hideInMenu: true },
+        },
+        {
+          path: 'account/password',
+          name: 'ChangePassword',
+          component: ChangePasswordView,
+          meta: { title: '修改密码', hideInMenu: true },
         },
         ...bugRoutes.map(route => ({
           path: route.path,
@@ -144,6 +166,12 @@ const router = createRouter({
           meta: { title: '我的日报', group: '个人工作' },
         },
         {
+          path: 'personal/tasks/:id',
+          name: 'PersonalTaskDetail',
+          component: TaskDetailView,
+          meta: { title: '任务详情', group: '个人工作', parentTitle: '我的任务', parentPath: '/personal/tasks' },
+        },
+        {
           path: 'personal/requirements',
           name: 'PersonalRequirements',
           component: PersonalRequirementView,
@@ -153,7 +181,7 @@ const router = createRouter({
           path: 'personal/requirements/:id',
           name: 'PersonalRequirementDetail',
           component: PersonalRequirementDetailView,
-          meta: { title: '需求详情', group: '个人工作' },
+          meta: { title: '需求详情', group: '个人工作', parentTitle: '我的需求', parentPath: '/personal/requirements' },
         },
         ...moduleRoutes.filter(route => !['OperationLogManagement', 'PersonalRequirements', 'RequirementManagement'].includes(route.name)).map(route => ({
           path: route.path,

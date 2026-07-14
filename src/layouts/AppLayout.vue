@@ -7,8 +7,8 @@
       </router-link>
 
       <a-space :size="20">
-        <a-badge :count="0">
-          <a-button class="app-header__icon" type="text" aria-label="通知">
+        <a-badge :count="5">
+          <a-button class="app-header__icon" type="text" aria-label="通知" @click="handleNavigate('/notifications')">
             <BellOutlined />
           </a-button>
         </a-badge>
@@ -20,6 +20,14 @@
           </a-button>
           <template #overlay>
             <a-menu @click="handleUserMenuClick">
+              <a-menu-item key="profile">
+                <UserOutlined />
+                个人信息
+              </a-menu-item>
+              <a-menu-item key="password">
+                <LockOutlined />
+                修改密码
+              </a-menu-item>
               <a-menu-item key="logout">
                 <LogoutOutlined />
                 退出登录
@@ -95,6 +103,7 @@ import {
   FileTextOutlined,
   FolderOpenOutlined,
   HomeOutlined,
+  LockOutlined,
   LogoutOutlined,
   ProjectOutlined,
   SettingOutlined,
@@ -149,7 +158,8 @@ const navigationItems = [
     label: '个人工作',
     icon: UsergroupAddOutlined,
     children: [
-      { key: '/personal/tasks', path: '/personal/tasks', label: '我的任务', accessCodes: ['task'], matches: [path => path === '/personal/tasks'] },
+      { key: '/personal/tasks', path: '/personal/tasks', label: '我的任务', accessCodes: ['task'], matches: [path => path.startsWith('/personal/tasks')] },
+      { key: '/personal/requirements', path: '/personal/requirements', label: '我的需求', accessCodes: ['requirement'], matches: [path => path.startsWith('/personal/requirements')] },
       { key: '/personal/bugs', path: '/personal/bugs', label: '我的 Bug', accessCodes: ['bug'], matches: [path => path === '/personal/bugs'] },
       { key: '/personal/daily', path: '/personal/daily', label: '我的日报', accessCodes: ['daily-report'], matches: [path => path === '/personal/daily'] },
       { key: '/personal/statistics', path: '/personal/statistics', label: '我的统计', accessCodes: ANY_WORK_CODES, matches: [path => path === '/personal/statistics'] },
@@ -302,6 +312,11 @@ const accessibleNavigation = computed(() => {
 })
 
 const canAccessPath = path => {
+  const resolvedRoute = router.resolve(path)
+  if (resolvedRoute.matched.some(record => record.meta?.hideInMenu)) {
+    return true
+  }
+
   const items = flattenVisibleItems(accessibleNavigation.value)
   return items.some(item => item.matches?.some(match => match(path)))
 }
@@ -378,6 +393,8 @@ const visibleNavigation = computed(() => {
 
 const selectedKeys = computed(() => {
   if (route.path.startsWith('/bugs')) return ['/bugs']
+  if (route.path.startsWith('/personal/tasks')) return ['/personal/tasks']
+  if (route.path.startsWith('/personal/requirements')) return ['/personal/requirements']
   if (route.path.startsWith('/projects/management')) return ['/projects/management']
   if (route.path.startsWith('/projects/execution')) return ['/projects/execution']
   return [route.path]
@@ -396,7 +413,7 @@ const breadcrumbItems = computed(() => {
   if (parentTitle && parentTitle !== title) {
     items.push({
       title: parentTitle,
-      path: route.path.startsWith('/projects/execution') ? '/projects/execution' : '/projects/management',
+      path: route.meta.parentPath || (route.path.startsWith('/projects/execution') ? '/projects/execution' : '/projects/management'),
     })
   }
 
@@ -489,6 +506,16 @@ const handleNavigate = path => {
 }
 
 const handleUserMenuClick = ({ key }) => {
+  if (key === 'profile') {
+    router.push('/account/profile')
+    return
+  }
+
+  if (key === 'password') {
+    router.push('/account/password')
+    return
+  }
+
   if (key === 'logout') {
     clearAuthCache()
     router.push('/login')

@@ -32,27 +32,37 @@
 
       <a-spin :spinning="loading">
         <template v-if="requirement">
-          <a-descriptions :column="4" bordered size="middle">
-            <a-descriptions-item label="需求编号">{{ requirementNo }}</a-descriptions-item>
-            <a-descriptions-item label="需求标题" :span="3">{{ requirement.title }}</a-descriptions-item>
-            <a-descriptions-item label="所属项目">{{ projectName }}</a-descriptions-item>
-            <a-descriptions-item label="需求类型">
-              <a-tag color="blue">{{ typeLabel }}</a-tag>
-            </a-descriptions-item>
-            <a-descriptions-item label="优先级">
-              <a-tag :color="priorityColor(requirement.priority)">{{ priorityLabel }}</a-tag>
-            </a-descriptions-item>
-            <a-descriptions-item label="状态">
-              <a-tag :color="statusColor(requirement.status)">{{ statusLabel }}</a-tag>
-            </a-descriptions-item>
-            <a-descriptions-item label="负责人">{{ requirement.creatorName || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="审核人">{{ requirement.reviewerName || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="创建时间">{{ createdAtText }}</a-descriptions-item>
-            <a-descriptions-item label="标签" :span="4">{{ requirement.tags || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="需求描述" :span="4">
-              <div class="detail-description">{{ requirement.description || '-' }}</div>
-            </a-descriptions-item>
-          </a-descriptions>
+          <table class="native-info-table">
+            <tbody>
+              <tr>
+                <th>需求编号</th>
+                <td>{{ requirementNo }}</td>
+                <th>需求标题</th>
+                <td colspan="3">{{ requirement.title || '-' }}</td>
+              </tr>
+              <tr>
+                <th>所属项目</th>
+                <td>{{ projectName }}</td>
+                <th>需求类型</th>
+                <td><a-tag color="blue">{{ typeLabel }}</a-tag></td>
+                <th>优先级</th>
+                <td><a-tag :color="priorityColor(requirement.priority)">{{ priorityLabel }}</a-tag></td>
+              </tr>
+              <tr>
+                <th>提交人</th>
+                <td>{{ requirement.creatorName || '-' }}</td>
+                <th>状态</th>
+                <td><a-tag :color="statusColor(requirement.status)">{{ statusLabel }}</a-tag></td>
+                <th>创建时间</th>
+                <td>{{ createdAtText }}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <section class="description-section">
+            <h3>需求描述</h3>
+            <p>{{ requirement.description || '-' }}</p>
+          </section>
         </template>
         <a-empty v-else-if="!loading" description="暂无需求详情" />
       </a-spin>
@@ -348,14 +358,61 @@ onMounted(initPage)
   padding: 18px 22px 24px;
 }
 
+.detail-card :deep(.ant-card-head) {
+  border-bottom: 0;
+}
+
 .detail-card__title {
   font-size: 16px;
   font-weight: 600;
 }
 
-.detail-description {
+.native-info-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  color: #111827;
+}
+
+.native-info-table th,
+.native-info-table td {
+  height: 84px;
+  padding: 18px 26px;
+  font-size: 14px;
+  text-align: left;
+  border: 1px solid #edf0f3;
+  word-break: break-word;
+}
+
+.native-info-table th {
+  width: 13%;
+  color: #111827;
+  font-weight: 500;
+  background: #fafafa;
+}
+
+.native-info-table td {
+  width: 20.333%;
+  background: #fff;
+}
+
+.description-section {
+  margin-top: 32px;
+  color: #333;
+}
+
+.description-section h3 {
+  margin: 0 0 14px;
+  color: #111827;
+  font-size: 16px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.description-section p {
+  margin: 0;
+  line-height: 1.9;
   white-space: pre-wrap;
-  line-height: 1.8;
 }
 
 .req-timeline {
