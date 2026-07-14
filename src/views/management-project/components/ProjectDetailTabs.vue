@@ -152,18 +152,16 @@
         <section v-if="activeTab === 'documents'" class="detail-panel">
           <div class="document-toolbar">
             <a-space>
-              <a-button type="primary" @click.stop="emit('open-upload')">
-                <UploadOutlined />
-                上传文件
-              </a-button>
+              <a-button type="primary" @click.stop="emit('open-upload')"><UploadOutlined />上传文件</a-button>
+              <a-button @click="emit('create-folder')"><FolderAddOutlined />新建文件夹</a-button>
+              <a-button :disabled="!canBatchDownload" @click="emit('batch-download')"><DownloadOutlined />批量下载</a-button>
               <a-popconfirm title="确定删除选中文件吗？" @confirm="emit('delete-documents')">
-                <a-button danger :disabled="selectedDocumentIds.length === 0">
-                  <DeleteOutlined />
-                  批量删除
-                </a-button>
+                <a-button danger :disabled="selectedDocumentIds.length === 0"><DeleteOutlined />批量删除</a-button>
               </a-popconfirm>
             </a-space>
+            <a-input-search v-model:value="documentSearch" placeholder="搜索文件名、上传人、分类..." style="width: 300px" />
           </div>
+          <h3>分类导航</h3>
           <div class="document-categories">
             <button v-for="item in documentCategories" :key="item.label" type="button" :class="[item.class, { active: item.active }]" @click="emit('select-document-category', item.label)">
               <span class="document-category__icon"><component :is="item.icon" /></span>
@@ -171,24 +169,26 @@
               <strong>{{ item.value }}</strong>
             </button>
           </div>
-          <a-table row-key="id" :row-selection="documentRowSelection" :columns="documentColumns" :data-source="documentRows" :loading="documentLoading" :pagination="false">
+          <a-table row-key="id" :row-selection="documentRowSelection" :columns="documentColumns" :data-source="filteredDocsBySearch" :loading="documentLoading" :pagination="false">
             <template #bodyCell="{ column, record }">
               <template v-if="column.dataIndex === 'name'">
-                <button type="button" class="document-name" @click="emit('download-document', record)">
-                  <FileOutlined />
+                <button type="button" class="document-name" :class="{ 'document-name--folder': record.isFolder }" :disabled="record.isFolder" @click="!record.isFolder && emit('download-document', record)">
+                  <FolderOpenOutlined v-if="record.isFolder" />
+                  <FileOutlined v-else />
                   <span>{{ record.name }}</span>
                 </button>
               </template>
               <template v-else-if="column.dataIndex === 'category'">
-                <a-tag color="blue">{{ record.category }}</a-tag>
+                <a-tag :color="record.isFolder ? 'gold' : 'blue'">{{ record.category }}</a-tag>
               </template>
               <template v-else-if="column.dataIndex === 'operation'">
-                <a-space>
+                <a-space v-if="!record.isFolder">
                   <a-button type="link" size="small" @click="emit('download-document', record)">下载</a-button>
                   <a-popconfirm title="确定删除该文件吗？" @confirm="emit('delete-document', record)">
                     <a-button type="link" size="small" danger>删除</a-button>
                   </a-popconfirm>
                 </a-space>
+                <span v-else class="document-row-muted">-</span>
               </template>
             </template>
           </a-table>
@@ -199,7 +199,7 @@
 </template>
 
 <script setup>
-import { DeleteOutlined, FileOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons-vue'
+import { DeleteOutlined, DownloadOutlined, FileOutlined, FolderAddOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons-vue'
 import dayjs from 'dayjs'
 import { computed, reactive, ref } from 'vue'
 
@@ -245,6 +245,8 @@ const emit = defineEmits([
   'edit-report',
   'delete-report',
   'open-upload',
+  'create-folder',
+  'batch-download',
   'select-document-category',
   'delete-documents',
   'download-document',
@@ -252,6 +254,16 @@ const emit = defineEmits([
 ])
 
 const ganttRef = ref()
+const documentSearch = ref('')
+const canBatchDownload = computed(() => props.documentRows.some(row => !row.isFolder) && props.selectedDocumentIds.length > 0)
+const filteredDocsBySearch = computed(() => {
+  const q = documentSearch.value.trim().toLowerCase()
+  if (!q) return props.documentRows
+  return props.documentRows.filter(row =>
+    [row.name, row.uploader, row.category].some(v => v && v.toLowerCase().includes(q))
+  )
+})
+
 const reportFilter = reactive({
   keyword: '',
   status: '全部',
@@ -650,20 +662,31 @@ defineExpose({
 .document-categories {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 14px;
+  margin-bottom: 22px;
 }
 
 .document-categories button {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px;
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  padding: 15px;
+  color: #1d1d1f;
+  text-align: left;
   background: #fff;
-  border: 1px solid #edf0f3;
-  border-radius: 12px;
+  border: 1px solid rgb(0 0 0 / 5%);
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 5%);
   cursor: pointer;
+  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.28s ease;
+}
+
+.document-categories button:hover {
+  box-shadow: 0 14px 28px rgb(0 0 0 / 10%);
+  transform: translateY(-4px);
+}
+
+.document-categories button:first-child {
+  border-color: #1677ff;
 }
 
 .document-categories button.active {
@@ -671,6 +694,33 @@ defineExpose({
   border-color: #1677ff;
   box-shadow: 0 0 0 2px rgb(22 119 255 / 12%);
 }
+
+.document-category__icon {
+  display: inline-flex;
+  grid-row: 1 / 3;
+  align-self: center;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  font-size: 20px;
+  border-radius: 11px;
+}
+
+.document-categories strong { font-size: 17px; }
+
+.category-all { background: linear-gradient(135deg, #fff 0%, #edf6ff 100%); }
+.category-all .document-category__icon { color: #0066cc; background: #e5f2ff; }
+.category-contract { background: linear-gradient(135deg, #fff 0%, #eefbf2 100%); }
+.category-contract .document-category__icon { color: #248a3d; background: #e5f8eb; }
+.category-requirement { background: linear-gradient(135deg, #fff 0%, #fff5e8 100%); }
+.category-requirement .document-category__icon { color: #c93400; background: #ffecd6; }
+.category-design { background: linear-gradient(135deg, #fff 0%, #f5efff 100%); }
+.category-design .document-category__icon { color: #7d3fc1; background: #eee2ff; }
+.category-development { background: linear-gradient(135deg, #fff 0%, #fff7e8 100%); }
+.category-development .document-category__icon { color: #b25d00; background: #ffedcf; }
+.category-acceptance { background: linear-gradient(135deg, #fff 0%, #eafbf7 100%); }
+.category-acceptance .document-category__icon { color: #00856a; background: #dff8f1; }
 
 .document-name {
   display: inline-flex;
@@ -689,6 +739,16 @@ defineExpose({
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.document-name--folder,
+.document-name--folder:disabled {
+  color: #8a5a00;
+  cursor: default;
+}
+
+.document-row-muted {
+  color: #bfbfbf;
 }
 
 @media (max-width: 1200px) {

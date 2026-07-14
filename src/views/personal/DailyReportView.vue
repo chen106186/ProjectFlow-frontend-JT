@@ -104,6 +104,7 @@ import dayjs from 'dayjs'
 import { computed, onMounted, ref } from 'vue'
 
 import { createDailyReport, listMyDailyReports, updateDailyReport } from '@/api/dailyReports'
+import { formatDateTime } from '@/utils/dateTime'
 
 const today = dayjs()
 const yesterday = today.subtract(1, 'day')
@@ -164,12 +165,6 @@ const goToday = onChange => {
 }
 
 const disabledFuture = date => date && (date.isAfter(today, 'day') || date.isBefore(yesterday, 'day'))
-
-const formatDateTime = val => {
-  if (!val) return '-'
-  const s = String(val)
-  return s.length > 10 ? s.replace('T', ' ').slice(0, 16) : s
-}
 
 const openCreate = () => {
   editingId.value = null

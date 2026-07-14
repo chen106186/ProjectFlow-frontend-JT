@@ -42,7 +42,7 @@
       >
         <template #bodyCell="{ column, record, text }">
           <template v-if="column.dataIndex === 'createdAt'">
-            <span class="log-time">{{ text ? String(text).replace('T', ' ').slice(0, 16) : '-' }}</span>
+            <span class="log-time">{{ formatDateTime(text) }}</span>
           </template>
           <template v-else-if="column.dataIndex === 'module'">
             <a-tag :color="moduleColor(text)">{{ moduleLabel(text) }}</a-tag>
@@ -68,6 +68,7 @@ import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
 
 import { getOperationLogs } from '@/api/system'
+import { formatDateTime } from '@/utils/dateTime'
 
 const createDefaultQuery = () => ({
   keyword: '',
@@ -145,7 +146,7 @@ const actionColor = v => ACTION_MAP[v]?.color || 'default'
 const bizTypeLabel = v => BIZ_TYPE_MAP[v] || v || '-'
 
 const columns = [
-  { title: '操作时间', dataIndex: 'createdAt', width: 150, fixed: 'left' },
+  { title: '操作时间', dataIndex: 'createdAt', width: 170, fixed: 'left' },
   { title: '操作人', dataIndex: 'operatorName', width: 100 },
   { title: '模块', dataIndex: 'module', width: 110 },
   { title: '操作类型', dataIndex: 'operationType', width: 110 },

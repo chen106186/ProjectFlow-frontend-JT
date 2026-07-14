@@ -16,7 +16,7 @@ const bugColumns = [
   { title: '严重程度', dataIndex: 'severity', width: 106 },
   { title: '指派给', dataIndex: 'owner', width: 100 },
   { title: '状态', dataIndex: 'status', width: 110 },
-  { title: '创建时间', dataIndex: 'createdAt', width: 132 },
+  { title: '创建时间', dataIndex: 'createdAt', width: 170 },
 ]
 
 const projectColumns = [
@@ -38,9 +38,9 @@ const taskRows = [
 ]
 
 const bugRows = [
-  { key: 'B-240601', code: 'B-240601', name: '侧边菜单切换后选中态未同步', project: '项目管理与开发系统', severity: '一般', owner: '张明', status: '处理中', createdAt: '2026-07-03' },
-  { key: 'B-240602', code: 'B-240602', name: '任务截止日期为空时展示异常', project: '团队协同平台', severity: '严重', owner: '李娜', status: '待修复', createdAt: '2026-07-04' },
-  { key: 'B-240603', code: 'B-240603', name: '日报提交按钮重复点击未限制', project: '质量管理平台', severity: '提示', owner: '赵倩', status: '已关闭', createdAt: '2026-07-01' },
+  { key: 'B-240601', code: 'B-240601', name: '侧边菜单切换后选中态未同步', project: '项目管理与开发系统', severity: '一般', owner: '张明', status: '处理中', createdAt: '2026-07-03 09:18:26' },
+  { key: 'B-240602', code: 'B-240602', name: '任务截止日期为空时展示异常', project: '团队协同平台', severity: '严重', owner: '李娜', status: '待修复', createdAt: '2026-07-04 14:32:09' },
+  { key: 'B-240603', code: 'B-240603', name: '日报提交按钮重复点击未限制', project: '质量管理平台', severity: '提示', owner: '赵倩', status: '已关闭', createdAt: '2026-07-01 18:05:43' },
 ]
 
 const projectRows = [

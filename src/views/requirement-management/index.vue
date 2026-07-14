@@ -164,6 +164,7 @@ import { useRouter } from 'vue-router'
 import { getProjectList, getSystemUsers } from '@/api/managementProject'
 import { createRequirement, listRequirements, updateRequirement, updateRequirementStatus } from '@/api/requirements'
 import { useDictStore } from '@/store/dictStore'
+import { formatDateTime } from '@/utils/dateTime'
 
 const router = useRouter()
 const dictStore = useDictStore()
@@ -246,8 +247,8 @@ const columns = [
   {
     title: '创建时间',
     dataIndex: 'createdAt',
-    width: 110,
-    customRender: ({ text }) => (text ? dayjs(text).format('YYYY-MM-DD') : '-'),
+    width: 170,
+    customRender: ({ text }) => formatDateTime(text),
   },
   { title: '操作', dataIndex: 'ops', width: 170, fixed: 'right' },
 ]

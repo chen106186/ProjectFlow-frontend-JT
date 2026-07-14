@@ -51,7 +51,7 @@
               <template v-else-if="column.dataIndex === 'status'">
                 <a-tag :color="statusColors[text]">{{ statusLabels[text] || text }}</a-tag>
               </template>
-              <template v-else-if="column.dataIndex === 'createdAt'">{{ text ? text.slice(0, 10) : '-' }}</template>
+              <template v-else-if="column.dataIndex === 'createdAt'">{{ formatDateTime(text) }}</template>
               <template v-else-if="column.dataIndex === 'operation'">
                 <a-space>
                   <a-button type="link" size="small" @click="handleDetail(record)">详情</a-button>
@@ -85,7 +85,7 @@
                 <template v-else-if="column.dataIndex === 'status'">
                   <a-tag :color="statusColors[text]">{{ statusLabels[text] || text }}</a-tag>
                 </template>
-                <template v-else-if="column.dataIndex === 'createdAt'">{{ text ? text.slice(0, 10) : '-' }}</template>
+                <template v-else-if="column.dataIndex === 'createdAt'">{{ formatDateTime(text) }}</template>
                 <template v-else-if="column.dataIndex === 'operation'">
                   <a-space>
                     <a-button type="link" size="small" @click="handleDetail(record)">详情</a-button>
@@ -111,10 +111,12 @@
           <a-form-item label="所属项目" name="projectId"><a-select v-model:value="formState.projectId" :options="projectOptions" placeholder="请选择所属项目" /></a-form-item>
           <a-form-item label="指派给" name="assigneeId"><a-select v-model:value="formState.assigneeId" :options="bugFormUserOptions" placeholder="请选择负责人" show-search option-filter-prop="label" /></a-form-item>
           <a-form-item label="优先级" name="priority"><a-select v-model:value="formState.priority" :options="priorityOptions" /></a-form-item>
-          <a-form-item label="问题描述" name="description"><a-textarea v-model:value="formState.description" :rows="6" placeholder="请输入问题描述" /></a-form-item>
+          <a-form-item label="问题描述" name="description">
+            <a-textarea v-model:value="formState.description" :rows="8" placeholder="请输入问题描述" />
+          </a-form-item>
           <a-form-item label="重现步骤">
             <div class="bug-rich-editor">
-              <Toolbar :editor="editorRef" :default-config="toolbarConfig" mode="default" />
+              <Toolbar v-if="editorRef" :editor="editorRef" :default-config="toolbarConfig" mode="default" />
               <Editor v-model="formState.reproduceSteps" :default-config="editorConfig" mode="default" @on-created="handleEditorCreated" />
             </div>
           </a-form-item>
@@ -160,11 +162,11 @@
                   </div>
                   <div class="info-item">
                     <span class="info-label">创建时间</span>
-                    <span class="info-value">{{ selectedBug.createdAt ? String(selectedBug.createdAt).slice(0, 10) : '-' }}</span>
+                    <span class="info-value">{{ formatDateTime(selectedBug.createdAt) }}</span>
                   </div>
                   <div v-if="selectedBug.closedAt" class="info-item">
                     <span class="info-label">关闭时间</span>
-                    <span class="info-value">{{ String(selectedBug.closedAt).slice(0, 10) }}</span>
+                    <span class="info-value">{{ formatDateTime(selectedBug.closedAt) }}</span>
                   </div>
                 </div>
               </a-card>
@@ -172,13 +174,13 @@
               <!-- 问题描述 -->
               <a-card class="detail-card" :bordered="false">
                 <template #title><span class="detail-card__title">问题描述</span></template>
-                <p class="detail-text">{{ selectedBug.description || '-' }}</p>
+                <div class="detail-rich" v-html="bugDescriptionHtml"></div>
               </a-card>
 
               <!-- 重现步骤 -->
               <a-card class="detail-card" :bordered="false">
                 <template #title><span class="detail-card__title">重现步骤</span></template>
-                <div class="detail-rich" v-html="selectedBug.reproduceSteps || '<p>-</p>'"></div>
+                <div class="detail-rich" v-html="bugReproduceStepsHtml"></div>
               </a-card>
 
               <!-- 修复记录 -->
@@ -202,16 +204,16 @@
                     <div v-for="comment in comments" :key="comment.id" class="comment-item">
                       <div class="comment-item__meta">
                         <b>{{ comment.authorName || ('用户' + comment.userId) }}</b>
-                        <small>{{ comment.createdAt ? String(comment.createdAt).slice(0, 16).replace('T', ' ') : '' }}</small>
+                        <small>{{ formatDateTime(comment.createdAt) }}</small>
                       </div>
-                      <div class="comment-item__content" v-html="comment.content"></div>
+                      <div class="comment-item__content" v-html="normalizeRichHtml(comment.content)"></div>
                     </div>
-                    <a-empty v-if="!comments.length && !commentsLoading" :image="null" description="暂无评论" class="comment-empty" />
+                    <a-empty v-if="!comments.length && !commentsLoading" description="暂无评论" class="comment-empty" />
                   </div>
                 </a-spin>
                 <template v-if="!isClosedBug(selectedBug)">
                   <div class="comment-rich-editor">
-                    <Toolbar :editor="commentEditorRef" :default-config="toolbarConfig" mode="default" />
+                    <Toolbar v-if="commentEditorRef" :editor="commentEditorRef" :default-config="toolbarConfig" mode="default" />
                     <Editor v-model="commentContent" :default-config="commentEditorConfig" mode="default" @on-created="handleCommentEditorCreated" />
                   </div>
                   <div class="send-row"><a-button type="primary" :loading="commentLoading" @click="handleSendComment">发送</a-button></div>
@@ -253,12 +255,13 @@ import { ArrowLeftOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
 import '@wangeditor/editor/dist/css/style.css'
-import { computed, onBeforeUnmount, onMounted, reactive, ref, shallowRef, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   getProjectBugs, getBugById, createBug, updateBug, deleteBug, closeBug, assignBug,
   addBugComment, listBugComments, getProjectList, getSystemUsers,
 } from '@/api/managementProject'
+import { formatDateTime } from '@/utils/dateTime'
 
 const route = useRoute()
 const router = useRouter()
@@ -310,7 +313,7 @@ const columns = [
   { title: '状态', dataIndex: 'status', width: 110 },
   { title: '负责人', dataIndex: 'assigneeName', width: 90 },
   { title: '创建人', dataIndex: 'creatorName', width: 90 },
-  { title: '创建时间', dataIndex: 'createdAt', width: 120 },
+  { title: '创建时间', dataIndex: 'createdAt', width: 170 },
   { title: '操作', dataIndex: 'operation', width: 120, fixed: 'right' },
 ]
 
@@ -366,8 +369,79 @@ const commentsLoading = ref(false)
 const commentContent = ref('')
 const commentLoading = ref(false)
 const commentEditorRef = shallowRef()
+const richImageObjectUrls = new Set()
+const ossHostPattern = /^https:\/\/company-project-oss\.oss-cn-shanghai\.aliyuncs\.com\/(.+)$/i
+const normalizeRichHtml = html => {
+  if (!html) return '<p>-</p>'
+  if (typeof window === 'undefined' || typeof DOMParser === 'undefined') return html
+
+  const doc = new DOMParser().parseFromString(`<div>${html}</div>`, 'text/html')
+  doc.querySelectorAll('img').forEach(img => {
+    const src = img.getAttribute('src')
+    const privateOssMatch = src?.trim().match(ossHostPattern)
+    if (privateOssMatch) {
+      img.removeAttribute('src')
+      img.setAttribute('data-rich-image-key', decodeURIComponent(privateOssMatch[1]))
+    } else if (src) {
+      img.setAttribute('src', src.trim())
+    }
+    img.setAttribute('referrerpolicy', 'no-referrer')
+    img.setAttribute('loading', 'lazy')
+    img.setAttribute('decoding', 'async')
+    img.classList.add('rich-image')
+  })
+  return doc.body.firstElementChild?.innerHTML || '<p>-</p>'
+}
+const clearRichImageObjectUrls = () => {
+  richImageObjectUrls.forEach(url => URL.revokeObjectURL(url))
+  richImageObjectUrls.clear()
+}
+const hydratePrivateRichImages = async () => {
+  await nextTick()
+  clearRichImageObjectUrls()
+  const images = document.querySelectorAll('.detail-rich img[data-rich-image-key], .comment-item__content img[data-rich-image-key]')
+  await Promise.all(Array.from(images).map(async img => {
+    const key = img.getAttribute('data-rich-image-key')
+    if (!key) return
+    try {
+      const response = await fetch(`/api/files/rich-text-image?key=${encodeURIComponent(key)}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
+      })
+      if (!response.ok) throw new Error('图片加载失败')
+      const objectUrl = URL.createObjectURL(await response.blob())
+      richImageObjectUrls.add(objectUrl)
+      img.setAttribute('src', objectUrl)
+      img.removeAttribute('data-rich-image-key')
+    } catch {
+      img.setAttribute('alt', '图片加载失败')
+      img.classList.add('rich-image--failed')
+    }
+  }))
+}
+const bugDescriptionHtml = computed(() => normalizeRichHtml(selectedBug.value?.description))
+const bugReproduceStepsHtml = computed(() => normalizeRichHtml(selectedBug.value?.reproduceSteps))
+const richTextImageUploadConf = {
+  MENU_CONF: {
+    uploadImage: {
+      async customUpload(file, insertFn) {
+        const fd = new FormData()
+        fd.append('file', file)
+        const res = await fetch('/api/files/upload-image', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+          body: fd,
+        }).catch(() => null)
+        if (!res || !res.ok) { message.error('图片上传失败'); return }
+        const json = await res.json()
+        if (json.errno === 0) insertFn(json.data.url, json.data.alt || '', json.data.href || '')
+        else message.error('图片上传失败')
+      },
+    },
+  },
+}
+
 const toolbarConfig = {}
-const commentEditorConfig = { placeholder: '请输入评论内容', scroll: true }
+const commentEditorConfig = { placeholder: '请输入评论内容', scroll: true, ...richTextImageUploadConf }
 
 const handleCommentEditorCreated = editor => { commentEditorRef.value = editor }
 
@@ -435,7 +509,7 @@ const formRef = ref()
 const editingId = ref(null)
 const submitLoading = ref(false)
 const editorRef = shallowRef()
-const editorConfig = { placeholder: '请输入重现步骤', scroll: true }
+const editorConfig = { placeholder: '请输入重现步骤', scroll: true, ...richTextImageUploadConf }
 
 const createDefaultFormState = () => ({ title: '', projectId: undefined, assigneeId: undefined, priority: 'MEDIUM', description: '', reproduceSteps: '' })
 const formState = reactive(createDefaultFormState())
@@ -499,7 +573,7 @@ const handleDeleteBug = async record => {
 
 const syncRouteState = async () => {
   if (viewMode.value === 'list') { loadBugs(); return }
-  const id = Number(route.params.id)
+  const id = route.params.id
   if (viewMode.value === 'create') {
     Object.assign(formState, createDefaultFormState())
     editingId.value = null
@@ -535,6 +609,7 @@ const syncRouteState = async () => {
       const [bug, cmts] = await Promise.all([getBugById(id), listBugComments(id)])
       selectedBug.value = bug
       comments.value = cmts
+      void hydratePrivateRichImages()
     } catch (e) {
       message.error(e.message || '加载失败')
     } finally {
@@ -548,6 +623,7 @@ watch(() => [route.name, route.params.id], syncRouteState, { immediate: true })
 onBeforeUnmount(() => {
   editorRef.value?.destroy()
   commentEditorRef.value?.destroy()
+  clearRichImageObjectUrls()
 })
 
 onMounted(async () => {
@@ -695,9 +771,27 @@ onMounted(async () => {
   word-break: break-word;
 }
 
-.detail-rich { color: #434343; font-size: 14px; line-height: 1.75; }
-.detail-rich :deep(p) { margin: 0 0 6px; }
-.detail-rich :deep(img) { max-width: 100%; height: auto; }
+.detail-rich { color: #434343; font-size: 14px; line-height: 1.75; word-break: break-word; }
+.detail-rich :deep(p) { margin: 0 0 10px; }
+.detail-rich :deep(img),
+.detail-rich :deep(.rich-image) {
+  display: block;
+  max-width: min(100%, 960px);
+  height: auto !important;
+  margin: 10px 0;
+  object-fit: contain;
+  border: 1px solid #edf0f3;
+  border-radius: 8px;
+}
+.detail-rich :deep(.rich-image--failed),
+.comment-item__content :deep(.rich-image--failed) {
+  min-width: 160px;
+  min-height: 40px;
+  padding: 10px;
+  color: #ff4d4f;
+  background: #fff2f0;
+  border-color: #ffccc7;
+}
 
 .fix-block { margin-bottom: 16px; }
 .fix-block:last-child { margin-bottom: 0; }
@@ -721,7 +815,16 @@ onMounted(async () => {
 .comment-item__meta small { color: #bfbfbf; font-size: 12px; }
 .comment-item__content { color: #555; font-size: 13px; line-height: 1.65; }
 .comment-item__content :deep(p) { margin: 0; }
-.comment-item__content :deep(img) { max-width: 100%; height: auto; }
+.comment-item__content :deep(img),
+.comment-item__content :deep(.rich-image) {
+  display: block;
+  max-width: min(100%, 720px);
+  height: auto !important;
+  margin: 8px 0;
+  object-fit: contain;
+  border: 1px solid #edf0f3;
+  border-radius: 8px;
+}
 .comment-empty { padding: 16px 0; }
 
 .comment-rich-editor {

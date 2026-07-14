@@ -181,7 +181,7 @@
               <span>状态</span><strong><a-tag :color="selectedBugDetail.statusColor">{{ selectedBugDetail.status }}</a-tag></strong>
               <span>指定人</span><strong>{{ selectedBugDetail.assignee }}</strong>
               <span>创建人</span><strong>{{ selectedBugDetail.creator }}</strong>
-              <span>关闭时间</span><strong>{{ selectedBugDetail.closedAt ? String(selectedBugDetail.closedAt).slice(0, 10) : '-' }}</strong>
+              <span>关闭时间</span><strong>{{ formatDateTime(selectedBugDetail.closedAt) }}</strong>
             </div>
             <div class="bug-text-block">
               <h3>问题描述</h3>
@@ -568,6 +568,7 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { createDailyReport, fetchDailyReports } from '@/api/dailyReports'
 import { closeBug, createBug, createTask, deleteBug, deleteTask, fixBug, getDicts, getMyStatistics, getProjectBugs, getProjectList, getProjectTasks, getSystemUsers, getTaskById, updateBug, updateTask } from '@/api/managementProject'
+import { formatDateTime } from '@/utils/dateTime'
 import { OPERATION_ACTIONS, OPERATION_MODULES, recordOperationLog } from '@/utils/operationLog'
 
 const route = useRoute()
@@ -733,7 +734,7 @@ const weekDays = computed(() => {
 })
 const dailySubmitTime = computed(() => {
   const report = currentDailyReport.value
-  return report?.updatedAt || report?.createdAt || `${selectedDailyDate.value.format('YYYY-MM-DD')} 18:00`
+  return formatDateTime(report?.updatedAt || report?.createdAt || `${selectedDailyDate.value.format('YYYY-MM-DD')} 18:00:00`)
 })
 
 watch(
@@ -939,7 +940,7 @@ async function loadMyBugs() {
       fixAnalysis: bug.fixAnalysis || '',
       fixDetail: bug.fixDetail || '',
       closedAt: bug.closedAt || null,
-      createdAt: bug.createdAt ? String(bug.createdAt).slice(0, 10) : '-',
+      createdAt: formatDateTime(bug.createdAt),
     }))
   } catch (error) {
     bugApiRows.value = []
@@ -1604,7 +1605,7 @@ const personalBugColumns = [
   { title: '状态', dataIndex: 'status', width: 110 },
   { title: '指定人', dataIndex: 'assignee', width: 100 },
   { title: '创建人', dataIndex: 'creator', width: 100 },
-  { title: '创建日期', dataIndex: 'createdAt', width: 130 },
+  { title: '创建时间', dataIndex: 'createdAt', width: 170 },
   { title: '操作', dataIndex: 'operation', fixed: 'right', width: 220 },
 ]
 

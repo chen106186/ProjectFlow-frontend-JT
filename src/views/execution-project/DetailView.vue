@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="execution-detail">
     <div class="execution-detail__heading">
       <a-button @click="handleBack"><ArrowLeftOutlined />返回</a-button>
@@ -128,8 +128,8 @@
         <div class="document-toolbar">
           <a-space>
             <a-button type="primary" @click="handleOpenUploadModal"><UploadOutlined />上传文件</a-button>
-            <a-button><FolderAddOutlined />新建文件夹</a-button>
-            <a-button><DownloadOutlined />批量下载</a-button>
+            <a-button @click="handleCreateFolder"><FolderAddOutlined />新建文件夹</a-button>
+            <a-button :disabled="!canBatchDownload" @click="handleBatchDownload"><DownloadOutlined />批量下载</a-button>
             <a-popconfirm title="确定删除选中的文件吗？" @confirm="handleDeleteDocuments"><a-button danger :disabled="selectedDocumentIds.length === 0"><DeleteOutlined />批量删除</a-button></a-popconfirm>
           </a-space>
           <a-input-search placeholder="搜索文件名、上传人、分类..." />
@@ -145,19 +145,21 @@
         <a-table row-key="id" :row-selection="documentRowSelection" :columns="documentColumns" :data-source="filteredDocumentRows" :loading="documentLoading" :pagination="false">
           <template #bodyCell="{ column, record }">
             <template v-if="column.dataIndex === 'name'">
-              <button type="button" class="document-name" @click="handleDownloadDocument(record)">
-                <FileOutlined />
+              <button type="button" class="document-name" :class="{ 'document-name--folder': record.isFolder }" :disabled="record.isFolder" @click="!record.isFolder && handleDownloadDocument(record)">
+                <FolderOpenOutlined v-if="record.isFolder" />
+                <FileOutlined v-else />
                 <span>{{ record.name }}</span>
               </button>
             </template>
             <template v-else-if="column.dataIndex === 'category'">
-              <a-tag color="blue">{{ record.category }}</a-tag>
+              <a-tag :color="record.isFolder ? 'gold' : 'blue'">{{ record.category }}</a-tag>
             </template>
             <template v-else-if="column.dataIndex === 'operation'">
-              <a-space>
+              <a-space v-if="!record.isFolder">
                 <a-button type="link" size="small" @click="handleDownloadDocument(record)">下载</a-button>
                 <a-popconfirm title="确定删除该文件吗？" @confirm="handleDeleteDocument(record)"><a-button type="link" size="small" danger>删除</a-button></a-popconfirm>
               </a-space>
+              <span v-else class="document-row-muted">-</span>
             </template>
           </template>
         </a-table>
@@ -192,6 +194,24 @@
         <a-form-item label="版本号"><a-input v-model:value="uploadForm.versionNo" placeholder="请输入版本号，如 V1.0 / 初版" /></a-form-item>
       </a-form>
       <div class="upload-modal-actions"><a-button @click="uploadVisible = false">取消</a-button><a-button type="primary" :loading="uploadLoading" @click="handleStartUpload">开始上传</a-button></div>
+    </a-modal>
+
+    <a-modal
+      v-model:open="folderVisible"
+      title="新建文件夹"
+      :width="460"
+      :confirm-loading="folderLoading"
+      ok-text="确定"
+      cancel-text="取消"
+      destroy-on-close
+      @ok="handleSubmitFolder"
+      @cancel="folderName = ''"
+    >
+      <a-form :label-col="{ span: 5 }" :wrapper-col="{ span: 18 }">
+        <a-form-item label="文件夹名称" required>
+          <a-input v-model:value="folderName" placeholder="请输入文件夹名称" maxlength="50" show-count />
+        </a-form-item>
+      </a-form>
     </a-modal>
 
     <a-modal v-model:open="ganttEditVisible" title="编辑节点" :width="560" :footer="null" destroy-on-close>
@@ -245,21 +265,25 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } 
 import { useRoute, useRouter } from 'vue-router'
 
 import {
+  createProjectFolder,
   deleteProjectFile,
   deleteProjectFiles,
   downloadProjectFile,
+  downloadProjectFiles,
   getDicts,
   getGanttNodes,
   getGanttSummary,
   getProjectBugs,
   getProjectDetail,
   getProjectFiles,
+  getProjectFolders,
   getProjectReports,
   getProjectTasks,
   getSystemUsers,
   updateGanttNode,
   uploadProjectFile,
 } from '@/api/managementProject'
+import { formatDateTime } from '@/utils/dateTime'
 import { OPERATION_ACTIONS, OPERATION_MODULES, recordOperationLog } from '@/utils/operationLog'
 
 const route = useRoute()
@@ -276,6 +300,10 @@ const selectedDocumentIds = ref([])
 const selectedDocumentCategory = ref('全部')
 const uploadVisible = ref(false)
 const uploadLoading = ref(false)
+const folderVisible = ref(false)
+const folderLoading = ref(false)
+const folderName = ref('')
+const folderRows = ref([])
 const ganttEditVisible = ref(false)
 const ganttSubmitLoading = ref(false)
 const uploadFiles = ref([])
@@ -382,12 +410,27 @@ const reportColumns = [{ title: '汇报标题', dataIndex: 'title', width: 220 }
 const reportRows = ref([])
 const documentCategoryLabels = ['合同类', '需求类', '设计类', '开发类', '验收类']
 const documentCategories = computed(() => [{ label: '全部', value: documentRows.value.length, class: 'category-all', icon: FolderOpenOutlined }, ...documentCategoryLabels.map((label, index) => ({ label, value: documentRows.value.filter(item => item.category === label).length, class: ['category-contract', 'category-requirement', 'category-design', 'category-development', 'category-acceptance'][index], icon: [FileProtectOutlined, FileTextOutlined, SnippetsOutlined, CodeOutlined, FileDoneOutlined][index] }))].map(item => ({ ...item, active: item.label === selectedDocumentCategory.value })))
-const documentColumns = [{ title: '文件名', dataIndex: 'name' }, { title: '类型', dataIndex: 'type', width: 90 }, { title: '大小', dataIndex: 'size', width: 90 }, { title: '版本', dataIndex: 'version', width: 80 }, { title: '上传人', dataIndex: 'uploader', width: 80 }, { title: '分类', dataIndex: 'category', width: 90 }, { title: '上传时间', dataIndex: 'uploadTime', width: 130 }, { title: '操作', dataIndex: 'operation', width: 120 }]
+const documentColumns = [{ title: '文件名', dataIndex: 'name' }, { title: '类型', dataIndex: 'type', width: 90 }, { title: '大小', dataIndex: 'size', width: 90 }, { title: '版本', dataIndex: 'version', width: 80 }, { title: '上传人', dataIndex: 'uploader', width: 80 }, { title: '分类', dataIndex: 'category', width: 90 }, { title: '上传时间', dataIndex: 'uploadTime', width: 170 }, { title: '操作', dataIndex: 'operation', width: 120 }]
 const documentRows = ref([])
-const filteredDocumentRows = computed(() => selectedDocumentCategory.value === '全部' ? documentRows.value : documentRows.value.filter(item => item.category === selectedDocumentCategory.value))
+const folderDisplayRows = computed(() => folderRows.value.map(folder => ({
+  id: `folder-${folder.id}`,
+  name: folder.name,
+  type: '文件夹',
+  size: '-',
+  version: '-',
+  uploader: '-',
+  category: '文件夹',
+  uploadTime: formatDateTime(folder.createdAt),
+  isFolder: true,
+})))
+const documentDisplayRows = computed(() => documentRows.value.map(file => ({ ...file, isFolder: false })))
+const allDocumentRows = computed(() => [...folderDisplayRows.value, ...documentDisplayRows.value])
+const filteredDocumentRows = computed(() => selectedDocumentCategory.value === '全部' ? allDocumentRows.value : documentDisplayRows.value.filter(item => item.category === selectedDocumentCategory.value))
+const canBatchDownload = computed(() => documentRows.value.length > 0 && selectedDocumentIds.value.length > 0)
 const documentRowSelection = computed(() => ({
   selectedRowKeys: selectedDocumentIds.value,
   onChange: keys => { selectedDocumentIds.value = keys },
+  getCheckboxProps: record => ({ disabled: record.isFolder }),
 }))
 const pagination = { pageSize: 5, showSizeChanger: false }
 const uploadForm = reactive({ location: '项目文档库', category: '需求类', versionNo: 'V1.0' })
@@ -446,7 +489,7 @@ const fetchProjectRelatedData = async projectId => {
   documentLoading.value = true
 
   try {
-    const [project, nodes, ganttResult, taskResult, bugResult, reportResult, files] = await Promise.all([
+    const [project, nodes, ganttResult, taskResult, bugResult, reportResult, files, folders] = await Promise.all([
       getProjectDetail(projectId),
       getGanttNodes(projectId),
       getGanttSummary(projectId),
@@ -454,6 +497,7 @@ const fetchProjectRelatedData = async projectId => {
       getProjectBugs({ projectId, pageNo: 1, pageSize: 200 }),
       getProjectReports({ projectId, pageNo: 1, pageSize: 200 }),
       getProjectFiles({ businessType: 'PROJECT', businessId: projectId }),
+      getProjectFolders({ businessType: 'PROJECT', businessId: projectId }),
     ])
     currentProject.value = mapProject(project)
     void recordOperationLog({
@@ -476,7 +520,8 @@ const fetchProjectRelatedData = async projectId => {
     taskRows.value = taskResult.records.map(task => ({ id: task.id, name: task.name, owner: getUserName(task.assigneeId), priority: getDictLabel('taskPriority', task.priority), priorityCode: task.priority, status: getDictLabel('taskStatus', task.status), planStart: task.plannedStartDate || '-', planEnd: task.plannedEndDate || '-', actualStart: task.actualStartDate || '-', actualEnd: task.actualEndDate || '-' }))
     bugRows.value = bugResult.records.map(bug => ({ id: bug.id, code: `BUG-${bug.id}`, title: bug.title, severity: getDictLabel('bugPriority', bug.priority), priorityCode: bug.priority, status: getDictLabel('bugStatus', bug.status), statusCode: bug.status, assignee: getUserName(bug.assigneeId), creator: getUserName(bug.creatorId) }))
     reportRows.value = reportResult.records.map(report => ({ id: report.id, title: report.title, type: getDictLabel('reportType', report.reportType), status: getDictLabel('reportStatus', report.status), planTime: report.plannedDate, actualTime: report.actualDate || '-', target: report.targetAudience, place: report.locationMethod }))
-    documentRows.value = files.map(file => ({ id: file.id, name: file.originalName, type: file.originalName.split('.').pop()?.toUpperCase() || '-', size: formatFileSize(file.fileSize), version: file.versionNo || '-', uploader: getUserName(file.uploaderId), category: file.fileCategory || '-', uploadTime: file.uploadedAt || '-' }))
+    folderRows.value = folders || []
+    documentRows.value = files.map(file => ({ id: file.id, name: file.originalName, type: file.originalName.split('.').pop()?.toUpperCase() || '-', size: formatFileSize(file.fileSize), version: file.versionNo || '-', uploader: getUserName(file.uploaderId), category: file.fileCategory || '-', uploadTime: formatDateTime(file.uploadedAt) }))
     await renderGantt()
   } catch (error) {
     message.error(error.message)
@@ -522,9 +567,39 @@ const handleOpenUploadModal = () => {
   uploadVisible.value = true
 }
 
+const handleCreateFolder = () => {
+  folderName.value = ''
+  folderVisible.value = true
+}
+
+const handleSubmitFolder = async () => {
+  const name = folderName.value.trim()
+  if (!name) {
+    message.warning('请输入文件夹名称')
+    return
+  }
+  folderLoading.value = true
+  try {
+    const folder = await createProjectFolder({
+      businessType: 'PROJECT',
+      businessId: route.params.id,
+      name,
+    })
+    folderRows.value = [folder, ...folderRows.value]
+    folderName.value = ''
+    folderVisible.value = false
+    selectedDocumentCategory.value = '全部'
+    message.success('文件夹新建成功')
+  } catch (error) {
+    message.error(error.message || '文件夹新建失败')
+  } finally {
+    folderLoading.value = false
+  }
+}
+
 const handleSelectDocumentCategory = category => {
   selectedDocumentCategory.value = category
-  const visibleIds = new Set(filteredDocumentRows.value.map(item => item.id))
+  const visibleIds = new Set(filteredDocumentRows.value.filter(item => !item.isFolder).map(item => item.id))
   selectedDocumentIds.value = selectedDocumentIds.value.filter(id => visibleIds.has(id))
 }
 
@@ -630,6 +705,27 @@ const handleDownloadDocument = async record => {
     URL.revokeObjectURL(link.href)
   } catch (error) {
     message.error(error.message)
+  }
+}
+
+const handleBatchDownload = async () => {
+  if (!documentRows.value.length) {
+    message.warning('暂无可下载文件')
+    return
+  }
+  if (!selectedDocumentIds.value.length) {
+    message.warning('请先选择要下载的文件')
+    return
+  }
+  try {
+    const result = await downloadProjectFiles(selectedDocumentIds.value)
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(result.blob)
+    link.download = result.fileName || 'files.zip'
+    link.click()
+    URL.revokeObjectURL(link.href)
+  } catch (error) {
+    message.error(error.message || '批量下载失败')
   }
 }
 
@@ -749,6 +845,9 @@ onMounted(async () => {
 .document-categories strong { font-size: 17px; }
 .document-name { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; padding: 0; color: #1677ff; text-align: left; cursor: pointer; background: transparent; border: 0; }
 .document-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.document-name--folder,
+.document-name--folder:disabled { color: #8a5a00; cursor: default; }
+.document-row-muted { color: #bfbfbf; }
 .category-all { background: linear-gradient(135deg, #fff 0%, #edf6ff 100%); }
 .category-all .document-category__icon { color: #0066cc; background: #e5f2ff; }
 .category-contract { background: linear-gradient(135deg, #fff 0%, #eefbf2 100%); }
