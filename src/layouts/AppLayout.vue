@@ -158,12 +158,12 @@ const navigationItems = [
     label: '个人工作',
     icon: UsergroupAddOutlined,
     children: [
+      { key: '/personal/statistics', path: '/personal/statistics', label: '我的统计', accessCodes: ANY_WORK_CODES, matches: [path => path === '/personal/statistics'] },
       { key: '/personal/tasks', path: '/personal/tasks', label: '我的任务', accessCodes: ['task'], matches: [path => path.startsWith('/personal/tasks')] },
       { key: '/personal/requirements', path: '/personal/requirements', label: '我的需求', accessCodes: ['requirement'], matches: [path => path.startsWith('/personal/requirements')] },
       { key: '/personal/bugs', path: '/personal/bugs', label: '我的 Bug', accessCodes: ['bug'], matches: [path => path === '/personal/bugs'] },
       { key: '/personal/daily', path: '/personal/daily', label: '我的日报', accessCodes: ['daily-report'], matches: [path => path === '/personal/daily'] },
-      { key: '/personal/statistics', path: '/personal/statistics', label: '我的统计', accessCodes: ANY_WORK_CODES, matches: [path => path === '/personal/statistics'] },
-    ],
+     ],
   },
   {
     key: 'projects',

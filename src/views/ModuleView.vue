@@ -7,32 +7,48 @@
             <template #icon><LeftOutlined /></template>
             返回
           </a-button>
-          <template v-if="selectedTaskDetail">
-            <a-tag :color="getTaskStatusColor(selectedTaskDetail.status)">{{ getTaskLabel('taskStatus', selectedTaskDetail.status) || selectedTaskDetail.status }}</a-tag>
-            <a-tag :color="getTaskPriorityColor(selectedTaskDetail.priority)">{{ getTaskLabel('taskPriority', selectedTaskDetail.priority) || selectedTaskDetail.priority }}</a-tag>
-          </template>
         </div>
 
         <a-card class="prototype-card task-info-card" :bordered="false">
           <a-spin :spinning="taskDetailLoading">
-            <a-descriptions v-if="selectedTaskDetail" :column="4" size="small">
-              <a-descriptions-item label="任务名称">{{ selectedTaskDetail.name }}</a-descriptions-item>
-              <a-descriptions-item label="所属项目">{{ getTaskProjectName(selectedTaskDetail.projectId) }}</a-descriptions-item>
-              <a-descriptions-item label="负责人">{{ getTaskUserName(selectedTaskDetail.assigneeId) }}</a-descriptions-item>
-              <a-descriptions-item label="角色">{{ selectedTaskDetail.roleName || '-' }}</a-descriptions-item>
-              <a-descriptions-item label="优先级">
-                <a-tag :color="getTaskPriorityColor(selectedTaskDetail.priority)">{{ getTaskLabel('taskPriority', selectedTaskDetail.priority) || selectedTaskDetail.priority }}</a-tag>
-              </a-descriptions-item>
-              <a-descriptions-item label="状态">
-                <a-tag :color="getTaskStatusColor(selectedTaskDetail.status)">{{ getTaskLabel('taskStatus', selectedTaskDetail.status) || selectedTaskDetail.status }}</a-tag>
-              </a-descriptions-item>
-              <a-descriptions-item label="计划开始日期">{{ selectedTaskDetail.plannedStartDate || '-' }}</a-descriptions-item>
-              <a-descriptions-item label="计划结束日期">{{ selectedTaskDetail.plannedEndDate || '-' }}</a-descriptions-item>
-              <a-descriptions-item label="实际开始日期">{{ selectedTaskDetail.actualStartDate || '-' }}</a-descriptions-item>
-              <a-descriptions-item label="实际结束日期">{{ selectedTaskDetail.actualEndDate || '-' }}</a-descriptions-item>
-              <a-descriptions-item label="任务描述" :span="3">{{ selectedTaskDetail.description || '-' }}</a-descriptions-item>
-              <a-descriptions-item label="标签">{{ selectedTaskDetail.tags || '-' }}</a-descriptions-item>
-            </a-descriptions>
+            <table v-if="selectedTaskDetail" class="native-info-table">
+              <tbody>
+                <tr>
+                  <th>任务名称</th>
+                  <td>{{ selectedTaskDetail.name || '-' }}</td>
+                  <th>所属项目</th>
+                  <td>{{ getTaskProjectName(selectedTaskDetail.projectId) }}</td>
+                  <th>负责人</th>
+                  <td>{{ getTaskUserName(selectedTaskDetail.assigneeId) }}</td>
+                </tr>
+                <tr>
+                  <th>角色</th>
+                  <td>{{ selectedTaskDetail.roleName || '-' }}</td>
+                  <th>优先级</th>
+                  <td><a-tag :color="getTaskPriorityColor(selectedTaskDetail.priority)">{{ getTaskLabel('taskPriority', selectedTaskDetail.priority) || selectedTaskDetail.priority || '-' }}</a-tag></td>
+                  <th>状态</th>
+                  <td><a-tag :color="getTaskStatusColor(selectedTaskDetail.status)">{{ getTaskLabel('taskStatus', selectedTaskDetail.status) || selectedTaskDetail.status || '-' }}</a-tag></td>
+                </tr>
+                <tr>
+                  <th>计划开始日期</th>
+                  <td>{{ selectedTaskDetail.plannedStartDate || '-' }}</td>
+                  <th>计划结束日期</th>
+                  <td>{{ selectedTaskDetail.plannedEndDate || '-' }}</td>
+                  <th>实际开始日期</th>
+                  <td>{{ selectedTaskDetail.actualStartDate || '-' }}</td>
+                </tr>
+                <tr>
+                  <th>实际结束日期</th>
+                  <td>{{ selectedTaskDetail.actualEndDate || '-' }}</td>
+                  <th>标签</th>
+                  <td colspan="3">{{ selectedTaskDetail.tags || '-' }}</td>
+                </tr>
+                <tr>
+                  <th>任务描述</th>
+                  <td colspan="5">{{ selectedTaskDetail.description || '-' }}</td>
+                </tr>
+              </tbody>
+            </table>
             <a-empty v-else-if="!taskDetailLoading" description="暂无任务数据" />
           </a-spin>
         </a-card>
@@ -2108,9 +2124,34 @@ const trendPoints = [
   margin-bottom: 12px;
 }
 
-.task-info-card :deep(.ant-descriptions-item-label) {
-  color: #111;
-  font-weight: 500;
+.native-info-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  color: #111827;
+}
+
+.native-info-table th,
+.native-info-table td {
+  height: 48px;
+  padding: 12px 14px;
+  font-size: 14px;
+  text-align: left;
+  border: 1px solid #e6ebf1;
+  word-break: break-word;
+}
+
+.native-info-table th {
+  width: 12%;
+  color: #334155;
+  font-weight: 700;
+  background: #f3f6fa;
+}
+
+.native-info-table td {
+  width: 21.333%;
+  background: #fff;
+  font-weight: 400;
 }
 
 .task-detail-grid {
