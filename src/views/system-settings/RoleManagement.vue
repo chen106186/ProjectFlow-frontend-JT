@@ -24,9 +24,16 @@
                 <strong>{{ role.name }}</strong>
                 <span>{{ role.code }}</span>
               </div>
-              <a-button class="role-item__edit" type="text" size="small" @click.stop="handleEditRole(role)">
-                <template #icon><EditOutlined /></template>
-              </a-button>
+              <a-space class="role-item__actions" :size="2">
+                <a-button type="text" size="small" @click.stop="handleEditRole(role)">
+                  <template #icon><EditOutlined /></template>
+                </a-button>
+                <a-popconfirm title="确定删除该角色吗？" ok-text="删除" cancel-text="取消" @confirm="handleDeleteRole(role)">
+                  <a-button type="text" size="small" danger @click.stop>
+                    <template #icon><DeleteOutlined /></template>
+                  </a-button>
+                </a-popconfirm>
+              </a-space>
             </article>
           </div>
         </a-spin>
@@ -72,12 +79,13 @@
 </template>
 
 <script setup>
-import { DownOutlined, EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons-vue'
+import { DeleteOutlined, DownOutlined, EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   assignSystemRoleMenus,
   createSystemRole,
+  deleteSystemRole,
   getSystemMenus,
   getSystemRoleMenus,
   getSystemRoles,
@@ -245,6 +253,27 @@ const handleSaveRole = async () => {
   }
 }
 
+const handleDeleteRole = async role => {
+  try {
+    const deletedCurrent = role.id === currentRoleId.value
+    await deleteSystemRole(role.id)
+    message.success('角色删除成功')
+    await fetchRoles()
+
+    if (!roles.value.length) {
+      currentRoleId.value = undefined
+      checkedPermissionKeys.value = []
+      return
+    }
+
+    if (deletedCurrent) {
+      await handleSelectRole(roles.value[0])
+    }
+  } catch (error) {
+    message.error(error.message || '删除失败')
+  }
+}
+
 const handleSavePermissions = async () => {
   if (!currentRoleId.value) {
     return
@@ -350,12 +379,12 @@ const handleSavePermissions = async () => {
   font-size: 12px;
 }
 
-.role-item__edit {
+.role-item__actions {
   opacity: 0;
 }
 
-.role-item:hover .role-item__edit,
-.role-item--active .role-item__edit {
+.role-item:hover .role-item__actions,
+.role-item--active .role-item__actions {
   opacity: 1;
 }
 

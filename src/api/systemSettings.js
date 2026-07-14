@@ -15,6 +15,7 @@ export const deleteSystemDepartment = id => request(`/api/system/departments/${i
 export const getSystemRoles = params => request('/api/system/roles', { params })
 export const createSystemRole = data => request('/api/system/roles', { method: 'POST', body: data })
 export const updateSystemRole = (id, data) => request(`/api/system/roles/${id}`, { method: 'PUT', body: data })
+export const deleteSystemRole = id => request(`/api/system/roles/${id}`, { method: 'DELETE' })
 export const getSystemMenus = () => request('/api/system/menus')
 export const getSystemRoleMenus = id => request(`/api/system/roles/${id}/menus`)
 export const assignSystemRoleMenus = (id, menuIds) => request(`/api/system/roles/${id}/menus`, { method: 'PUT', body: { menuIds } })
