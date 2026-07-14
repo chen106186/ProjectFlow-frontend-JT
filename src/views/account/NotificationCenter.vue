@@ -144,9 +144,9 @@ const filteredGroups = computed(() => {
 const loadNotices = async () => {
   loading.value = true
   try {
-    const res = await getNotices({ page: 1, pageSize: 200 })
-    notices.value = res?.data?.records || res?.data || []
-    total.value = notices.value.length
+    const res = await getNotices({ pageNo: 1, pageSize: 200 })
+    notices.value = res?.records || []
+    total.value = Number(res?.total ?? notices.value.length) || 0
     unreadCount.value = notices.value.filter(n => !n.read).length
     readCount.value = notices.value.filter(n => n.read).length
   } catch {
