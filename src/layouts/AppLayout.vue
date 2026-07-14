@@ -2,12 +2,12 @@
   <a-layout class="app-layout">
     <a-layout-header class="app-header">
       <router-link class="app-brand" to="/">
-        <span class="app-brand__mark">P</span>
+        <img class="app-brand__mark" src="/favicon.png" alt="" />
         <span>项目与开发管理系统</span>
       </router-link>
 
       <a-space :size="20">
-        <a-badge :count="5">
+        <a-badge :count="unreadNoticeCount" :overflow-count="99">
           <a-button class="app-header__icon" type="text" aria-label="通知" @click="handleNavigate('/notifications')">
             <BellOutlined />
           </a-button>
@@ -114,6 +114,7 @@ import {
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import { getNotices } from '@/api/notices'
 import { getCurrentUser } from '@/api/system'
 
 const route = useRoute()
@@ -136,6 +137,7 @@ const isSiderCollapsed = ref(false)
 const openKeys = ref([])
 const profileLoading = ref(false)
 const profileReady = ref(false)
+const unreadNoticeCount = ref(0)
 const authProfile = ref({
   menus: [],
   permissions: [],
@@ -430,10 +432,6 @@ const breadcrumbItems = computed(() => {
     items.push({ title: '任务详情' })
   }
 
-  if (route.name === 'PersonalBugs' && route.query.detail === 'bug') {
-    items.push({ title: 'Bug 详情' })
-  }
-
   return items
 })
 
@@ -451,6 +449,7 @@ const saveAuthProfile = profile => {
 const clearAuthCache = () => {
   localStorage.removeItem(TOKEN_KEY)
   MENU_CACHE_KEYS.forEach(key => localStorage.removeItem(key))
+  unreadNoticeCount.value = 0
   authProfile.value = {
     menus: [],
     permissions: [],
@@ -458,8 +457,25 @@ const clearAuthCache = () => {
   }
 }
 
+const loadUnreadNoticeCount = async () => {
+  if (!localStorage.getItem(TOKEN_KEY)) {
+    unreadNoticeCount.value = 0
+    return
+  }
+
+  try {
+    const result = await getNotices({ pageNo: 1, pageSize: 200, read: false })
+    const records = result?.records || result?.data?.records || (Array.isArray(result) ? result : [])
+    
+    unreadNoticeCount.value = Number(result?.total ?? result?.data?.total ?? records.length) || 0
+  } catch {
+    unreadNoticeCount.value = 0
+  }
+}
+
 const loadCurrentUserProfile = async () => {
   if (!localStorage.getItem(TOKEN_KEY)) {
+    unreadNoticeCount.value = 0
     profileReady.value = true
     return
   }
@@ -474,6 +490,7 @@ const loadCurrentUserProfile = async () => {
       permissions: profile.permissions || [],
     }
     saveAuthProfile(profile)
+    await loadUnreadNoticeCount()
     ensureCurrentRouteAccess()
   } finally {
     profileLoading.value = false
@@ -492,6 +509,7 @@ watch(
 
     if (profileReady.value) {
       ensureCurrentRouteAccess()
+      loadUnreadNoticeCount()
     }
   },
   { immediate: true }
@@ -538,7 +556,7 @@ const handleUserMenuClick = ({ key }) => {
   align-items: center;
   justify-content: space-between;
   height: 68px;
-  padding: 0 24px 0 52px;
+  padding: 0 24px 0 20px;
   line-height: normal;
   background: #001529;
   box-shadow: 0 2px 8px rgb(0 0 0 / 12%);
@@ -558,21 +576,26 @@ const handleUserMenuClick = ({ key }) => {
 }
 
 .app-brand__mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  color: #fff;
-  font-size: 20px;
-  font-weight: 700;
-  background: #1677ff;
+  display: block;
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
   border-radius: 8px;
 }
 
 .app-header__icon,
 .app-user {
   color: rgb(255 255 255 / 88%);
+}
+
+.app-header__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  font-size: 20px;
 }
 
 .app-header__icon:hover,
