@@ -1,64 +1,66 @@
 <template>
   <div class="dr-page">
     <div class="dr-page__body">
-      <section class="dr-editor">
-        <a-spin :spinning="allLoading || submitLoading">
-          <a-form
-            layout="horizontal"
-            class="dr-form"
-            :label-col="{ style: { width: '88px' } }"
-            :wrapper-col="{ flex: 1 }"
-          >
-            <a-form-item label="日报日期">
-              <a-date-picker
-                v-model:value="form.reportDate"
-                :allow-clear="false"
-                :disabled-date="disabledDailyDate"
-                class="dr-date-picker"
-              />
-            </a-form-item>
-            <a-form-item label="日报内容">
-              <a-textarea
-                v-model:value="form.content"
-                :rows="6"
-                :disabled="!isEditableDate"
-                placeholder="请输入日报内容"
-              />
-            </a-form-item>
-            <a-form-item label="附件上传">
-              <a-upload-dragger
-                :before-upload="handleBeforeUpload"
-                :show-upload-list="false"
-                :disabled="!isEditableDate"
-                multiple
-                class="dr-upload"
-              >
-                <p class="dr-upload__icon"><UploadOutlined /></p>
-                <p class="dr-upload__text">点击或拖拽文件到此处上传</p>
-              </a-upload-dragger>
+      <div class="dr-left">
+        <section class="dr-editor">
+          <a-spin :spinning="allLoading || submitLoading">
+            <a-form
+              layout="horizontal"
+              class="dr-form"
+              :label-col="{ style: { width: '88px' } }"
+              :wrapper-col="{ flex: 1 }"
+            >
+              <a-form-item label="日报日期">
+                <a-date-picker
+                  v-model:value="form.reportDate"
+                  :allow-clear="false"
+                  :disabled-date="disabledDailyDate"
+                  class="dr-date-picker"
+                />
+              </a-form-item>
+              <a-form-item label="日报内容">
+                <a-textarea
+                  v-model:value="form.content"
+                  :rows="6"
+                  :disabled="!isEditableDate"
+                  placeholder="请输入日报内容"
+                />
+              </a-form-item>
+              <a-form-item label="附件上传">
+                <a-upload-dragger
+                  :before-upload="handleBeforeUpload"
+                  :show-upload-list="false"
+                  :disabled="!isEditableDate"
+                  multiple
+                  class="dr-upload"
+                >
+                  <p class="dr-upload__icon"><UploadOutlined /></p>
+                  <p class="dr-upload__text">点击或拖拽文件到此处上传</p>
+                </a-upload-dragger>
 
-              <div v-if="existingFiles.length || pendingFiles.length" class="dr-file-list">
-                <div v-for="file in existingFiles" :key="`saved-${file.id}`" class="dr-file-item">
-                  <FileOutlined />
-                  <span>{{ file.originalName || file.name }}</span>
-                  <a-tag color="green">已上传</a-tag>
+                <div v-if="existingFiles.length || pendingFiles.length" class="dr-file-list">
+                  <div v-for="file in existingFiles" :key="`saved-${file.id}`" class="dr-file-item">
+                    <FileOutlined />
+                    <span>{{ file.originalName || file.name }}</span>
+                    <a-tag color="green">已上传</a-tag>
+                  </div>
+                  <div v-for="file in pendingFiles" :key="file.uid" class="dr-file-item">
+                    <FileOutlined />
+                    <span>{{ file.name }}</span>
+                    <a-button type="link" size="small" @click="removePendingFile(file.uid)">移除</a-button>
+                  </div>
                 </div>
-                <div v-for="file in pendingFiles" :key="file.uid" class="dr-file-item">
-                  <FileOutlined />
-                  <span>{{ file.name }}</span>
-                  <a-button type="link" size="small" @click="removePendingFile(file.uid)">移除</a-button>
-                </div>
-              </div>
-              <a-empty v-else class="dr-file-empty" description="暂无附件" />
-            </a-form-item>
+                <a-empty v-else class="dr-file-empty" description="暂无附件" />
+              </a-form-item>
+            </a-form>
+          </a-spin>
+        </section>
 
-            <div class="dr-actions">
-              <a-button :disabled="!isEditableDate" @click="resetForm">重置</a-button>
-              <a-button type="primary" :disabled="!isEditableDate" :loading="submitLoading" @click="handleSave">保存</a-button>
-            </div>
-          </a-form>
-        </a-spin>
-      </section>
+        <div class="dr-actions">
+          <a-button :disabled="!isEditableDate" @click="resetForm">重置</a-button>
+          <a-button type="primary" :disabled="!isEditableDate" :loading="submitLoading" @click="handleSave">保存</a-button>
+        </div>
+      </div>
 
       <aside class="dr-calendar-panel">
         <a-spin :spinning="allLoading">
@@ -96,6 +98,7 @@ import { FileOutlined, LeftOutlined, RightOutlined, UploadOutlined } from '@ant-
 import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 
 import {
   createDailyReport,
@@ -105,10 +108,12 @@ import {
   uploadDailyReportFile,
 } from '@/api/dailyReports'
 
+const route = useRoute()
 const today = dayjs()
 const editableDate = today.subtract(1, 'day')
-const calendarValue = ref(editableDate)
-const selectedDate = ref(editableDate)
+const initialDate = getRouteDate()
+const calendarValue = ref(initialDate)
+const selectedDate = ref(initialDate)
 
 const allLoading = ref(false)
 const allReports = ref([])
@@ -136,6 +141,15 @@ onMounted(async () => {
   await loadAll()
   syncForm()
 })
+
+watch(
+  () => route.query.date,
+  () => {
+    const date = getRouteDate()
+    selectedDate.value = date
+    calendarValue.value = date
+  }
+)
 
 watch(
   () => form.value.reportDate,
@@ -212,6 +226,14 @@ const shiftMonth = (value, onChange, offset) => {
 const disabledDailyDate = date => date && !date.isSame(editableDate, 'day')
 const disabledCalendarDate = date => date && date.isAfter(today, 'day')
 
+function getRouteDate() {
+  const date = route.query.date ? dayjs(String(route.query.date)) : editableDate
+  if (!date.isValid() || date.isAfter(today, 'day')) {
+    return editableDate
+  }
+  return date
+}
+
 const handleBeforeUpload = file => {
   const exists = pendingFiles.value.some(item => item.name === file.name && item.size === file.size)
   if (!exists) {
@@ -286,9 +308,16 @@ const handleSave = async () => {
   display: grid;
   grid-template-columns: minmax(0, 7fr) minmax(260px, 3fr);
   gap: 16px;
+  align-items: start;
   flex: 1;
   min-height: 0;
   padding: 16px;
+}
+
+.dr-left {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
 .dr-editor,
@@ -313,9 +342,6 @@ const handleSave = async () => {
 }
 
 .dr-form {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
   padding: 20px 22px;
 }
 
@@ -384,7 +410,7 @@ const handleSave = async () => {
   display: flex;
   gap: 10px;
   justify-content: center;
-  padding-top: 4px;
+  padding-top: 14px;
 }
 
 .dr-calendar-panel {

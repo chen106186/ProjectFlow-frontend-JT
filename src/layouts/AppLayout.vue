@@ -162,7 +162,7 @@ const navigationItems = [
       { key: '/personal/tasks', path: '/personal/tasks', label: '我的任务', accessCodes: ['task'], matches: [path => path.startsWith('/personal/tasks')] },
       { key: '/personal/requirements', path: '/personal/requirements', label: '我的需求', accessCodes: ['requirement'], matches: [path => path.startsWith('/personal/requirements')] },
       { key: '/personal/bugs', path: '/personal/bugs', label: '我的 Bug', accessCodes: ['bug'], matches: [path => path === '/personal/bugs'] },
-      { key: '/personal/daily', path: '/personal/daily', label: '我的日报', accessCodes: ['daily-report'], matches: [path => path === '/personal/daily'] },
+      { key: '/personal/daily', path: '/personal/daily', label: '我的日报', accessCodes: ['daily-report'], matches: [path => path.startsWith('/personal/daily')] },
      ],
   },
   {
@@ -395,6 +395,7 @@ const selectedKeys = computed(() => {
   if (route.path.startsWith('/bugs')) return ['/bugs']
   if (route.path.startsWith('/personal/tasks')) return ['/personal/tasks']
   if (route.path.startsWith('/personal/requirements')) return ['/personal/requirements']
+  if (route.path.startsWith('/personal/daily')) return ['/personal/daily']
   if (route.path.startsWith('/projects/management')) return ['/projects/management']
   if (route.path.startsWith('/projects/execution')) return ['/projects/execution']
   return [route.path]

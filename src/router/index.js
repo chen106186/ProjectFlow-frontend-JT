@@ -11,6 +11,7 @@ import HomeView from '@/views/HomeView.vue'
 import LoginView from '@/views/LoginView.vue'
 import ManagementProject from '@/views/management-project/index.vue'
 import ModuleView from '@/views/ModuleView.vue'
+import DailyReportListView from '@/views/personal/DailyReportListView.vue'
 import DailyReportView from '@/views/personal/DailyReportView.vue'
 import PersonalRequirementDetailView from '@/views/personal/PersonalRequirementDetailView.vue'
 import PersonalRequirementView from '@/views/personal/PersonalRequirementView.vue'
@@ -162,8 +163,14 @@ const router = createRouter({
         {
           path: 'personal/daily',
           name: 'PersonalDaily',
-          component: DailyReportView,
+          component: DailyReportListView,
           meta: { title: '我的日报', group: '个人工作' },
+        },
+        {
+          path: 'personal/daily/detail',
+          name: 'PersonalDailyDetail',
+          component: DailyReportView,
+          meta: { title: '日报详情', group: '个人工作', parentTitle: '我的日报', parentPath: '/personal/daily' },
         },
         {
           path: 'personal/tasks/:id',
