@@ -372,7 +372,7 @@ const handleStatusChange = async (record, status) => {
 const initPage = async () => {
   await dictStore.loadDicts()
   const [projectResult, userResult] = await Promise.all([
-    getProjectList({ pageNo: 1, pageSize: 200 }),
+    getProjectList({ pageNo: 1, pageSize: 200, projectType: 'MANAGEMENT' }),
     getSystemUsers({ pageNo: 1, pageSize: 200, enabled: true }),
   ])
   projectMap.value = Object.fromEntries((projectResult.records || []).map(item => [item.id, item.name]))

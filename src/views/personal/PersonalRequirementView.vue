@@ -344,7 +344,7 @@ const priorityColor = value => ({ URGENT: 'red', HIGH: 'orange', MEDIUM: 'gold',
 const statusColor = value => ({ PENDING_REVIEW: 'blue', ACCEPTED: 'green', REJECTED: 'red' }[value] || 'default')
 
 const loadProjects = async () => {
-  const result = await getProjectList({ pageNo: 1, pageSize: 200, projectType: 'EXECUTION' })
+  const result = await getProjectList({ pageNo: 1, pageSize: 200, projectType: 'MANAGEMENT' })
   projectRows.value = result.records || []
 }
 
@@ -457,10 +457,10 @@ onMounted(initPage)
   padding: 20px 30px 4px;
 }
 
-.requirement-filter__form {
+.requirement-filter__form.app-filter-form {
   display: grid;
-  grid-template-columns: minmax(180px, 1.2fr) repeat(4, minmax(160px, 1fr)) max-content;
-  column-gap: 16px;
+  grid-template-columns: minmax(180px, 1.2fr) repeat(4, minmax(150px, 1fr)) max-content !important;
+  column-gap: 16px !important;
   align-items: end;
 }
 
@@ -484,6 +484,7 @@ onMounted(initPage)
 }
 
 .requirement-filter__actions {
+  grid-column: auto !important;
   justify-self: end;
 }
 

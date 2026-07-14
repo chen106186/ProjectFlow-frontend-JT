@@ -1,128 +1,122 @@
 <template>
   <div class="dr-page">
     <div class="dr-page__body">
-      <!-- 左侧日历 -->
-      <div class="dr-cal-wrap">
+      <section class="dr-editor">
+        <a-spin :spinning="allLoading || submitLoading">
+          <a-form
+            layout="horizontal"
+            class="dr-form"
+            :label-col="{ style: { width: '88px' } }"
+            :wrapper-col="{ flex: 1 }"
+          >
+            <a-form-item label="日报日期">
+              <a-date-picker
+                v-model:value="form.reportDate"
+                :allow-clear="false"
+                :disabled-date="disabledDailyDate"
+                class="dr-date-picker"
+              />
+            </a-form-item>
+            <a-form-item label="日报内容">
+              <a-textarea
+                v-model:value="form.content"
+                :rows="6"
+                :disabled="!isEditableDate"
+                placeholder="请输入日报内容"
+              />
+            </a-form-item>
+            <a-form-item label="附件上传">
+              <a-upload-dragger
+                :before-upload="handleBeforeUpload"
+                :show-upload-list="false"
+                :disabled="!isEditableDate"
+                multiple
+                class="dr-upload"
+              >
+                <p class="dr-upload__icon"><UploadOutlined /></p>
+                <p class="dr-upload__text">点击或拖拽文件到此处上传</p>
+              </a-upload-dragger>
+
+              <div v-if="existingFiles.length || pendingFiles.length" class="dr-file-list">
+                <div v-for="file in existingFiles" :key="`saved-${file.id}`" class="dr-file-item">
+                  <FileOutlined />
+                  <span>{{ file.originalName || file.name }}</span>
+                  <a-tag color="green">已上传</a-tag>
+                </div>
+                <div v-for="file in pendingFiles" :key="file.uid" class="dr-file-item">
+                  <FileOutlined />
+                  <span>{{ file.name }}</span>
+                  <a-button type="link" size="small" @click="removePendingFile(file.uid)">移除</a-button>
+                </div>
+              </div>
+              <a-empty v-else class="dr-file-empty" description="暂无附件" />
+            </a-form-item>
+
+            <div class="dr-actions">
+              <a-button :disabled="!isEditableDate" @click="resetForm">重置</a-button>
+              <a-button type="primary" :disabled="!isEditableDate" :loading="submitLoading" @click="handleSave">保存</a-button>
+            </div>
+          </a-form>
+        </a-spin>
+      </section>
+
+      <aside class="dr-calendar-panel">
         <a-spin :spinning="allLoading">
-          <a-calendar v-model:value="calendarValue" @select="handleDateSelect">
+          <a-calendar
+            v-model:value="calendarValue"
+            :fullscreen="false"
+            :disabled-date="disabledCalendarDate"
+            @select="handleDateSelect"
+          >
             <template #headerRender="{ value, onChange }">
               <div class="dr-cal-header">
-                <a-space :size="6">
-                  <a-button type="text" aria-label="上个月" @click="shiftMonth(value, onChange, -1)">
-                    <LeftOutlined />
-                  </a-button>
-                  <strong>{{ value.format('YYYY年M月') }}</strong>
-                  <a-button type="text" aria-label="下个月" @click="shiftMonth(value, onChange, 1)">
-                    <RightOutlined />
-                  </a-button>
-                  <a-button size="small" @click="goToday(onChange)">今天</a-button>
-                </a-space>
+                <a-button type="text" size="small" aria-label="上个月" @click="shiftMonth(value, onChange, -1)">
+                  <LeftOutlined />
+                </a-button>
+                <strong>{{ value.format('YYYY年M月') }}</strong>
+                <a-button type="text" size="small" aria-label="下个月" @click="shiftMonth(value, onChange, 1)">
+                  <RightOutlined />
+                </a-button>
               </div>
             </template>
 
             <template #dateCellRender="{ current }">
               <div v-if="reportMap[current.format('YYYY-MM-DD')]" class="dr-cal-dot dr-cal-dot--done" />
-              <div v-else-if="!current.isAfter(today, 'day')" class="dr-cal-dot dr-cal-dot--missing" />
+              <div v-else-if="current.isBefore(today, 'day')" class="dr-cal-dot dr-cal-dot--missing" />
             </template>
           </a-calendar>
         </a-spin>
-      </div>
-
-      <!-- 右侧日报内容面板 -->
-      <aside class="dr-panel">
-        <header class="dr-panel__header">
-          <div class="dr-panel__date">
-            <strong>{{ selectedDate.format('YYYY-MM-DD') }}</strong>
-            <span v-if="isToday" class="dr-today-badge">今天</span>
-            <span v-else-if="isYesterday" class="dr-yesterday-badge">昨天</span>
-          </div>
-          <div>
-            <a-button v-if="currentReport && canEdit" size="small" style="margin-right:8px" @click="openEdit">
-              <EditOutlined />编辑
-            </a-button>
-            <a-button v-if="canCreate" type="primary" size="small" @click="openCreate">
-              <PlusOutlined />新建日报
-            </a-button>
-          </div>
-        </header>
-
-        <!-- 未填写日报的红色提示（今天及过去日期） -->
-        <div v-if="!currentReport && isPastOrToday" class="dr-missing-alert">
-          <ExclamationCircleFilled class="dr-missing-alert__icon" />
-          <span>{{ isToday ? '今天还没有提交日报，请及时填写' : `${selectedDate.format('MM月DD日')} 没有日报记录` }}</span>
-          <a-button v-if="canCreate" size="small" type="link" @click="openCreate">立即填写</a-button>
-        </div>
-
-        <div class="dr-panel__body">
-          <template v-if="currentReport">
-            <div class="dr-report-block">
-              <div class="dr-report-label">工作内容</div>
-              <div class="dr-report-content">{{ currentReport.content }}</div>
-            </div>
-            <div class="dr-report-meta">
-              提交时间：{{ formatDateTime(currentReport.updatedAt || currentReport.createdAt) }}
-            </div>
-          </template>
-          <a-empty
-            v-else
-            class="dr-panel__empty"
-            :description="`${selectedDate.format('YYYY-MM-DD')} 暂无日报`"
-          />
-        </div>
       </aside>
     </div>
-
-    <!-- 新建 / 编辑弹窗 -->
-    <a-modal v-model:open="modalOpen" width="680px" :title="editingId ? '编辑日报' : '新建日报'" centered>
-      <template #footer>
-        <a-space>
-          <a-button @click="modalOpen = false">取消</a-button>
-          <a-button type="primary" :loading="submitLoading" @click="handleSubmit">确定</a-button>
-        </a-space>
-      </template>
-      <a-form layout="horizontal" :label-col="{ span: 4 }">
-        <a-form-item label="日报日期">
-          <a-date-picker
-            v-model:value="form.reportDate"
-            :allow-clear="false"
-            :disabled="!!editingId"
-            :disabled-date="disabledFuture"
-          />
-        </a-form-item>
-        <a-form-item label="工作内容">
-          <a-textarea v-model:value="form.content" :rows="10" placeholder="请输入工作内容" />
-        </a-form-item>
-      </a-form>
-    </a-modal>
   </div>
 </template>
 
 <script setup>
-import { EditOutlined, ExclamationCircleFilled, LeftOutlined, PlusOutlined, RightOutlined } from '@ant-design/icons-vue'
+import { FileOutlined, LeftOutlined, RightOutlined, UploadOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 
-import { createDailyReport, listMyDailyReports, updateDailyReport } from '@/api/dailyReports'
-import { formatDateTime } from '@/utils/dateTime'
+import {
+  createDailyReport,
+  listDailyReportFiles,
+  listMyDailyReports,
+  updateDailyReport,
+  uploadDailyReportFile,
+} from '@/api/dailyReports'
 
 const today = dayjs()
-const yesterday = today.subtract(1, 'day')
-const calendarValue = ref(today)
-const selectedDate = ref(today)
+const editableDate = today.subtract(1, 'day')
+const calendarValue = ref(editableDate)
+const selectedDate = ref(editableDate)
 
-const isToday = computed(() => selectedDate.value.isSame(today, 'day'))
-const isYesterday = computed(() => selectedDate.value.isSame(yesterday, 'day'))
-const isPastOrToday = computed(() => !selectedDate.value.isAfter(today, 'day'))
-const canEdit = computed(() => isToday.value || isYesterday.value)
-const canCreate = computed(() => isToday.value)
 const allLoading = ref(false)
 const allReports = ref([])
 
-const modalOpen = ref(false)
-const editingId = ref(null)
 const submitLoading = ref(false)
-const form = ref({ reportDate: dayjs(), content: '' })
+const form = ref({ reportDate: editableDate, content: '' })
+const pendingFiles = ref([])
+const existingFiles = ref([])
 
 const reportMap = computed(() => {
   const map = {}
@@ -136,8 +130,42 @@ const reportMap = computed(() => {
 })
 
 const currentReport = computed(() => reportMap.value[selectedDate.value.format('YYYY-MM-DD')] || null)
+const isEditableDate = computed(() => selectedDate.value.isSame(editableDate, 'day'))
 
-onMounted(loadAll)
+onMounted(async () => {
+  await loadAll()
+  syncForm()
+})
+
+watch(
+  () => form.value.reportDate,
+  date => {
+    if (!date || date.isSame(selectedDate.value, 'day')) return
+    selectedDate.value = date
+    calendarValue.value = date
+  }
+)
+
+watch(
+  () => selectedDate.value.format('YYYY-MM-DD'),
+  () => {
+    calendarValue.value = selectedDate.value
+    syncForm()
+  }
+)
+
+watch(
+  () => currentReport.value?.id,
+  id => {
+    pendingFiles.value = []
+    if (id) {
+      loadFiles(id)
+    } else {
+      existingFiles.value = []
+    }
+  },
+  { immediate: true }
+)
 
 async function loadAll() {
   allLoading.value = true
@@ -150,7 +178,30 @@ async function loadAll() {
   }
 }
 
+async function loadFiles(reportId) {
+  try {
+    existingFiles.value = await listDailyReportFiles(reportId) || []
+  } catch (e) {
+    existingFiles.value = []
+    message.error(e.message || '附件加载失败')
+  }
+}
+
+function syncForm() {
+  form.value = {
+    reportDate: selectedDate.value,
+    content: currentReport.value?.content || '',
+  }
+}
+
 const handleDateSelect = date => {
+  const dateKey = date.format('YYYY-MM-DD')
+
+  if (date.isAfter(today, 'day') || (!date.isSame(editableDate, 'day') && !reportMap.value[dateKey])) {
+    calendarValue.value = selectedDate.value
+    return
+  }
+
   selectedDate.value = date
 }
 
@@ -158,48 +209,61 @@ const shiftMonth = (value, onChange, offset) => {
   onChange(value.clone().add(offset, 'month'))
 }
 
-const goToday = onChange => {
-  onChange(today)
-  calendarValue.value = today
-  selectedDate.value = today
-}
+const disabledDailyDate = date => date && !date.isSame(editableDate, 'day')
+const disabledCalendarDate = date => date && date.isAfter(today, 'day')
 
-const disabledFuture = date => date && (date.isAfter(today, 'day') || date.isBefore(yesterday, 'day'))
-
-const openCreate = () => {
-  editingId.value = null
-  form.value = { reportDate: today, content: '' }
-  modalOpen.value = true
-}
-
-const openEdit = () => {
-  if (!currentReport.value) return
-  editingId.value = currentReport.value.id
-  form.value = {
-    reportDate: dayjs(String(currentReport.value.reportDate).slice(0, 10)),
-    content: currentReport.value.content || '',
+const handleBeforeUpload = file => {
+  const exists = pendingFiles.value.some(item => item.name === file.name && item.size === file.size)
+  if (!exists) {
+    pendingFiles.value.push({ uid: file.uid, name: file.name, size: file.size, originFile: file })
   }
-  modalOpen.value = true
+  return false
 }
 
-const handleSubmit = async () => {
+const removePendingFile = uid => {
+  pendingFiles.value = pendingFiles.value.filter(file => file.uid !== uid)
+}
+
+const resetForm = () => {
+  syncForm()
+  pendingFiles.value = []
+}
+
+const handleSave = async () => {
+  if (!form.value.reportDate?.isSame(editableDate, 'day')) {
+    message.warning('只能填写前一天的日报')
+    return
+  }
   if (!form.value.content?.trim()) {
-    message.warning('请输入工作内容')
+    message.warning('请输入日报内容')
     return
   }
   submitLoading.value = true
   try {
-    if (editingId.value) {
-      await updateDailyReport(editingId.value, { content: form.value.content })
+    let savedReport
+    const payload = {
+      reportDate: form.value.reportDate.format('YYYY-MM-DD'),
+      content: form.value.content.trim(),
+    }
+
+    if (currentReport.value?.id) {
+      savedReport = await updateDailyReport(currentReport.value.id, payload)
       message.success('日报已更新')
     } else {
-      await createDailyReport({
-        reportDate: form.value.reportDate.format('YYYY-MM-DD'),
-        content: form.value.content,
-      })
+      savedReport = await createDailyReport(payload)
       message.success('日报已提交')
     }
-    modalOpen.value = false
+
+    const reportId = savedReport?.id || currentReport.value?.id
+    for (const file of pendingFiles.value) {
+      await uploadDailyReportFile(reportId, file.originFile)
+    }
+    if (pendingFiles.value.length) {
+      message.success('附件已上传')
+      pendingFiles.value = []
+      await loadFiles(reportId)
+    }
+    selectedDate.value = form.value.reportDate
     await loadAll()
   } catch (e) {
     message.error(e.message || '操作失败')
@@ -220,63 +284,195 @@ const handleSubmit = async () => {
 
 .dr-page__body {
   display: grid;
-  grid-template-columns: minmax(0, 1.7fr) minmax(360px, 1fr);
-  gap: 18px;
+  grid-template-columns: minmax(0, 7fr) minmax(260px, 3fr);
+  gap: 16px;
   flex: 1;
   min-height: 0;
-  padding: 16px 20px 16px 16px;
+  padding: 16px;
 }
 
-.dr-cal-wrap {
+.dr-editor,
+.dr-calendar-panel {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  overflow: hidden;
   background: #fff;
   border: 1px solid #eef1f4;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgb(0 0 0 / 4%);
 }
 
-.dr-cal-wrap :deep(.ant-picker-calendar) {
-  border-radius: 0;
+.dr-editor {
+  overflow: hidden;
 }
 
-.dr-cal-wrap :deep(.ant-picker-calendar-header) {
-  padding: 0;
+.dr-editor :deep(.ant-spin-nested-loading),
+.dr-editor :deep(.ant-spin-container) {
+  min-height: 0;
+  height: 100%;
 }
 
-.dr-cal-wrap :deep(.ant-picker-content) {
-  height: calc(100vh - 160px);
+.dr-form {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 22px;
 }
 
-.dr-cal-wrap :deep(.ant-picker-cell-inner) {
-  min-height: 88px;
-  padding: 4px 6px;
+.dr-form :deep(.ant-form-item-label) {
+  text-align: right;
+}
+
+.dr-form :deep(.ant-form-item-control) {
+  min-width: 0;
+}
+
+.dr-date-picker {
+  width: 220px;
+}
+
+.dr-upload :deep(.ant-upload-drag) {
+  padding: 14px;
+  border-color: #91caff;
+  background: #fbfdff;
+}
+
+.dr-upload__icon {
+  margin: 0 0 6px;
+  color: #1677ff;
+  font-size: 28px;
+  line-height: 1;
+  text-align: center;
+}
+
+.dr-upload__text {
+  margin: 0;
+  color: #595959;
+  font-size: 12px;
+  text-align: center;
+}
+
+.dr-file-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.dr-file-item {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 34px;
+  padding: 6px 10px;
+  background: #fafafa;
+  border: 1px solid #f0f0f0;
   border-radius: 6px;
 }
 
-.dr-cal-wrap :deep(.ant-picker-cell-selected .ant-picker-cell-inner) {
-  background: #e6f4ff;
-  outline: 1px solid #1677ff;
+.dr-file-item > span:nth-child(2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.dr-cal-wrap :deep(.ant-picker-calendar-date-value) {
-  font-size: 13px;
+.dr-file-empty {
+  margin: 12px 0 0;
+}
+
+.dr-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  padding-top: 4px;
+}
+
+.dr-calendar-panel {
+  align-items: stretch;
+  justify-content: flex-start;
+  height: 400px;
+  padding: 10px;
+}
+
+.dr-calendar-panel :deep(.ant-spin-nested-loading),
+.dr-calendar-panel :deep(.ant-spin-container),
+.dr-calendar-panel :deep(.ant-picker-calendar) {
+  width: 100%;
+  height: 100%;
+}
+
+.dr-calendar-panel :deep(.ant-picker-calendar) {
+  border: 0;
+}
+
+.dr-calendar-panel :deep(.ant-picker-calendar-header) {
+  padding: 0;
+}
+
+.dr-calendar-panel :deep(.ant-picker-panel) {
+  border-top: 0;
+}
+
+.dr-calendar-panel :deep(.ant-picker-body) {
+  height: calc(100% - 28px);
+  padding: 4px 0 0;
+}
+
+.dr-calendar-panel :deep(.ant-picker-content) {
+  height: 100%;
+}
+
+.dr-calendar-panel :deep(.ant-picker-content th) {
+  height: 18px;
+  color: #8c8c8c;
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.dr-calendar-panel :deep(.ant-picker-cell) {
+  padding: 1px 0;
+}
+
+.dr-calendar-panel :deep(.ant-picker-cell-inner) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  height: 42px;
+  min-width: 0;
+  padding: 1px 0;
+  line-height: 14px;
+}
+
+.dr-calendar-panel :deep(.ant-picker-calendar-date-value) {
+  font-size: 11px;
+  line-height: 14px;
+}
+
+.dr-calendar-panel :deep(.ant-picker-cell-selected .ant-picker-cell-inner) {
+  background: #e6f4ff;
 }
 
 .dr-cal-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: 28px 1fr 28px;
   align-items: center;
-  height: 44px;
-  padding: 0 16px;
-  border-bottom: 1px solid #f0f0f0;
+  width: 100%;
+  height: 28px;
+}
+
+.dr-cal-header strong {
+  color: #262626;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
 }
 
 .dr-cal-dot {
-  width: 6px;
-  height: 6px;
-  margin-top: 4px;
+  width: 5px;
+  height: 5px;
+  margin: 1px auto 0;
   border-radius: 50%;
 }
 
@@ -288,113 +484,13 @@ const handleSubmit = async () => {
   background: #f5222d;
 }
 
-/* 右侧面板 */
-.dr-panel {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  overflow: hidden;
-  background: #fff;
-  border: 1px solid #eef1f4;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 4%);
-}
+@media (max-width: 900px) {
+  .dr-page__body {
+    grid-template-columns: 1fr;
+  }
 
-.dr-panel__header {
-  display: flex;
-  flex-shrink: 0;
-  gap: 10px;
-  align-items: center;
-  justify-content: space-between;
-  height: 52px;
-  padding: 0 18px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.dr-panel__date {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.dr-panel__date strong {
-  font-size: 16px;
-  font-weight: 600;
-  color: #1f1f1f;
-}
-
-.dr-today-badge {
-  padding: 1px 7px;
-  color: #1677ff;
-  font-size: 12px;
-  background: #e6f4ff;
-  border-radius: 10px;
-}
-
-.dr-yesterday-badge {
-  padding: 1px 7px;
-  color: #52c41a;
-  font-size: 12px;
-  background: #f6ffed;
-  border-radius: 10px;
-}
-
-
-.dr-missing-alert {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  padding: 8px 18px;
-  color: #cf1322;
-  font-size: 13px;
-  background: #fff1f0;
-  border-bottom: 1px solid #ffa39e;
-}
-
-.dr-missing-alert__icon {
-  flex-shrink: 0;
-  font-size: 15px;
-  color: #f5222d;
-}
-
-.dr-panel__body {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 20px 18px;
-}
-
-.dr-report-block {
-  padding: 16px;
-  background: #fafafa;
-  border: 1px solid #f0f0f0;
-  border-radius: 6px;
-}
-
-.dr-report-label {
-  margin-bottom: 10px;
-  color: #8c8c8c;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.dr-report-content {
-  color: #262626;
-  font-size: 14px;
-  line-height: 1.75;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.dr-report-meta {
-  margin-top: 14px;
-  color: #bfbfbf;
-  font-size: 12px;
-}
-
-.dr-panel__empty {
-  margin-top: 80px;
+  .dr-calendar-panel {
+    width: 100%;
+  }
 }
 </style>
