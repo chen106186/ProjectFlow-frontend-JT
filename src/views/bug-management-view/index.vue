@@ -147,9 +147,10 @@
           <div v-if="selectedBug" class="detail-body">
             <!-- Left: main content -->
             <div class="detail-main">
-              <!-- 基本信息 -->
-              <a-card class="detail-card" :bordered="false">
-                <template #title><span class="detail-card__title">基本信息</span></template>
+              <a-card class="detail-card bug-detail-overview" :bordered="false">
+                <template #title><span class="detail-card__title">Bug详情</span></template>
+                <section class="detail-section">
+                  <h3>基本信息</h3>
                 <table class="native-info-table">
                   <tbody>
                     <tr>
@@ -178,18 +179,15 @@
                     </tr>
                   </tbody>
                 </table>
-              </a-card>
-
-              <!-- 问题描述 -->
-              <a-card class="detail-card" :bordered="false">
-                <template #title><span class="detail-card__title">问题描述</span></template>
+                </section>
+                <section class="detail-section">
+                  <h3>问题描述</h3>
                 <div class="detail-rich" v-html="bugDescriptionHtml"></div>
-              </a-card>
-
-              <!-- 重现步骤 -->
-              <a-card class="detail-card" :bordered="false">
-                <template #title><span class="detail-card__title">重现步骤</span></template>
-                <div class="detail-rich" v-html="bugReproduceStepsHtml"></div>
+                </section>
+                <section class="detail-section">
+                  <h3>重现步骤</h3>
+                <div class="detail-rich" v-html="bugReproduceStepsHtml" @click="handleRichImageClick"></div>
+                </section>
               </a-card>
 
               <!-- 修复记录 -->
@@ -215,7 +213,7 @@
                         <b>{{ comment.authorName || ('用户' + comment.userId) }}</b>
                         <small>{{ formatDateTime(comment.createdAt) }}</small>
                       </div>
-                      <div class="comment-item__content" v-html="normalizeRichHtml(comment.content)"></div>
+                      <div class="comment-item__content" v-html="normalizeRichHtml(comment.content)" @click="handleRichImageClick"></div>
                     </div>
                     <a-empty v-if="!comments.length && !commentsLoading" description="暂无评论" class="comment-empty" />
                   </div>
@@ -264,6 +262,15 @@
         <a-form-item label="备注"><a-textarea v-model:value="assignState.reason" :rows="5" placeholder="请输入备注" /></a-form-item>
       </a-form>
     </a-modal>
+    <a-image
+      v-if="previewImage"
+      :src="previewImage"
+      :style="{ display: 'none' }"
+      :preview="{
+        visible: previewVisible,
+        onVisibleChange: handlePreviewVisibleChange,
+      }"
+    />
   </div>
 </template>
 
@@ -393,6 +400,8 @@ const commentsLoading = ref(false)
 const commentContent = ref('')
 const commentLoading = ref(false)
 const commentEditorRef = shallowRef()
+const previewImage = ref('')
+const previewVisible = ref(false)
 const richImageObjectUrls = new Set()
 const ossHostPattern = /^https:\/\/company-project-oss\.oss-cn-shanghai\.aliyuncs\.com\/(.+)$/i
 const normalizeRichHtml = html => {
@@ -444,6 +453,15 @@ const hydratePrivateRichImages = async () => {
 }
 const bugDescriptionHtml = computed(() => normalizeRichHtml(selectedBug.value?.description))
 const bugReproduceStepsHtml = computed(() => normalizeRichHtml(selectedBug.value?.reproduceSteps))
+const handleRichImageClick = event => {
+  const image = event.target?.closest?.('img')
+  if (!image?.src || image.classList.contains('rich-image--failed')) return
+  previewImage.value = image.src
+  previewVisible.value = true
+}
+const handlePreviewVisibleChange = visible => {
+  previewVisible.value = visible
+}
 const richTextImageUploadConf = {
   MENU_CONF: {
     uploadImage: {
@@ -682,7 +700,7 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.bug-page { height: 100%; min-width: 0; overflow-x: hidden; overflow-y: auto; color: #262626; }
+.bug-page { height: 100%;width: min(1600px, 100%);margin: 0 auto; overflow-x: hidden; overflow-y: auto; color: #262626; }
 .bug-filter, .bug-list, .bug-form-card { border: 1px solid #edf0f3; box-shadow: 0 2px 8px rgb(0 0 0 / 3%); }
 .bug-filter { margin-bottom: 16px; }
 .bug-filter :deep(.ant-card-body) { padding: 16px 18px 2px; }
@@ -738,7 +756,7 @@ onMounted(async () => {
   border-radius: 3px;
 }
 /* ── Detail page ── */
-.detail-page { width: min(1100px, 100%); margin: 0 auto; padding-bottom: 96px; }
+.detail-page { width: min(1600px, 100%); margin: 0 auto; padding-bottom: 96px; }
 
 .detail-header {
   display: flex;
@@ -816,6 +834,26 @@ onMounted(async () => {
 
 .detail-card__title { font-size: 14px; font-weight: 600; color: #1f1f1f; }
 
+.bug-detail-overview :deep(.ant-card-body) {
+  padding: 0;
+}
+
+.detail-section {
+  padding: 16px 18px;
+  border-bottom: 1px solid #f2f4f6;
+}
+
+.detail-section:last-child {
+  border-bottom: 0;
+}
+
+.detail-section h3 {
+  margin: 0 0 14px;
+  color: #1f1f1f;
+  font-size: 14px;
+  font-weight: 600;
+}
+
 .native-info-table {
   width: 100%;
   table-layout: fixed;
@@ -866,6 +904,10 @@ onMounted(async () => {
   object-fit: contain;
   border: 1px solid #edf0f3;
   border-radius: 8px;
+}
+.detail-rich :deep(img),
+.comment-item__content :deep(img) {
+  cursor: zoom-in;
 }
 .detail-rich :deep(.rich-image--failed),
 .comment-item__content :deep(.rich-image--failed) {
