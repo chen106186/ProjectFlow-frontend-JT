@@ -288,6 +288,12 @@ const handleBack = () => {
 }
 
 const initPage = async () => {
+  const id = route.params.id
+  if (!id || id === 'undefined' || id === 'null') {
+    message.error('无效的需求 ID，请重新进入')
+    router.replace({ name: from === 'management' ? 'RequirementManagement' : 'PersonalRequirements' })
+    return
+  }
   await dictStore.loadDicts()
   await loadProjects()
   await loadUsers()

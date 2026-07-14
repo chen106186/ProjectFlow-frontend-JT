@@ -140,18 +140,21 @@
           </a-space>
           <a-input-search placeholder="搜索文件名、上传人、分类..." />
         </div>
+        <div class="document-breadcrumb">
+          <span>文件夹支持展开查看，上传时可选择目标文件夹。</span>
+        </div>
         <h3>分类导航</h3>
         <div class="document-categories">
-          <button v-for="item in documentCategories" :key="item.label" type="button" :class="[item.class, { active: item.active }]" @click="handleSelectDocumentCategory(item.label)">
+          <button v-for="item in documentCategories" :key="item.value" type="button" :class="[item.class, { active: item.active }]" @click="handleSelectDocumentCategory(item.value)">
             <span class="document-category__icon"><component :is="item.icon" /></span>
             <span>{{ item.label }}</span>
-            <strong>{{ item.value }}</strong>
+            <strong>{{ item.count }}</strong>
           </button>
         </div>
         <a-table row-key="id" :row-selection="documentRowSelection" :columns="documentColumns" :data-source="filteredDocumentRows" :loading="documentLoading" :pagination="false">
           <template #bodyCell="{ column, record }">
             <template v-if="column.dataIndex === 'name'">
-              <button type="button" class="document-name" :class="{ 'document-name--folder': record.isFolder }" :disabled="record.isFolder" @click="!record.isFolder && handleDownloadDocument(record)">
+              <button type="button" class="document-name" :class="{ 'document-name--folder': record.isFolder, 'document-name--child': record.isChildFile }" @click="record.isFolder ? handleToggleFolder(record) : handleDownloadDocument(record)">
                 <FolderOpenOutlined v-if="record.isFolder" />
                 <FileOutlined v-else />
                 <span>{{ record.name }}</span>
@@ -195,6 +198,7 @@
       <a-form :model="uploadForm" :label-col="{ span: 4 }" :wrapper-col="{ span: 20 }" class="upload-form">
         <div class="upload-form__row">
           <a-form-item label="存储位置"><a-select v-model:value="uploadForm.location" :options="storageOptions" /></a-form-item>
+          <a-form-item label="目标文件夹"><a-select v-model:value="uploadForm.folderId" allow-clear :options="folderOptions" placeholder="请选择目标文件夹" /></a-form-item>
           <a-form-item label="文件分类"><a-select v-model:value="uploadForm.category" :options="documentCategoryOptions" /></a-form-item>
         </div>
         <a-form-item label="版本号"><a-input v-model:value="uploadForm.versionNo" placeholder="请输入版本号，如 V1.0 / 初版" /></a-form-item>
@@ -404,6 +408,7 @@ const folderVisible = ref(false)
 const folderLoading = ref(false)
 const folderName = ref('')
 const folderRows = ref([])
+const expandedFolderIds = ref([])
 const ganttEditVisible = ref(false)
 const ganttSubmitLoading = ref(false)
 const uploadFiles = ref([])
@@ -411,6 +416,7 @@ const managerOptions = ref([])
 const taskStatusOptions = ref([])
 const reportTypeOptions = ref([])
 const reportStatusOptions = ref([])
+const fileCategoryOptions = ref([])
 const dictLabels = reactive({})
 let ganttInstance
 
@@ -543,12 +549,27 @@ const filteredReportRows = computed(() => reportRows.value.filter(record => {
   }
   return true
 }))
-const documentCategoryLabels = ['合同类', '需求类', '设计类', '开发类', '验收类']
-const documentCategories = computed(() => [{ label: '全部', value: documentRows.value.length, class: 'category-all', icon: FolderOpenOutlined }, ...documentCategoryLabels.map((label, index) => ({ label, value: documentRows.value.filter(item => item.category === label).length, class: ['category-contract', 'category-requirement', 'category-design', 'category-development', 'category-acceptance'][index], icon: [FileProtectOutlined, FileTextOutlined, SnippetsOutlined, CodeOutlined, FileDoneOutlined][index] }))].map(item => ({ ...item, active: item.label === selectedDocumentCategory.value })))
+const documentCategoryMeta = computed(() => {
+  const fallback = [
+    { label: '合同类', value: 'CONTRACT' },
+    { label: '需求类', value: 'REQUIREMENT' },
+    { label: '设计类', value: 'DESIGN' },
+    { label: '开发类', value: 'DEVELOPMENT' },
+    { label: '验收类', value: 'ACCEPTANCE' },
+  ]
+  return fileCategoryOptions.value.length ? fileCategoryOptions.value : fallback
+})
+const documentCategories = computed(() => {
+  const files = documentDisplayRows.value
+  return [{ label: '全部', value: '全部', count: files.length, class: 'category-all', icon: FolderOpenOutlined }, ...documentCategoryMeta.value.map((item, index) => ({ label: item.label, value: item.value, count: files.filter(file => file.categoryCode === item.value || file.category === item.label).length, class: ['category-contract', 'category-requirement', 'category-design', 'category-development', 'category-acceptance'][index], icon: [FileProtectOutlined, FileTextOutlined, SnippetsOutlined, CodeOutlined, FileDoneOutlined][index] }))].map(item => ({ ...item, active: item.value === selectedDocumentCategory.value }))
+})
 const documentColumns = [{ title: '文件名', dataIndex: 'name' }, { title: '类型', dataIndex: 'type', width: 90 }, { title: '大小', dataIndex: 'size', width: 90 }, { title: '版本', dataIndex: 'version', width: 80 }, { title: '上传人', dataIndex: 'uploader', width: 80 }, { title: '分类', dataIndex: 'category', width: 90 }, { title: '上传时间', dataIndex: 'uploadTime', width: 170 }, { title: '操作', dataIndex: 'operation', width: 120 }]
 const documentRows = ref([])
+const folderOptions = computed(() => folderRows.value.map(folder => ({ label: folder.name, value: folder.id })))
+const isFolderExpanded = folderId => expandedFolderIds.value.map(String).includes(String(folderId))
 const folderDisplayRows = computed(() => folderRows.value.map(folder => ({
   id: `folder-${folder.id}`,
+  folderId: folder.id,
   name: folder.name,
   type: '文件夹',
   size: '-',
@@ -557,20 +578,86 @@ const folderDisplayRows = computed(() => folderRows.value.map(folder => ({
   category: '文件夹',
   uploadTime: formatDateTime(folder.createdAt),
   isFolder: true,
+  expanded: isFolderExpanded(folder.id),
 })))
-const documentDisplayRows = computed(() => documentRows.value.map(file => ({ ...file, isFolder: false })))
-const allDocumentRows = computed(() => [...folderDisplayRows.value, ...documentDisplayRows.value])
-const filteredDocumentRows = computed(() => selectedDocumentCategory.value === '全部' ? allDocumentRows.value : documentDisplayRows.value.filter(item => item.category === selectedDocumentCategory.value))
-const canBatchDownload = computed(() => documentRows.value.length > 0 && selectedDocumentIds.value.length > 0)
+const matchesDocumentCategory = file => selectedDocumentCategory.value === '全部' || file.categoryCode === selectedDocumentCategory.value || file.category === selectedDocumentCategory.value
+const documentDisplayRows = computed(() => documentRows.value.map(file => ({ ...file, isFolder: false, parentFolderId: file.folderId || null })))
+const rootDocumentRows = computed(() => documentDisplayRows.value.filter(file => !file.parentFolderId && matchesDocumentCategory(file)))
+const filesByFolderId = computed(() => {
+  const grouped = new Map()
+  documentDisplayRows.value.forEach(file => {
+    if (!file.parentFolderId || !matchesDocumentCategory(file)) return
+    const key = String(file.parentFolderId)
+    grouped.set(key, [...(grouped.get(key) || []), { ...file, rowKey: `folder-${key}-file-${file.id}`, isChildFile: true }])
+  })
+  return grouped
+})
+const filteredDocumentRows = computed(() => {
+  const rows = [...rootDocumentRows.value]
+  folderDisplayRows.value.forEach(folder => {
+    const children = filesByFolderId.value.get(String(folder.folderId)) || []
+    if (selectedDocumentCategory.value !== '全部' && children.length === 0) return
+    rows.push(folder)
+    if (folder.expanded) rows.push(...children)
+  })
+  return rows
+})
+const canBatchDownload = computed(() => selectedDocumentIds.value.length > 0)
+const folderKey = folderId => `folder-${folderId}`
+const getFolderFileIds = folderId => documentRows.value
+  .filter(file => String(file.folderId || '') === String(folderId))
+  .map(file => file.id)
+const normalizeDocumentSelection = keys => {
+  const selected = new Set(keys)
+  folderRows.value.forEach(folder => {
+    const key = folderKey(folder.id)
+    const childIds = getFolderFileIds(folder.id)
+    if (!childIds.length) return
+    if (childIds.every(id => selected.has(id))) selected.add(key)
+    else selected.delete(key)
+  })
+  return Array.from(selected)
+}
+const handleDocumentSelect = (record, checked) => {
+  const next = new Set(selectedDocumentIds.value)
+  if (record.isFolder) {
+    const key = folderKey(record.folderId)
+    const childIds = getFolderFileIds(record.folderId)
+    if (checked) {
+      next.add(key)
+      childIds.forEach(id => next.add(id))
+    } else {
+      next.delete(key)
+      childIds.forEach(id => next.delete(id))
+    }
+  } else if (checked) {
+    next.add(record.id)
+  } else {
+    next.delete(record.id)
+  }
+  selectedDocumentIds.value = normalizeDocumentSelection(Array.from(next))
+}
+const handleDocumentSelectAll = selected => {
+  const next = new Set(selectedDocumentIds.value)
+  filteredDocumentRows.value.forEach(row => {
+    const key = row.isFolder ? folderKey(row.folderId) : row.id
+    if (selected) next.add(key)
+    else next.delete(key)
+    if (row.isFolder) {
+      getFolderFileIds(row.folderId).forEach(id => selected ? next.add(id) : next.delete(id))
+    }
+  })
+  selectedDocumentIds.value = normalizeDocumentSelection(Array.from(next))
+}
 const documentRowSelection = computed(() => ({
   selectedRowKeys: selectedDocumentIds.value,
-  onChange: keys => { selectedDocumentIds.value = keys },
-  getCheckboxProps: record => ({ disabled: record.isFolder }),
+  onSelect: handleDocumentSelect,
+  onSelectAll: handleDocumentSelectAll,
 }))
 const pagination = { pageSize: 5, showSizeChanger: false }
-const uploadForm = reactive({ location: '项目文档库', category: '需求类', versionNo: 'V1.0' })
+const uploadForm = reactive({ location: '项目文档库', folderId: undefined, category: 'REQUIREMENT', versionNo: 'V1.0' })
 const storageOptions = toOptions(['项目文档库', '公共文档库'])
-const documentCategoryOptions = toOptions(documentCategoryLabels)
+const documentCategoryOptions = computed(() => documentCategoryMeta.value.map(item => ({ label: item.label, value: item.value })))
 const summaryItems = computed(() => [
   { label: '项目名称', value: currentProject.value?.name || '-' },
   { label: '项目类型', value: '执行类项目' },
@@ -584,6 +671,10 @@ const summaryItems = computed(() => [
 ])
 const getDictLabel = (type, value) => dictLabels[type]?.[value] || value || '-'
 const getUserName = id => managerOptions.value.find(item => item.value === id)?.label || (id ? `用户 ${id}` : '-')
+const resolveFileCategory = value => {
+  const matched = fileCategoryOptions.value.find(item => item.value === value || item.label === value)
+  return { value: matched?.value || value || '-', label: matched?.label || value || '-' }
+}
 
 const isFinishedStatus = value => ['COMPLETED', 'DONE', 'FINISHED', '已完成'].includes(value)
 const mapReportDetail = report => {
@@ -650,6 +741,7 @@ const fetchReferenceData = async () => {
     taskStatusOptions.value = dictGroups.find(item => item.type === 'taskStatus')?.items || []
     reportTypeOptions.value = dictGroups.find(item => item.type === 'reportType')?.items || []
     reportStatusOptions.value = dictGroups.find(item => item.type === 'reportStatus')?.items || []
+    fileCategoryOptions.value = dictGroups.find(item => item.type === 'fileCategory')?.items || []
     managerOptions.value = userPage.records.map(user => ({ label: user.realName, value: user.id }))
   } catch (error) {
     message.error(error.message)
@@ -697,7 +789,11 @@ const fetchProjectRelatedData = async projectId => {
 
     reportRows.value = reportResult.records.map(report => ({ id: report.id, title: report.title, type: getDictLabel('reportType', report.reportType), status: getDictLabel('reportStatus', report.status), planTime: report.plannedDate, actualTime: report.actualDate || '-', target: report.targetAudience, place: report.locationMethod }))
     folderRows.value = folders || []
-    documentRows.value = files.map(file => ({ id: file.id, name: file.originalName, type: file.originalName.split('.').pop()?.toUpperCase() || '-', size: formatFileSize(file.fileSize), version: file.versionNo || '-', uploader: getUserName(file.uploaderId), category: file.fileCategory || '-', uploadTime: formatDateTime(file.uploadedAt) }))
+    expandedFolderIds.value = folderRows.value.map(folder => folder.id)
+    documentRows.value = files.map(file => {
+      const category = resolveFileCategory(file.fileCategory)
+      return { id: file.id, folderId: file.folderId || null, name: file.originalName, type: file.originalName.split('.').pop()?.toUpperCase() || '-', size: formatFileSize(file.fileSize), version: file.versionNo || '-', uploader: getUserName(file.uploaderId), categoryCode: category.value, category: category.label, uploadTime: formatDateTime(file.uploadedAt) }
+    })
 
     await renderGantt()
   } catch (error) {
@@ -738,10 +834,30 @@ const renderGantt = async () => {
   if (todayButton) todayButton.textContent = '今天'
 }
 
-const handleOpenUploadModal = () => {
+const refreshFolders = async () => {
+  folderRows.value = await getProjectFolders({ businessType: 'PROJECT', businessId: route.params.id })
+  expandedFolderIds.value = folderRows.value.map(folder => folder.id)
+}
+
+const handleOpenUploadModal = async () => {
   uploadFiles.value = []
-  Object.assign(uploadForm, { location: '项目文档库', category: '需求类', versionNo: 'V1.0' })
+  Object.assign(uploadForm, { location: '项目文档库', folderId: undefined, category: 'REQUIREMENT', versionNo: 'V1.0' })
+  try {
+    await refreshFolders()
+  } catch (error) {
+    message.error(error.message || '目标文件夹加载失败')
+  }
   uploadVisible.value = true
+}
+
+const handleToggleFolder = folder => {
+  const folderId = folder?.folderId || folder?.id
+  if (!folderId) return
+  const key = String(folderId)
+  expandedFolderIds.value = isFolderExpanded(key)
+    ? expandedFolderIds.value.filter(id => String(id) !== key)
+    : [...expandedFolderIds.value, folderId]
+  selectedDocumentIds.value = []
 }
 
 const handleCreateFolder = () => {
@@ -763,6 +879,8 @@ const handleSubmitFolder = async () => {
       name,
     })
     folderRows.value = [folder, ...folderRows.value]
+    expandedFolderIds.value = [...expandedFolderIds.value, folder.id]
+    uploadForm.folderId = folder.id
     folderName.value = ''
     folderVisible.value = false
     selectedDocumentCategory.value = '全部'
@@ -774,10 +892,11 @@ const handleSubmitFolder = async () => {
   }
 }
 
+const safeDownloadName = value => String(value || 'files').replace(/[\\/:*?"<>|]/g, '_')
 const handleSelectDocumentCategory = category => {
   selectedDocumentCategory.value = category
-  const visibleIds = new Set(filteredDocumentRows.value.filter(item => !item.isFolder).map(item => item.id))
-  selectedDocumentIds.value = selectedDocumentIds.value.filter(id => visibleIds.has(id))
+  const visibleIds = new Set(filteredDocumentRows.value.map(item => item.isFolder ? folderKey(item.folderId) : item.id))
+  selectedDocumentIds.value = normalizeDocumentSelection(selectedDocumentIds.value.filter(id => visibleIds.has(id)))
 }
 
 const handleGanttRow = record => ({
@@ -856,6 +975,7 @@ const handleStartUpload = async () => {
       data.append('businessId', route.params.id)
       data.append('storageLocation', uploadForm.location)
       data.append('fileCategory', uploadForm.category)
+      if (uploadForm.folderId) data.append('folderId', uploadForm.folderId)
       if (uploadForm.versionNo?.trim()) data.append('versionNo', uploadForm.versionNo.trim())
       data.append('file', uploadFile.originFile)
       await uploadProjectFile(data)
@@ -886,19 +1006,28 @@ const handleDownloadDocument = async record => {
 }
 
 const handleBatchDownload = async () => {
-  if (!documentRows.value.length) {
-    message.warning('暂无可下载文件')
-    return
-  }
   if (!selectedDocumentIds.value.length) {
     message.warning('请先选择要下载的文件')
     return
   }
+  const folderIds = selectedDocumentIds.value
+    .filter(id => String(id).startsWith('folder-'))
+    .map(id => String(id).replace('folder-', ''))
+  const fileIds = selectedDocumentIds.value.filter(id => !String(id).startsWith('folder-'))
+  if (!fileIds.length && !folderIds.length) {
+    message.warning('暂无可下载文件')
+    return
+  }
   try {
-    const result = await downloadProjectFiles(selectedDocumentIds.value)
+    const result = await downloadProjectFiles({ fileIds, folderIds })
     const link = document.createElement('a')
     link.href = URL.createObjectURL(result.blob)
-    link.download = result.fileName || 'files.zip'
+    const selectedFolder = folderIds.length === 1 && selectedDocumentIds.value.length === getFolderFileIds(folderIds[0]).length + 1
+      ? folderRows.value.find(folder => String(folder.id) === String(folderIds[0]))
+      : null
+    link.download = selectedFolder
+      ? `${safeDownloadName(currentProject.value?.name)}-${safeDownloadName(selectedFolder.name)}.zip`
+      : `${safeDownloadName(currentProject.value?.name || 'files')}.zip`
     link.click()
     URL.revokeObjectURL(link.href)
   } catch (error) {
@@ -919,9 +1048,18 @@ const handleDeleteDocument = async record => {
 
 const handleDeleteDocuments = async () => {
   if (!selectedDocumentIds.value.length) return
+  if (selectedDocumentIds.value.some(id => String(id).startsWith('folder-'))) {
+    message.warning('文件夹暂不支持批量删除，请只选择文件')
+    return
+  }
+  const fileIds = selectedDocumentIds.value.filter(id => !String(id).startsWith('folder-'))
+  if (!fileIds.length) {
+    message.warning('请选择需要删除的文件，文件夹暂不支持批量删除')
+    return
+  }
 
   try {
-    await deleteProjectFiles(selectedDocumentIds.value)
+    await deleteProjectFiles(fileIds)
     selectedDocumentIds.value = []
     await fetchProjectRelatedData(route.params.id)
     message.success('文件批量删除成功')
@@ -1105,6 +1243,8 @@ onMounted(async () => {
 .gantt-scroll :deep(.gantt-completed .bar-label), .gantt-scroll :deep(.gantt-overdue .bar-label), .gantt-scroll :deep(.gantt-in-progress .bar-label), .gantt-scroll :deep(.gantt-milestone .bar-label) { fill: #fff; }
 .gantt-scroll :deep(.gantt-due-soon .bar-label), .gantt-scroll :deep(.gantt-not-started .bar-label) { fill: #1d1d1f; }
 .section-heading, .document-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+.document-breadcrumb { display: flex; align-items: center; gap: 6px; margin: -2px 0 16px; color: #8c8c8c; font-size: 13px; }
+.document-breadcrumb strong { color: #262626; font-weight: 600; }
 .section-heading h2, .section-heading h3 { margin: 0; }
 .section-heading small { color: #8c8c8c; font-weight: 400; }
 .report-filter { margin-bottom: 18px; }
@@ -1152,8 +1292,9 @@ onMounted(async () => {
 .document-categories strong { font-size: 17px; }
 .document-name { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; padding: 0; color: #1677ff; text-align: left; cursor: pointer; background: transparent; border: 0; }
 .document-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.document-name--child { padding-left: 28px; }
 .document-name--folder,
-.document-name--folder:disabled { color: #8a5a00; cursor: default; }
+.document-name--folder:disabled { color: #8a5a00; cursor: pointer; }
 .document-row-muted { color: #bfbfbf; }
 .category-all { background: linear-gradient(135deg, #fff 0%, #edf6ff 100%); }
 .category-all .document-category__icon { color: #0066cc; background: #e5f2ff; }
