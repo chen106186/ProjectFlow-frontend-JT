@@ -7,7 +7,7 @@
       </router-link>
 
       <a-space :size="20">
-        <a-badge :count="5">
+        <a-badge :count="unreadNoticeCount" :overflow-count="99">
           <a-button class="app-header__icon" type="text" aria-label="通知" @click="handleNavigate('/notifications')">
             <BellOutlined />
           </a-button>
@@ -48,18 +48,18 @@
         theme="light"
       >
         <a-menu mode="inline" :open-keys="openKeys" :selected-keys="selectedKeys" @open-change="handleOpenChange">
-          <template v-for="item in visibleNavigation" :key="item.key">
-            <a-sub-menu v-if="item.children?.length" :key="item.key">
-              <template #icon><component :is="item.icon" /></template>
-              <template #title>{{ item.label }}</template>
-              <a-menu-item v-for="child in item.children" :key="child.key" @click="handleNavigate(child.path)">
-                {{ child.label }}
+          <template v-for="item in dynamicNavigation" :key="String(item.id)">
+            <a-sub-menu v-if="item.children?.length" :key="String(item.id)">
+              <template #icon><component :is="CODE_ICON_MAP[item.code] || FolderOutlined" /></template>
+              <template #title>{{ item.name }}</template>
+              <a-menu-item v-for="child in item.children" :key="menuItemKey(child)" @click="handleNavigate(child.path)">
+                {{ child.name }}
               </a-menu-item>
             </a-sub-menu>
 
-            <a-menu-item v-else :key="item.key" @click="handleNavigate(item.path)">
-              <component :is="item.icon" />
-              <span>{{ item.label }}</span>
+            <a-menu-item v-else :key="menuItemKey(item)" @click="handleNavigate(item.path)">
+              <component :is="CODE_ICON_MAP[item.code] || FolderOutlined" />
+              <span>{{ item.name }}</span>
             </a-menu-item>
           </template>
         </a-menu>
@@ -101,7 +101,7 @@ import {
   DownOutlined,
   FileOutlined,
   FileTextOutlined,
-  FolderOpenOutlined,
+  FolderOutlined,
   HomeOutlined,
   LockOutlined,
   LogoutOutlined,
@@ -115,6 +115,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { getCurrentUser } from '@/api/system'
+import { getUnreadCount } from '@/api/notices'
 
 const route = useRoute()
 const router = useRouter()
@@ -122,133 +123,21 @@ const router = useRouter()
 const AUTH_PROFILE_KEY = 'authProfile'
 const USER_INFO_KEY = 'userInfo'
 const TOKEN_KEY = 'token'
-const MENU_CACHE_KEYS = [
-  AUTH_PROFILE_KEY,
-  USER_INFO_KEY,
-  'menus',
-  'menuList',
-  'systemMenus',
-  'roleMenus',
-  'permissions',
-]
+const MENU_CACHE_KEYS = [AUTH_PROFILE_KEY, USER_INFO_KEY, 'menus', 'menuList', 'systemMenus', 'roleMenus', 'permissions']
 
-const isSiderCollapsed = ref(false)
-const openKeys = ref([])
-const profileLoading = ref(false)
-const profileReady = ref(false)
-const authProfile = ref({
-  menus: [],
-  permissions: [],
-  realName: '',
-})
-
-const ANY_WORK_CODES = ['task', 'bug', 'daily-report', 'project-report']
-
-const navigationItems = [
-  {
-    key: '/',
-    path: '/',
-    label: '首页',
-    icon: HomeOutlined,
-    accessCodes: [],
-    matches: [path => path === '/'],
-  },
-  {
-    key: 'personal',
-    label: '个人工作',
-    icon: UsergroupAddOutlined,
-    children: [
-      { key: '/personal/statistics', path: '/personal/statistics', label: '我的统计', accessCodes: ANY_WORK_CODES, matches: [path => path === '/personal/statistics'] },
-      { key: '/personal/tasks', path: '/personal/tasks', label: '我的任务', accessCodes: ['task'], matches: [path => path.startsWith('/personal/tasks')] },
-      { key: '/personal/requirements', path: '/personal/requirements', label: '我的需求', accessCodes: ['requirement'], matches: [path => path.startsWith('/personal/requirements')] },
-      { key: '/personal/bugs', path: '/personal/bugs', label: '我的 Bug', accessCodes: ['bug'], matches: [path => path === '/personal/bugs'] },
-      { key: '/personal/daily', path: '/personal/daily', label: '我的日报', accessCodes: ['daily-report'], matches: [path => path.startsWith('/personal/daily')] },
-     ],
-  },
-  {
-    key: 'projects',
-    label: '项目清单',
-    icon: ProjectOutlined,
-    children: [
-      {
-        key: '/projects/management',
-        path: '/projects/management',
-        label: '管理类项目',
-        accessCodes: ['project'],
-        matches: [path => path.startsWith('/projects/management')],
-      },
-      {
-        key: '/projects/execution',
-        path: '/projects/execution',
-        label: '执行类项目',
-        accessCodes: ['project'],
-        matches: [path => path.startsWith('/projects/execution')],
-      },
-    ],
-  },
-  {
-    key: 'tasks',
-    label: '任务列表',
-    icon: UnorderedListOutlined,
-    children: [
-      { key: '/tasks/all', path: '/tasks/all', label: '全部任务', accessCodes: ['task'], matches: [path => path === '/tasks/all'] },
-      { key: '/tasks/development', path: '/tasks/development', label: '开发任务', accessCodes: ['task'], matches: [path => path === '/tasks/development'] },
-      { key: '/tasks/testing', path: '/tasks/testing', label: '测试任务', accessCodes: ['task'], matches: [path => path === '/tasks/testing'] },
-    ],
-  },
-  {
-    key: '/requirements',
-    path: '/requirements',
-    label: '需求管理',
-    icon: BookOutlined,
-    accessCodes: ['requirement'],
-    matches: [path => path.startsWith('/requirements')],
-  },
-  {
-    key: '/bugs',
-    path: '/bugs',
-    label: 'Bug 列表',
-    icon: BugOutlined,
-    accessCodes: ['bug'],
-    matches: [path => path.startsWith('/bugs')],
-  },
-  {
-    key: '/files',
-    path: '/files',
-    label: '文件管理',
-    icon: FileOutlined,
-    accessCodes: ['file'],
-    matches: [path => path.startsWith('/files')],
-  },
-  {
-    key: '/daily-reports',
-    path: '/daily-reports',
-    label: '日报管理',
-    icon: FileTextOutlined,
-    accessCodes: ['daily-report'],
-    matches: [path => path.startsWith('/daily-reports')],
-  },
-  {
-    key: 'settings',
-    label: '系统设置',
-    icon: SettingOutlined,
-    children: [
-      { key: '/settings/users', path: '/settings/users', label: '用户管理', accessCodes: ['system:user'], matches: [path => path === '/settings/users'] },
-      { key: '/settings/roles', path: '/settings/roles', label: '角色管理', accessCodes: ['system:role'], matches: [path => path === '/settings/roles'] },
-      { key: '/settings/logs', path: '/settings/logs', label: '操作日志', accessCodes: ['system:log'], matches: [path => path === '/settings/logs'] },
-    ],
-  },
-]
-
-const routeGroupMap = {
-  '/personal': 'personal',
-  '/projects': 'projects',
-  '/tasks': 'tasks',
-  '/settings': 'settings',
+// Icon mapping: backend menu code → Ant Design icon component
+const CODE_ICON_MAP = {
+  home: HomeOutlined,
+  personal: UsergroupAddOutlined,
+  projects: ProjectOutlined,
+  tasks: UnorderedListOutlined,
+  requirement: BookOutlined,
+  bug: BugOutlined,
+  file: FileOutlined,
+  'daily-report': FileTextOutlined,
+  'project-report': FileTextOutlined,
+  system: SettingOutlined,
 }
-
-const rootMenuKeys = new Set(navigationItems.filter(item => item.children?.length).map(item => item.key))
-const hiddenNavigationKeys = new Set(['/files', '/daily-reports'])
 
 const groupPathMap = {
   个人工作: '/personal/tasks',
@@ -261,144 +150,116 @@ const groupPathMap = {
   系统设置: '/settings/users',
 }
 
-const normalizeMenuPath = path => {
-  if (!path) {
-    return ''
-  }
+const isSiderCollapsed = ref(false)
+const openKeys = ref([])
+const profileLoading = ref(false)
+const profileReady = ref(false)
+const authProfile = ref({ menus: [], permissions: [], realName: '' })
+const unreadNoticeCount = ref(0)
 
-  const normalizedPath = String(path).replace(/\/+$/, '')
-  return normalizedPath || '/'
+// Build tree from the flat menus array returned by /me
+const buildNavTree = menus => {
+  const map = new Map()
+  const roots = []
+  menus.forEach(m => map.set(m.id, { ...m, children: [] }))
+  menus.forEach(m => {
+    const node = map.get(m.id)
+    if (m.parentId != null && map.has(m.parentId)) {
+      map.get(m.parentId).children.push(node)
+    } else {
+      roots.push(node)
+    }
+  })
+  return roots
 }
 
-const canAccess = item => {
-  if (!item?.accessCodes?.length) {
-    return true
-  }
+const dynamicNavigation = computed(() => buildNavTree(authProfile.value.menus || []))
 
-  return item.accessCodes?.some(code => authorizedMenuCodes.value.has(code)) || authorizedMenuPaths.value.has(normalizeMenuPath(item.path))
+// Key used as <a-menu-item :key>; must match selectedKeys values
+const menuItemKey = item => item.path || String(item.id)
+
+// True when routePath is the same as or a sub-path of menuPath
+const pathMatchesRoute = (menuPath, routePath) => {
+  if (!menuPath) return false
+  if (menuPath === '/') return routePath === '/'
+  return routePath === menuPath || routePath.startsWith(menuPath + '/')
 }
 
-const syncOpenKeys = path => {
-  const group = Object.entries(routeGroupMap).find(([prefix]) => path.startsWith(prefix))?.[1]
-  openKeys.value = group ? [group] : []
-}
-
-const flattenVisibleItems = items => {
-  const result = []
-
+// Find the deepest leaf menu item whose path matches the current route
+const findActiveLeaf = (items, routePath) => {
   for (const item of items) {
     if (item.children?.length) {
-      result.push(...flattenVisibleItems(item.children))
-      continue
+      const found = findActiveLeaf(item.children, routePath)
+      if (found) return found
+    } else if (pathMatchesRoute(item.path, routePath)) {
+      return item
     }
-
-    result.push(item)
   }
-
-  return result
+  return null
 }
 
-const accessibleNavigation = computed(() => {
-  return navigationItems
-    .map(item => {
-      if (!item.children) {
-        return canAccess(item) ? item : null
-      }
-
-      const children = item.children.filter(child => canAccess(child))
-      return children.length ? { ...item, children } : null
-    })
-    .filter(Boolean)
+const selectedKeys = computed(() => {
+  const leaf = findActiveLeaf(dynamicNavigation.value, route.path)
+  return leaf ? [menuItemKey(leaf)] : []
 })
 
-const canAccessPath = path => {
-  const resolvedRoute = router.resolve(path)
-  if (resolvedRoute.matched.some(record => record.meta?.hideInMenu)) {
-    return true
-  }
+// IDs (as strings) of top-level items that have children, used by handleOpenChange
+const rootGroupIds = computed(() =>
+  new Set(dynamicNavigation.value.filter(i => i.children?.length).map(i => String(i.id)))
+)
 
-  const items = flattenVisibleItems(accessibleNavigation.value)
-  return items.some(item => item.matches?.some(match => match(path)))
+const syncOpenKeys = routePath => {
+  for (const item of dynamicNavigation.value) {
+    if (!item.children?.length) continue
+    const hasMatch = item.children.some(child =>
+      child.children?.length
+        ? child.children.some(gc => pathMatchesRoute(gc.path, routePath))
+        : pathMatchesRoute(child.path, routePath)
+    )
+    if (hasMatch) {
+      openKeys.value = [String(item.id)]
+      return
+    }
+  }
+  openKeys.value = []
+}
+
+const canAccessPath = path => {
+  const resolved = router.resolve(path)
+  if (resolved.matched.some(r => r.meta?.hideInMenu)) return true
+  return findActiveLeaf(dynamicNavigation.value, path) != null
 }
 
 const getFirstAccessiblePath = () => {
-  const items = flattenVisibleItems(visibleNavigation.value)
-  return items[0]?.path || '/'
+  const firstLeaf = items => {
+    for (const item of items) {
+      if (item.children?.length) {
+        const found = firstLeaf(item.children)
+        if (found) return found
+      } else if (item.path) {
+        return item.path
+      }
+    }
+    return null
+  }
+  return firstLeaf(dynamicNavigation.value) || '/'
 }
 
 const ensureCurrentRouteAccess = () => {
-  if (route.path === '/') {
-    return
-  }
-
-  if (canAccessPath(route.path)) {
-    return
-  }
-
-  const fallbackPath = getFirstAccessiblePath()
-
-  if (route.path !== fallbackPath) {
-    router.replace(fallbackPath)
-  }
+  if (route.path === '/') return
+  if (canAccessPath(route.path)) return
+  const fallback = getFirstAccessiblePath()
+  if (route.path !== fallback) router.replace(fallback)
 }
 
 const currentUserName = computed(() => {
-  if (authProfile.value.realName) {
-    return authProfile.value.realName
-  }
-
+  if (authProfile.value.realName) return authProfile.value.realName
   try {
     const userInfo = JSON.parse(localStorage.getItem(USER_INFO_KEY) || '{}')
     return userInfo.realName || '管理员'
   } catch {
     return '管理员'
   }
-})
-
-const authorizedMenuCodes = computed(() => {
-  const codes = new Set()
-
-  for (const menu of authProfile.value.menus || []) {
-    if (menu?.code) {
-      codes.add(menu.code)
-    }
-  }
-
-  for (const permission of authProfile.value.permissions || []) {
-    if (permission) {
-      codes.add(permission)
-    }
-  }
-
-  return codes
-})
-
-const authorizedMenuPaths = computed(() => {
-  const paths = new Set()
-
-  for (const menu of authProfile.value.menus || []) {
-    if (menu?.path) {
-      paths.add(normalizeMenuPath(menu.path))
-    }
-  }
-
-  return paths
-})
-
-const visibleNavigation = computed(() => {
-  return accessibleNavigation.value
-    .filter(item => !hiddenNavigationKeys.has(item.key))
-    .filter(Boolean)
-})
-
-const selectedKeys = computed(() => {
-  if (route.path.startsWith('/bugs')) return ['/bugs']
-  if (route.path.startsWith('/personal/tasks')) return ['/personal/tasks']
-  if (route.path.startsWith('/personal/requirements')) return ['/personal/requirements']
-  if (route.path.startsWith('/personal/daily')) return ['/personal/daily']
-  if (route.path.startsWith('/projects/management')) return ['/projects/management']
-  if (route.path.startsWith('/projects/execution')) return ['/projects/execution']
-  return [route.path]
 })
 
 const breadcrumbItems = computed(() => {
@@ -439,23 +300,13 @@ const breadcrumbItems = computed(() => {
 
 const saveAuthProfile = profile => {
   localStorage.setItem(AUTH_PROFILE_KEY, JSON.stringify(profile))
-  localStorage.setItem(
-    USER_INFO_KEY,
-    JSON.stringify({
-      userId: profile.id,
-      realName: profile.realName,
-    })
-  )
+  localStorage.setItem(USER_INFO_KEY, JSON.stringify({ userId: profile.id, realName: profile.realName }))
 }
 
 const clearAuthCache = () => {
   localStorage.removeItem(TOKEN_KEY)
   MENU_CACHE_KEYS.forEach(key => localStorage.removeItem(key))
-  authProfile.value = {
-    menus: [],
-    permissions: [],
-    realName: '',
-  }
+  authProfile.value = { menus: [], permissions: [], realName: '' }
 }
 
 const loadCurrentUserProfile = async () => {
@@ -468,11 +319,7 @@ const loadCurrentUserProfile = async () => {
 
   try {
     const profile = await getCurrentUser()
-    authProfile.value = {
-      ...profile,
-      menus: profile.menus || [],
-      permissions: profile.permissions || [],
-    }
+    authProfile.value = { ...profile, menus: profile.menus || [], permissions: profile.permissions || [] }
     saveAuthProfile(profile)
     ensureCurrentRouteAccess()
   } finally {
@@ -481,25 +328,35 @@ const loadCurrentUserProfile = async () => {
   }
 }
 
+const loadUnreadNoticeCount = async () => {
+  try {
+    const res = await getUnreadCount()
+    unreadNoticeCount.value = res?.data ?? 0
+  } catch {
+    // silent
+  }
+}
+
 onMounted(async () => {
   await loadCurrentUserProfile()
+  await loadUnreadNoticeCount()
 })
+
+// Re-sync open keys whenever the nav tree is (re)built from a fresh profile load
+watch(dynamicNavigation, () => syncOpenKeys(route.path))
 
 watch(
   () => route.path,
   path => {
     syncOpenKeys(path)
-
-    if (profileReady.value) {
-      ensureCurrentRouteAccess()
-    }
+    if (profileReady.value) ensureCurrentRouteAccess()
   },
   { immediate: true }
 )
 
 const handleOpenChange = keys => {
-  const latestKey = [...keys].reverse().find(key => rootMenuKeys.has(key))
-  openKeys.value = latestKey ? [latestKey] : []
+  const latest = [...keys].reverse().find(k => rootGroupIds.value.has(k))
+  openKeys.value = latest ? [latest] : []
 }
 
 const handleNavigate = path => {
@@ -507,20 +364,9 @@ const handleNavigate = path => {
 }
 
 const handleUserMenuClick = ({ key }) => {
-  if (key === 'profile') {
-    router.push('/account/profile')
-    return
-  }
-
-  if (key === 'password') {
-    router.push('/account/password')
-    return
-  }
-
-  if (key === 'logout') {
-    clearAuthCache()
-    router.push('/login')
-  }
+  if (key === 'profile') { router.push('/account/profile'); return }
+  if (key === 'password') { router.push('/account/password'); return }
+  if (key === 'logout') { clearAuthCache(); router.push('/login') }
 }
 </script>
 

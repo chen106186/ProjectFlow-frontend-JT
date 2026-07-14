@@ -791,7 +791,7 @@ const fetchProjectRelatedData = async projectId => {
       const planEnd = node.plannedEndDate?.replaceAll('-', '/') || '-'
       const actualStart = node.actualStartDate?.replaceAll('-', '/') || '-'
       const actualEnd = node.actualEndDate?.replaceAll('-', '/') || '-'
-      return { id: node.id, name: node.nodeName, planStart, planEnd, planTime: formatDateRange(planStart, planEnd), actualStart, actualEnd, actualTime: formatDateRange(actualStart, actualEnd), status: getDictLabel('taskStatus', node.status), statusCode: node.status, progress: node.progressPercent || 0, isOverdue: node.status === 'OVERDUE' }
+      return { id: node.id, name: node.label || node.nodeName, planStart, planEnd, planTime: formatDateRange(planStart, planEnd), actualStart, actualEnd, actualTime: formatDateRange(actualStart, actualEnd), status: getDictLabel('taskStatus', node.status), statusCode: node.status, progress: node.progressPercent || 0, isOverdue: node.status === 'OVERDUE' }
     })
     taskRows.value = taskResult.records.map(task => ({ id: task.id, name: task.name, owner: getUserName(task.assigneeId), priority: getDictLabel('taskPriority', task.priority), priorityCode: task.priority, status: getDictLabel('taskStatus', task.status), planStart: task.plannedStartDate || '-', planEnd: task.plannedEndDate || '-', actualStart: task.actualStartDate || '-', actualEnd: task.actualEndDate || '-' }))
     bugRows.value = bugResult.records.map(bug => ({ id: bug.id, code: `BUG-${bug.id}`, title: bug.title, severity: getDictLabel('bugPriority', bug.priority), priorityCode: bug.priority, status: getDictLabel('bugStatus', bug.status), statusCode: bug.status, assignee: getUserName(bug.assigneeId), creator: getUserName(bug.creatorId) }))
@@ -931,7 +931,6 @@ const handleSaveGanttNode = async () => {
 
   try {
     await updateGanttNode(route.params.id, ganttForm.id, {
-      nodeName: ganttForm.name,
       plannedStartDate: ganttForm.planStart,
       plannedEndDate: ganttForm.planEnd,
       actualStartDate: ganttForm.actualStart || null,

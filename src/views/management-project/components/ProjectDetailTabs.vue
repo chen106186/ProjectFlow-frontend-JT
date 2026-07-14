@@ -61,25 +61,37 @@
         </section>
 
         <section v-if="activeTab === 'tasks'" class="detail-panel">
-          <h3>全局风险预警</h3>
+          <div class="section-heading risk-heading">
+            <h3>全局风险预警</h3>
+            <a-button v-if="activeRisk" type="link" size="small" @click="activeRisk = ''">清除筛选</a-button>
+          </div>
           <div class="risk-grid">
-            <div v-for="risk in risks" :key="risk.label" class="semantic-card" :class="risk.class">
+            <button
+              v-for="risk in computedRisks"
+              :key="risk.key"
+              type="button"
+              :class="['semantic-card', risk.class, { 'risk-card--active': activeRisk === risk.key }]"
+              @click="activeRisk = activeRisk === risk.key ? '' : risk.key"
+            >
               <span class="semantic-card__icon"><component :is="risk.icon" /></span>
               <span class="semantic-card__content">
                 <span>{{ risk.label }}</span>
-                <strong>{{ risk.value }}</strong>
+                <strong>{{ risk.count }} 个</strong>
                 <small>{{ risk.desc }}</small>
               </span>
-            </div>
+            </button>
           </div>
           <div class="section-heading">
-            <h3>任务列表</h3>
+            <h3>
+              任务列表
+              <small v-if="activeRisk || taskStatusFilter || taskPersonFilter" class="filter-hint">已筛选 {{ filteredTaskDisplayRows.length }} 条</small>
+            </h3>
             <a-space>
-              <a-select value="全部状态" :options="taskStatusFilters" />
-              <a-select value="全部负责人" :options="personFilterOptions" />
+              <a-select v-model:value="taskStatusFilter" :options="TASK_STATUS_OPTIONS" style="min-width:120px" />
+              <a-select v-model:value="taskPersonFilter" :options="taskPersonOptions" style="min-width:120px" />
             </a-space>
           </div>
-          <a-table row-key="id" :columns="taskColumns" :data-source="taskRows" :loading="taskLoading" :pagination="pagination" size="small" :scroll="{ x: 950 }">
+          <a-table row-key="id" :columns="taskColumns" :data-source="filteredTaskDisplayRows" :loading="taskLoading" :pagination="taskTablePagination" size="small" :scroll="{ x: 950 }">
             <template #bodyCell="{ column, text }">
               <a-tag v-if="column.dataIndex === 'priority'" color="red">{{ text }}</a-tag>
               <a-tag v-else-if="column.dataIndex === 'status'" color="processing">{{ text }}</a-tag>
@@ -202,9 +214,9 @@
 </template>
 
 <script setup>
-import { DeleteOutlined, DownloadOutlined, FileOutlined, FolderAddOutlined, FolderOpenOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons-vue'
+import { CheckCircleOutlined, ClockCircleOutlined, DeleteOutlined, DownloadOutlined, FileOutlined, FireOutlined, FolderAddOutlined, FolderOpenOutlined, PlusOutlined, UploadOutlined, WarningOutlined } from '@ant-design/icons-vue'
 import dayjs from 'dayjs'
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 
 const props = defineProps({
   activeTab: { type: String, required: true },
@@ -217,7 +229,6 @@ const props = defineProps({
   ganttStatusColors: { type: Object, required: true },
   ganttCustomRow: { type: Function, required: true },
   detailLoading: { type: Boolean, default: false },
-  risks: { type: Array, required: true },
   taskColumns: { type: Array, required: true },
   taskRows: { type: Array, required: true },
   taskLoading: { type: Boolean, default: false },
@@ -260,6 +271,73 @@ const emit = defineEmits([
 
 const ganttRef = ref()
 const documentSearch = ref('')
+
+// ── task risk filtering ──────────────────────────────────────────────────────
+const activeRisk = ref('')
+const taskStatusFilter = ref('')
+const taskPersonFilter = ref('')
+
+// reset local filters when switching to tasks tab
+watch(() => props.activeTab, tab => {
+  if (tab !== 'tasks') return
+  activeRisk.value = ''
+  taskStatusFilter.value = ''
+  taskPersonFilter.value = ''
+})
+
+const TASK_STATUS_OPTIONS = [
+  { label: '全部状态', value: '' },
+  { label: '未开始', value: 'NOT_STARTED' },
+  { label: '进行中', value: 'IN_PROGRESS' },
+  { label: '即将到期', value: 'DUE_SOON' },
+  { label: '已逾期', value: 'OVERDUE' },
+  { label: '已完成', value: 'COMPLETED' },
+  { label: '已暂停', value: 'PAUSED' },
+]
+
+const taskPersonOptions = computed(() => {
+  const seen = new Set()
+  const opts = [{ label: '全部负责人', value: '' }]
+  for (const row of props.taskRows) {
+    if (row.assigneeId && !seen.has(row.assigneeId)) {
+      seen.add(row.assigneeId)
+      opts.push({ label: row.owner, value: row.assigneeId })
+    }
+  }
+  return opts
+})
+
+const riskKey = task => {
+  if (task.statusCode === 'DUE_SOON') return 'due'
+  if (task.statusCode !== 'OVERDUE') return 'normal'
+  const days = task.plannedEndDate ? dayjs().diff(dayjs(task.plannedEndDate), 'day') : 0
+  return days >= 3 ? 'high' : 'medium'
+}
+
+const computedRisks = computed(() => {
+  const counts = { high: 0, medium: 0, due: 0, normal: 0 }
+  for (const task of props.taskRows) counts[riskKey(task)]++
+  return [
+    { key: 'high', label: '高风险任务', count: counts.high, desc: '延期 ≥ 3 天', class: 'risk-high', icon: FireOutlined },
+    { key: 'medium', label: '中风险任务', count: counts.medium, desc: '延期 1 - 2 天', class: 'risk-medium', icon: WarningOutlined },
+    { key: 'due', label: '即将到期', count: counts.due, desc: '未来 3 天内到期', class: 'risk-due', icon: ClockCircleOutlined },
+    { key: 'normal', label: '按计划进行', count: counts.normal, desc: '无延期风险', class: 'risk-normal', icon: CheckCircleOutlined },
+  ]
+})
+
+const filteredTaskDisplayRows = computed(() =>
+  props.taskRows.filter(task => {
+    if (activeRisk.value && riskKey(task) !== activeRisk.value) return false
+    if (taskStatusFilter.value && task.statusCode !== taskStatusFilter.value) return false
+    if (taskPersonFilter.value && task.assigneeId !== taskPersonFilter.value) return false
+    return true
+  })
+)
+
+const taskTablePagination = computed(() => ({
+  ...props.pagination,
+  total: filteredTaskDisplayRows.value.length,
+}))
 const canBatchDownload = computed(() => props.selectedDocumentIds.length > 0)
 const filteredDocsBySearch = computed(() => {
   const q = documentSearch.value.trim().toLowerCase()
@@ -641,6 +719,33 @@ defineExpose({
 .gantt-scroll :deep(.gantt-due-soon .bar-label),
 .gantt-scroll :deep(.gantt-not-started .bar-label) {
   fill: #1d1d1f;
+}
+
+.risk-heading {
+  margin-bottom: 12px;
+}
+
+.risk-grid .semantic-card {
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+
+.risk-card--active {
+  border-color: currentColor !important;
+  box-shadow: 0 0 0 3px rgb(currentcolor / 15%), 0 4px 16px rgb(0 0 0 / 5%) !important;
+  transform: translateY(-2px);
+}
+
+.risk-high.risk-card--active { box-shadow: 0 0 0 3px rgb(215 0 21 / 15%), 0 4px 16px rgb(0 0 0 / 5%) !important; }
+.risk-medium.risk-card--active { box-shadow: 0 0 0 3px rgb(201 52 0 / 15%), 0 4px 16px rgb(0 0 0 / 5%) !important; }
+.risk-due.risk-card--active { box-shadow: 0 0 0 3px rgb(0 102 204 / 15%), 0 4px 16px rgb(0 0 0 / 5%) !important; }
+.risk-normal.risk-card--active { box-shadow: 0 0 0 3px rgb(36 138 61 / 15%), 0 4px 16px rgb(0 0 0 / 5%) !important; }
+
+.filter-hint {
+  margin-left: 8px;
+  color: #1677ff;
+  font-size: 13px;
+  font-weight: 400;
 }
 
 .section-heading,

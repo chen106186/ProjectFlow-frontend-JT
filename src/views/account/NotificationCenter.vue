@@ -177,6 +177,10 @@ const navigateTo = (item) => {
     router.push({ name: 'PersonalTaskDetail', params: { id: String(item.businessId) } })
   } else if (type === 'Bug') {
     router.push({ name: 'BugDetail', params: { id: String(item.businessId) } })
+  } else if (type === 'ManagementProject') {
+    router.push({ name: 'ManagementProjectDetail', params: { id: String(item.businessId) } })
+  } else if (type === 'ExecutionProject') {
+    router.push({ name: 'ExecutionProjectDetail', params: { id: String(item.businessId) } })
   }
 }
 

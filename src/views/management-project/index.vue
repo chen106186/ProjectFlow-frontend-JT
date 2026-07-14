@@ -91,7 +91,6 @@
           :gantt-status-colors="ganttStatusColors"
           :gantt-custom-row="handleGanttRow"
           :detail-loading="detailLoading"
-          :risks="risks"
           :task-columns="taskColumns"
           :task-rows="taskRows"
           :task-loading="taskLoading"
@@ -428,11 +427,52 @@ const typeFilterOptions = computed(() => withAll(projectTypeFormOptions.value))
 const stageFilterOptions = computed(() => withAll(stageOptions.value))
 const projectStatusFilterOptions = computed(() => withAll(projectStatusOptions.value))
 const contractFilterOptions = computed(() => withAll(contractOptions.value))
-const nodeOptions = computed(() => stageOptions.value.map(item => ({ label: item.label, value: item.label })))
+const PROJECT_NODE_TEMPLATES = {
+  DIGITALIZATION: [
+    { code: 'FEASIBILITY_APPROVAL', label: '可研批复' },
+    { code: 'BIDDING', label: '招标' },
+    { code: 'CONTRACT_SIGNING', label: '合同签订' },
+    { code: 'PRELIMINARY_APPROVAL', label: '概设批复' },
+    { code: 'REQUIREMENT_ANALYSIS', label: '需求分析' },
+    { code: 'UI_DESIGN', label: 'UI设计' },
+    { code: 'DEVELOPMENT', label: '开发' },
+    { code: 'TESTING', label: '测试' },
+    { code: 'THIRD_PARTY_TESTING', label: '第三方测试' },
+    { code: 'DEPLOYMENT', label: '实施部署' },
+    { code: 'TRIAL_RUN', label: '上线试运行' },
+    { code: 'ACCEPTANCE', label: '验收' },
+    { code: 'COMPLETION', label: '完工' },
+  ],
+  RESEARCH: [
+    { code: 'FEASIBILITY_APPROVAL', label: '可研批复' },
+    { code: 'PATENT_APPLICATION', label: '专利申请' },
+    { code: 'PAPER_ACCEPTANCE_SOFTWARE_COPYRIGHT', label: '论文录用(软著申请)' },
+    { code: 'THIRD_PARTY_EVALUATION', label: '三方测评' },
+    { code: 'ACCEPTANCE_PREPARATION', label: '验收准备' },
+    { code: 'COMPLETION', label: '完工' },
+  ],
+  EXTERNAL: [
+    { code: 'BUSINESS_STAGE', label: '商务阶段' },
+    { code: 'USER_RESEARCH', label: '用户调研' },
+    { code: 'REQUIREMENT_CONFIRMATION', label: '需求确认' },
+    { code: 'CONTRACT_SIGNING', label: '合同签订' },
+    { code: 'DEVELOPMENT', label: '开发' },
+    { code: 'TESTING', label: '测试' },
+    { code: 'DEPLOYMENT_IMPLEMENTATION', label: '部署实施' },
+    { code: 'ACCEPTANCE', label: '验收' },
+    { code: 'COMPLETION', label: '完工' },
+  ],
+}
+const nodeOptions = computed(() => {
+  const tpl = PROJECT_NODE_TEMPLATES[formState.type]
+  if (!tpl) return []
+  return tpl.map(item => ({ label: item.label, value: item.code }))
+})
 const groupOptions = [{ label: '项目经理', value: 'manager' }, { label: '项目阶段', value: 'stage' }, { label: '项目状态', value: 'status' }, { label: '项目类型', value: 'type' }, { label: '合同状态', value: 'contractStatus' }]
 
 const projects = ref([])
-const createDefaultForm = () => ({ name: '', managerId: undefined, department: '', contractor: '', supervisor: '', type: 'DIGITALIZATION', nodes: [], stage: 'BUSINESS_OPPORTUNITY', status: 'NOT_STARTED', contractStatus: 'NOT_SIGNED', plannedStartDate: undefined, plannedEndDate: undefined, amount: 0, description: '' })
+const allNodeCodesForType = type => (PROJECT_NODE_TEMPLATES[type] || []).map(item => item.code)
+const createDefaultForm = () => ({ name: '', managerId: undefined, department: '', contractor: '', supervisor: '', type: 'DIGITALIZATION', nodes: allNodeCodesForType('DIGITALIZATION'), stage: 'BUSINESS_OPPORTUNITY', status: 'NOT_STARTED', contractStatus: 'NOT_SIGNED', plannedStartDate: undefined, plannedEndDate: undefined, amount: 0, description: '' })
 const formState = reactive(createDefaultForm())
 const query = reactive({ keyword: '', managerId: '全部', type: '全部', contractStatus: '全部', stage: '全部', status: '全部' })
 const appliedQuery = reactive({ ...query })
@@ -940,7 +980,7 @@ const fetchProjectRelatedData = async projectId => {
       const planEnd = node.plannedEndDate?.replaceAll('-', '/') || '-'
       const actualStart = node.actualStartDate?.replaceAll('-', '/') || '-'
       const actualEnd = node.actualEndDate?.replaceAll('-', '/') || '-'
-      return { id: node.id, name: node.nodeName, planStart, planEnd, planTime: formatDateRange(planStart, planEnd), actualStart, actualEnd, actualTime: formatDateRange(actualStart, actualEnd), status: getDictLabel('taskStatus', node.status), statusCode: node.status, progress: node.progressPercent || 0, isOverdue: node.status === 'OVERDUE' }
+      return { id: node.id, name: node.label || node.nodeName, planStart, planEnd, planTime: formatDateRange(planStart, planEnd), actualStart, actualEnd, actualTime: formatDateRange(actualStart, actualEnd), status: getDictLabel('taskStatus', node.status), statusCode: node.status, progress: node.progressPercent || 0, isOverdue: node.status === 'OVERDUE' }
     })
     taskRows.value = taskResult.records.map(task => ({ id: task.id, name: task.name, owner: getUserName(task.assigneeId), assigneeId: task.assigneeId, priority: getDictLabel('taskPriority', task.priority), priorityCode: task.priority, status: getDictLabel('taskStatus', task.status), statusCode: task.status, planStart: task.plannedStartDate || '-', planEnd: task.plannedEndDate || '-', plannedEndDate: task.plannedEndDate || null, actualStart: task.actualStartDate || '-', actualEnd: task.actualEndDate || '-' }))
     bugRows.value = bugResult.records.map(bug => ({ id: bug.id, code: `BUG-${bug.id}`, title: bug.title, severity: getDictLabel('bugPriority', bug.priority), priorityCode: bug.priority, status: getDictLabel('bugStatus', bug.status), statusCode: bug.status, assignee: getUserName(bug.assigneeId), creator: getUserName(bug.creatorId) }))
@@ -1008,8 +1048,8 @@ const syncRoute = async () => {
     detailLoading.value = true
     try {
       const [project, ganttNodes] = await Promise.all([getProjectDetail(projectId), getGanttNodes(projectId)])
-      const existingNodeNames = Array.isArray(ganttNodes) ? ganttNodes.map(n => n.nodeName).filter(Boolean) : []
-      Object.assign(formState, createDefaultForm(), mapProjectToForm(project), { nodes: existingNodeNames })
+      const existingNodeCodes = Array.isArray(ganttNodes) ? ganttNodes.map(n => n.nodeCode).filter(Boolean) : []
+      Object.assign(formState, createDefaultForm(), mapProjectToForm(project), { nodes: existingNodeCodes })
       editingId.value = project.id
     } catch (error) {
       message.error(error.message)
@@ -1019,6 +1059,7 @@ const syncRoute = async () => {
   }
   if (viewMode.value === 'detail') { activeTab.value = 'gantt'; await fetchProjectRelatedData(projectId) }
 }
+watch(() => formState.type, type => { formState.nodes = allNodeCodesForType(type) })
 watch(() => [route.name, route.params.id, route.query.status], syncRoute)
 watch(activeTab, renderGantt)
 watch(groupField, () => { collapsedGroups.value = [] })
@@ -1075,7 +1116,7 @@ const handleSaveGanttNode = async () => {
   await ganttFormRef.value?.validate()
   ganttSubmitLoading.value = true
   try {
-    await updateGanttNode(route.params.id, ganttForm.id, { nodeName: ganttForm.name, plannedStartDate: ganttForm.planStart, plannedEndDate: ganttForm.planEnd, actualStartDate: ganttForm.actualStart || null, actualEndDate: ganttForm.actualEnd || null, status: ganttForm.status, progressPercent: ganttForm.progress })
+    await updateGanttNode(route.params.id, ganttForm.id, { plannedStartDate: ganttForm.planStart, plannedEndDate: ganttForm.planEnd, actualStartDate: ganttForm.actualStart || null, actualEndDate: ganttForm.actualEnd || null, status: ganttForm.status, progressPercent: ganttForm.progress })
     ganttEditVisible.value = false
     await fetchProjectRelatedData(route.params.id)
     message.success('节点更新成功')
@@ -1485,11 +1526,7 @@ const handleSubmit = async () => {
       receivableAmount: formState.amount,
       description: formState.description,
     }
-    if (editingId.value) {
-      projectData.nodeNames = formState.nodes
-    } else {
-      projectData.nodes = formState.nodes.map(name => ({ nodeName: name }))
-    }
+    projectData.nodeCodes = formState.nodes
     const savedProject = editingId.value
       ? await updateProject(editingId.value, projectData)
       : await createProject(projectData)
