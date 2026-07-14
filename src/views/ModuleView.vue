@@ -17,9 +17,9 @@
                   <th>任务名称</th>
                   <td>{{ selectedTaskDetail.name || '-' }}</td>
                   <th>所属项目</th>
-                  <td>{{ getTaskProjectName(selectedTaskDetail.projectId) }}</td>
+                  <td>{{ selectedTaskDetail.projectName || getTaskProjectName(selectedTaskDetail.projectId) }}</td>
                   <th>负责人</th>
-                  <td>{{ getTaskUserName(selectedTaskDetail.assigneeId) }}</td>
+                  <td>{{ selectedTaskDetail.assigneeName || getTaskUserName(selectedTaskDetail.assigneeId) }}</td>
                 </tr>
                 <tr>
                   <th>角色</th>
@@ -62,15 +62,17 @@
               <template #extra>
                 <a-button type="primary" size="small" @click="uploadOpen = true">上传文件</a-button>
               </template>
-              <a-table :columns="attachmentColumns" :data-source="attachments" :pagination="false" size="small" row-key="name">
+              <a-table :columns="attachmentColumns" :data-source="attachments" :pagination="false" size="small" row-key="id" :locale="{ emptyText: '暂无附件' }">
                 <template #bodyCell="{ column, record, text }">
                   <template v-if="column.dataIndex === 'name'">
                     <span class="file-name"><FileTextOutlined />{{ text }}</span>
                   </template>
                   <template v-else-if="column.dataIndex === 'action'">
                     <a-space :size="6">
-                      <a-button type="primary" size="small">下载</a-button>
-                      <a-button danger size="small">删除</a-button>
+                      <a-button type="primary" size="small" @click="handleDownloadTaskAttachment(record)">下载</a-button>
+                      <a-popconfirm title="确认删除该附件?" ok-text="删除" cancel-text="取消" @confirm="handleDeleteTaskAttachment(record)">
+                        <a-button danger size="small">删除</a-button>
+                      </a-popconfirm>
                     </a-space>
                   </template>
                   <template v-else>{{ record[column.dataIndex] }}</template>
@@ -82,10 +84,11 @@
               <template #title>
                 <span class="section-title"><EditOutlined /> 操作日志</span>
               </template>
-              <a-timeline>
-                <a-timeline-item v-for="log in taskLogs" :key="log.time">
-                  <span class="log-meta">{{ log.time }}　{{ log.user }}</span>
-                  <p>{{ log.text }}</p>
+              <a-empty v-if="!taskLogs.length" description="暂无操作日志" />
+              <a-timeline v-else>
+                <a-timeline-item v-for="log in taskLogs" :key="log.id">
+                  <span class="log-meta">{{ formatDateTime(log.createdAt) }}　{{ log.operatorName || '-' }}</span>
+                  <p>{{ log.content || '-' }}</p>
                 </a-timeline-item>
               </a-timeline>
             </a-card>
@@ -93,9 +96,10 @@
 
           <a-card class="prototype-card related-bugs" :bordered="false">
             <template #title>
-              <span class="section-title"><BugOutlined /> 关联Bug（5）</span>
+              <span class="section-title"><BugOutlined /> 关联Bug（{{ relatedBugs.length }}）</span>
             </template>
-            <article v-for="bug in relatedBugs" :key="bug.code" class="bug-mini-card">
+            <a-empty v-if="!relatedBugs.length" description="暂无关联Bug" />
+            <article v-for="bug in relatedBugs" v-else :key="bug.code" class="bug-mini-card">
               <p class="bug-code"><BugOutlined /> {{ bug.code }}</p>
               <strong>{{ bug.title }}</strong>
               <div>
@@ -235,42 +239,7 @@
     </template>
 
     <template v-else-if="isPersonalBugs">
-      <section v-if="personalMode === 'bug-detail'" class="personal-page">
-        <a-button class="back-button" @click="handleBackToBugList">
-          <template #icon><LeftOutlined /></template>
-          返回
-        </a-button>
-        <a-spin :spinning="bugDetailLoading">
-          <a-empty v-if="!selectedBugDetail" description="暂无详情" />
-          <a-card v-else class="prototype-card bug-detail-card" :bordered="false">
-            <h2>基本信息</h2>
-            <div class="bug-info-grid">
-              <span>Bug编号</span><strong>{{ selectedBugDetail.code }}</strong>
-              <span>标题</span><strong>{{ selectedBugDetail.title }}</strong>
-              <span>所属项目</span><strong>{{ selectedBugDetail.project }}</strong>
-              <span>严重等级</span><strong><a-tag :color="selectedBugDetail.levelColor">{{ selectedBugDetail.level }}</a-tag></strong>
-              <span>状态</span><strong><a-tag :color="selectedBugDetail.statusColor">{{ selectedBugDetail.status }}</a-tag></strong>
-              <span>指定人</span><strong>{{ selectedBugDetail.assignee }}</strong>
-              <span>创建人</span><strong>{{ selectedBugDetail.creator }}</strong>
-              <span>关闭时间</span><strong>{{ formatDateTime(selectedBugDetail.closedAt) }}</strong>
-            </div>
-            <div class="bug-text-block">
-              <h3>问题描述</h3>
-              <p>{{ selectedBugDetail.description || '-' }}</p>
-              <h3>重现步骤</h3>
-              <p>{{ selectedBugDetail.reproduceSteps || '-' }}</p>
-              <template v-if="selectedBugDetail.fixAnalysis || selectedBugDetail.fixDetail">
-                <h3>问题分析</h3>
-                <p>{{ selectedBugDetail.fixAnalysis || '-' }}</p>
-                <h3>修复细节</h3>
-                <p>{{ selectedBugDetail.fixDetail || '-' }}</p>
-              </template>
-            </div>
-          </a-card>
-        </a-spin>
-      </section>
-
-      <section v-else class="personal-page">
+      <section class="personal-page">
         <a-card class="prototype-card filter-panel app-filter-card" :bordered="false">
           <a-form class="prototype-filter bug-filter app-filter-form" layout="inline">
             <a-form-item label="搜索"><a-input v-model:value="bugFilter.keyword" placeholder="请输入关键字" allow-clear /></a-form-item>
@@ -584,10 +553,10 @@
       <template #footer>
         <a-space>
           <a-button @click="uploadOpen = false">取消</a-button>
-          <a-button type="primary" @click="uploadOpen = false">开始上传</a-button>
+          <a-button type="primary" :loading="taskUploadLoading" @click="handleStartTaskUpload">开始上传</a-button>
         </a-space>
       </template>
-      <a-upload-dragger class="upload-dragger" :file-list="[]" name="file">
+      <a-upload-dragger class="upload-dragger" :file-list="uploadFiles" name="file" :before-upload="handleTaskBeforeUpload" @remove="handleRemoveTaskUploadFile">
         <p class="upload-icon"><InboxOutlined /></p>
         <p>拖拽文件到此处，或点击选择文件</p>
         <p class="muted">支持：docx、xlsx、pdf、png、jpg、drawio，单个文件不超过 50MB</p>
@@ -600,11 +569,6 @@
         <a-progress :percent="file.percent" :show-info="false" />
         <a-button type="link">{{ file.percent === 100 ? '完成' : '取消' }}</a-button>
       </div>
-      <a-form class="upload-meta-form" layout="inline">
-        <a-form-item label="存储位置"><a-select value="项目文档库" :options="storeOptions" /></a-form-item>
-        <a-form-item label="文件分类"><a-select value="需求类" :options="categoryOptions" /></a-form-item>
-        <a-form-item label="版本说明"><a-textarea placeholder="请输入版本更新说明..." :rows="3" /></a-form-item>
-      </a-form>
     </a-modal>
   </div>
 </template>
@@ -639,7 +603,26 @@ import dayjs from 'dayjs'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { createDailyReport, fetchDailyReports } from '@/api/dailyReports'
-import { closeBug, createTask, deleteBug, deleteTask, fixBug, getDicts, getMyStatistics, getProjectBugs, getProjectList, getProjectTasks, getSystemUsers, getTaskById, updateBug, updateTask } from '@/api/managementProject'
+import {
+  closeBug,
+  createTask,
+  deleteBug,
+  deleteProjectFile,
+  deleteTask,
+  downloadProjectFile,
+  fixBug,
+  getDicts,
+  getMyStatistics,
+  getProjectBugs,
+  getProjectFiles,
+  getProjectList,
+  getProjectTasks,
+  getSystemUsers,
+  getTaskById,
+  updateBug,
+  updateTask,
+  uploadProjectFile,
+} from '@/api/managementProject'
 import { formatDateTime } from '@/utils/dateTime'
 import { OPERATION_ACTIONS, OPERATION_MODULES, recordOperationLog } from '@/utils/operationLog'
 
@@ -678,6 +661,8 @@ const taskPaginationTotal = ref(0)
 const taskSubmitLoading = ref(false)
 const taskDetailLoading = ref(false)
 const selectedTaskDetail = ref(null)
+const taskAttachmentRows = ref([])
+const taskUploadLoading = ref(false)
 const editingTaskId = ref(null)
 const taskDisplayMode = ref('list')
 const taskGroupField = ref('project')
@@ -691,8 +676,6 @@ const bugFilter = ref({
   priority: undefined,
   status: undefined,
 })
-const selectedBugDetail = ref(null)
-const bugDetailLoading = ref(false)
 const taskFilter = ref({
   keyword: '',
   projectId: undefined,
@@ -719,6 +702,7 @@ const dailyForm = ref({
   reportDate: dayjs(),
   content: '',
 })
+const uploadFiles = ref([])
 const statsPeriod = ref('week')
 const statsData = ref(null)
 const statsLoading = ref(false)
@@ -834,18 +818,8 @@ watch(
     if ((name === 'PersonalTasks' || taskModuleRouteNames.includes(name)) && detail === 'task') {
       personalMode.value = 'task-detail'
       if (taskId && (!selectedTaskDetail.value || String(selectedTaskDetail.value.id) !== String(taskId))) {
-        selectedTaskDetail.value = null
-        taskDetailLoading.value = true
-        try {
-          selectedTaskDetail.value = await getTaskById(taskId)
-        } catch (error) {
-          message.error(error.message || '任务详情加载失败')
-        } finally {
-          taskDetailLoading.value = false
-        }
+        await loadTaskDetailData(taskId)
       }
-    } else if (name === 'PersonalBugs' && detail === 'bug') {
-      personalMode.value = 'bug-detail'
     } else {
       personalMode.value = name === 'PersonalBugs' ? 'bug-list' : 'task-list'
     }
@@ -1183,13 +1157,31 @@ onBeforeUnmount(() => {
   disposeStatisticsCharts()
 })
 
-const updateDetailQuery = detail => {
+const updateDetailQuery = (detail, taskId) => {
   router.replace({
     path: route.path,
     query: detail
-      ? { ...route.query, detail }
+      ? { ...route.query, detail, ...(taskId ? { taskId } : {}) }
       : Object.fromEntries(Object.entries(route.query).filter(([key]) => key !== 'detail' && key !== 'taskId')),
   })
+}
+
+const loadTaskDetailData = async taskId => {
+  selectedTaskDetail.value = null
+  taskAttachmentRows.value = []
+  taskDetailLoading.value = true
+  try {
+    const [detail, files] = await Promise.all([
+      getTaskById(taskId),
+      getProjectFiles({ businessType: 'TASK', businessId: taskId }),
+    ])
+    selectedTaskDetail.value = detail
+    taskAttachmentRows.value = Array.isArray(files) ? files : []
+  } catch (error) {
+    message.error(error.message || '任务详情加载失败')
+  } finally {
+    taskDetailLoading.value = false
+  }
 }
 
 const handleTaskDetail = async record => {
@@ -1198,12 +1190,10 @@ const handleTaskDetail = async record => {
     return
   }
 
-  selectedTaskDetail.value = null
   personalMode.value = 'task-detail'
-  updateDetailQuery('task')
-  taskDetailLoading.value = true
-  try {
-    selectedTaskDetail.value = await getTaskById(record.id)
+  updateDetailQuery('task', record.id)
+  await loadTaskDetailData(record.id)
+  if (selectedTaskDetail.value) {
     void recordOperationLog({
       module: OPERATION_MODULES.TASK,
       action: OPERATION_ACTIONS.DETAIL,
@@ -1213,10 +1203,82 @@ const handleTaskDetail = async record => {
       detail: `查看任务详情：${record.name}`,
       routeName: route.name,
     })
+  }
+}
+
+const handleTaskBeforeUpload = file => {
+  if (file.size > 50 * 1024 * 1024) {
+    message.warning('单个文件不能超过50MB')
+    return false
+  }
+  uploadFiles.value.push({
+    uid: file.uid,
+    name: file.name,
+    size: formatFileSize(file.size),
+    percent: 0,
+    status: 'done',
+    originFile: file,
+  })
+  return false
+}
+
+const handleRemoveTaskUploadFile = file => {
+  uploadFiles.value = uploadFiles.value.filter(item => item.uid !== file.uid)
+}
+
+const handleStartTaskUpload = async () => {
+  if (!selectedTaskDetail.value?.id) {
+    message.warning('请先选择任务')
+    return
+  }
+  if (!uploadFiles.value.length) {
+    message.warning('请选择需要上传的文件')
+    return
+  }
+
+  taskUploadLoading.value = true
+  try {
+    for (const uploadFile of uploadFiles.value) {
+      const data = new FormData()
+      data.append('businessType', 'TASK')
+      data.append('businessId', selectedTaskDetail.value.id)
+      data.append('storageLocation', 'BUSINESS')
+      data.append('file', uploadFile.originFile)
+      await uploadProjectFile(data)
+      uploadFile.percent = 100
+    }
+    message.success('文件上传成功')
+    uploadOpen.value = false
+    uploadFiles.value = []
+    const files = await getProjectFiles({ businessType: 'TASK', businessId: selectedTaskDetail.value.id })
+    taskAttachmentRows.value = Array.isArray(files) ? files : []
   } catch (error) {
-    message.error(error.message || '任务详情加载失败')
+    message.error(error.message || '文件上传失败')
   } finally {
-    taskDetailLoading.value = false
+    taskUploadLoading.value = false
+  }
+}
+
+const handleDownloadTaskAttachment = async record => {
+  try {
+    const result = await downloadProjectFile(record.id)
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(result.blob)
+    link.download = result.fileName
+    link.click()
+    URL.revokeObjectURL(link.href)
+  } catch (error) {
+    message.error(error.message || '附件下载失败')
+  }
+}
+
+const handleDeleteTaskAttachment = async record => {
+  try {
+    await deleteProjectFile(record.id)
+    taskAttachmentRows.value = taskAttachmentRows.value.filter(item => item.id !== record.id)
+    message.success('附件删除成功')
+  } catch (error) {
+    message.error(error.message || '附件删除失败')
   }
 }
 
@@ -1409,14 +1471,7 @@ const handleBackToTaskList = () => {
 }
 
 const handleBugDetail = record => {
-  selectedBugDetail.value = record
-  personalMode.value = 'bug-detail'
-  updateDetailQuery('bug')
-}
-
-const handleBackToBugList = () => {
-  personalMode.value = 'bug-list'
-  updateDetailQuery()
+  router.push({ name: 'BugDetail', params: { id: record.id } })
 }
 
 const handleCreateBug = () => {
@@ -1476,9 +1531,6 @@ const handleVerifyBug = async record => {
     await closeBug(record.id)
     message.success('验证通过，Bug已关闭')
     await loadMyBugs()
-    if (selectedBugDetail.value?.id === record.id) {
-      selectedBugDetail.value = { ...selectedBugDetail.value, statusCode: 'CLOSED', status: '已关闭', statusColor: 'green' }
-    }
   } catch (error) {
     message.error(error.message || '操作失败')
   } finally {
@@ -1670,8 +1722,6 @@ const priorityOptions = [{ label: '紧急', value: '紧急' }, { label: '高', v
 const bugLevelOptions = [{ label: '严重', value: '严重' }, { label: '致命', value: '致命' }, { label: '一般', value: '一般' }]
 const taskOptions = [{ label: '用户管理模块前端开发', value: '用户管理模块前端开发' }]
 const todayOptions = [{ label: '今天', value: '今天' }, { label: '本周', value: '本周' }, { label: '本月', value: '本月' }]
-const storeOptions = [{ label: '项目文档库', value: '项目文档库' }, { label: '公共文档库', value: '公共文档库' }]
-const categoryOptions = ['合同类', '需求类', '设计类', '开发类', '验收类'].map(value => ({ label: value, value }))
 
 const smallPagination = {
   current: 1,
@@ -1720,34 +1770,26 @@ const attachmentColumns = [
   { title: '操作', dataIndex: 'action', width: 120 },
 ]
 
-const attachments = [
-  { name: '项目需求说明书V2.0.docx', type: 'DOCX', size: '2.3MB', version: 'V2.0', user: '张三', time: '06-20 10:30' },
-  { name: '系统架构设计图.drawio', type: 'DRAWIO', size: '1.1MB', version: 'V1.0', user: '李四', time: '06-19 15:20' },
-  { name: '接口文档V1.2.docx', type: 'DOCX', size: '856KB', version: 'V1.2', user: '王五', time: '06-18 09:15' },
-  { name: '项目需求说明书V2.0.docx', type: 'DOCX', size: '2.3MB', version: 'V2.0', user: '张三', time: '06-20 10:30' },
-  { name: '系统架构设计图.drawio', type: 'DRAWIO', size: '1.1MB', version: 'V1.0', user: '李四', time: '06-19 15:20' },
-  { name: '接口文档V1.2.docx', type: 'DOCX', size: '856KB', version: 'V1.2', user: '王五', time: '06-18 09:15' },
-]
+const getTaskFileType = file => {
+  const fileName = file?.originalName || ''
+  const extension = fileName.includes('.') ? fileName.split('.').pop() : ''
+  return extension ? extension.toUpperCase() : (file?.contentType || '-')
+}
 
-const relatedBugs = [
-  { code: 'BUG-2026-00102', title: '用户登录页面异常报错', level: '严重', status: '修复中', levelColor: 'red', statusColor: 'orange' },
-  { code: 'BUG-2026-00112', title: '权限校验绕过漏洞', level: '致命', status: '已提交', levelColor: 'red', statusColor: 'blue' },
-  { code: 'BUG-2026-00125', title: '文件上传大小限制不生效', level: '一般', status: '待验证', levelColor: 'orange', statusColor: 'purple' },
-  { code: 'BUG-2026-00125', title: '文件上传大小限制不生效', level: '一般', status: '待验证', levelColor: 'orange', statusColor: 'purple' },
-  { code: 'BUG-2026-00125', title: '文件上传大小限制不生效', level: '一般', status: '待验证', levelColor: 'orange', statusColor: 'purple' },
-]
+const attachments = computed(() =>
+  taskAttachmentRows.value.map(file => ({
+    id: file.id,
+    name: file.originalName || '-',
+    type: getTaskFileType(file),
+    size: formatFileSize(file.fileSize),
+    version: file.versionNo || '-',
+    user: file.uploaderId ? `用户 ${file.uploaderId}` : '-',
+    time: formatDateTime(file.uploadedAt),
+  }))
+)
 
-const taskLogs = [
-  { time: '2026-06-11 14:30', user: '张三', text: '上传XX文档和图片' },
-  { time: '2026-06-10 16:00', user: '张三', text: '完成新增/编辑用户弹窗组件开发，对接后端接口' },
-  { time: '2026-06-09 09:30', user: '张三', text: '搭建页面基础框架，引入Ant Design组件库' },
-  { time: '2026-06-01 10:00', user: '张三', text: '任务创建，开始需求分析' },
-]
-
-const uploadFiles = [
-  { name: '项目需求说明书V2.0.docx', size: '2.3MB', percent: 80 },
-  { name: '系统架构图.drawio', size: '1.1MB', percent: 100 },
-]
+const relatedBugs = computed(() => [])
+const taskLogs = computed(() => Array.isArray(selectedTaskDetail.value?.logs) ? selectedTaskDetail.value.logs : [])
 
 const STATS_PERIOD_OPTIONS = [
   { label: '今天', value: 'today' },
@@ -1815,6 +1857,8 @@ const trendPoints = [
 }
 
 .personal-page {
+  width: min(1600px, 100%);
+  margin: 0 auto;
   scrollbar-color: #b8b8b8 transparent;
   scrollbar-width: thin;
 }
@@ -2131,25 +2175,24 @@ const trendPoints = [
 
 .native-info-table th,
 .native-info-table td {
-  height: 48px;
-  padding: 12px 14px;
+  height: 34px;
+  padding: 8px 11px;
   font-size: 14px;
   text-align: left;
-  border: 1px solid #e6ebf1;
+  border: 1px solid #edf0f3;
   word-break: break-word;
 }
 
 .native-info-table th {
-  width: 12%;
-  color: #334155;
-  font-weight: 700;
-  background: #f3f6fa;
+  width: 10%;
+  color: #111827;
+  font-weight: 500;
+  background: #fafafa;
 }
 
 .native-info-table td {
-  width: 21.333%;
+  width: 20%;
   background: #fff;
-  font-weight: 400;
 }
 
 .task-detail-grid {
@@ -2227,68 +2270,6 @@ const trendPoints = [
 
 .log-card p {
   margin: 6px 0 0;
-}
-
-.bug-detail-card {
-  min-height: 460px;
-  max-height: calc(100vh - 174px);
-  padding: 8px 16px;
-  overflow: auto;
-  scrollbar-color: #b8b8b8 transparent;
-  scrollbar-width: thin;
-}
-
-.bug-detail-card h2 {
-  margin: 8px 0 26px;
-  font-size: 16px;
-}
-
-.bug-info-grid {
-  display: grid;
-  grid-template-columns: 174px minmax(220px, 1fr) 174px minmax(220px, 1fr);
-  overflow: hidden;
-  border: 1px solid #f0f0f0;
-  border-radius: 6px;
-}
-
-.bug-info-grid span,
-.bug-info-grid strong {
-  min-height: 44px;
-  padding: 12px 20px;
-  color: #111;
-  font-size: 14px;
-  font-weight: 400;
-  border-right: 1px solid #f0f0f0;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.bug-info-grid span {
-  background: #fafafa;
-}
-
-.bug-info-grid strong:nth-child(4n) {
-  border-right: 0;
-}
-
-.bug-info-grid span:nth-last-child(-n + 4),
-.bug-info-grid strong:nth-last-child(-n + 4) {
-  border-bottom: 0;
-}
-
-.bug-text-block {
-  padding: 20px 10px;
-  color: #444;
-}
-
-.bug-text-block h3 {
-  margin: 0 0 28px;
-  text-align: center;
-  font-size: 16px;
-  font-weight: 500;
-}
-
-.bug-text-block p {
-  margin: 0 0 28px;
 }
 
 .daily-header {
@@ -2969,8 +2950,7 @@ const trendPoints = [
 .personal-page::-webkit-scrollbar,
 .prototype-table-scroll::-webkit-scrollbar,
 .log-card :deep(.ant-card-body::-webkit-scrollbar),
-.related-bugs :deep(.ant-card-body::-webkit-scrollbar),
-.bug-detail-card::-webkit-scrollbar {
+.related-bugs :deep(.ant-card-body::-webkit-scrollbar) {
   width: 8px;
   height: 8px;
 }
@@ -2979,8 +2959,7 @@ const trendPoints = [
 .personal-page::-webkit-scrollbar-track,
 .prototype-table-scroll::-webkit-scrollbar-track,
 .log-card :deep(.ant-card-body::-webkit-scrollbar-track),
-.related-bugs :deep(.ant-card-body::-webkit-scrollbar-track),
-.bug-detail-card::-webkit-scrollbar-track {
+.related-bugs :deep(.ant-card-body::-webkit-scrollbar-track) {
   background: transparent;
 }
 
@@ -2988,8 +2967,7 @@ const trendPoints = [
 .personal-page::-webkit-scrollbar-thumb,
 .prototype-table-scroll::-webkit-scrollbar-thumb,
 .log-card :deep(.ant-card-body::-webkit-scrollbar-thumb),
-.related-bugs :deep(.ant-card-body::-webkit-scrollbar-thumb),
-.bug-detail-card::-webkit-scrollbar-thumb {
+.related-bugs :deep(.ant-card-body::-webkit-scrollbar-thumb) {
   background: #b8b8b8;
   border: 2px solid transparent;
   border-radius: 999px;
@@ -3000,8 +2978,7 @@ const trendPoints = [
 .personal-page::-webkit-scrollbar-thumb:hover,
 .prototype-table-scroll::-webkit-scrollbar-thumb:hover,
 .log-card :deep(.ant-card-body::-webkit-scrollbar-thumb:hover),
-.related-bugs :deep(.ant-card-body::-webkit-scrollbar-thumb:hover),
-.bug-detail-card::-webkit-scrollbar-thumb:hover {
+.related-bugs :deep(.ant-card-body::-webkit-scrollbar-thumb:hover) {
   background: #8f8f8f;
   border: 2px solid transparent;
   background-clip: content-box;

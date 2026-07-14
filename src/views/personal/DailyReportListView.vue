@@ -248,6 +248,8 @@ function goDetail(date) {
 
 <style scoped>
 .daily-list-page {
+  width: min(1600px, 100%);
+  margin: 0 auto;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 300px;
   gap: 16px;

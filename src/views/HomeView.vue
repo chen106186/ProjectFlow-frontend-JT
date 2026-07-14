@@ -346,7 +346,8 @@ const handleTodoClick = item => {
 
 <style scoped>
 .home-view {
-  min-width: 0;
+  width: min(1600px, 100%);
+  margin: 0 auto;
 }
 
 .home-metrics {

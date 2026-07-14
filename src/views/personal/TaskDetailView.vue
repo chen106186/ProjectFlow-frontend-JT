@@ -58,7 +58,7 @@
               <span class="section-title"><FileTextOutlined /> 附件展示</span>
             </template>
             <template #extra>
-              <a-button type="primary">上传文件</a-button>
+              <a-button type="primary" @click="uploadOpen = true">上传文件</a-button>
             </template>
 
             <a-table
@@ -75,8 +75,10 @@
                 </template>
                 <template v-else-if="column.dataIndex === 'operation'">
                   <a-space :size="4">
-                    <a-button type="link">下载</a-button>
-                    <a-button type="link" danger>删除</a-button>
+                    <a-button type="link" @click="handleDownloadAttachment(record)">下载</a-button>
+                    <a-popconfirm title="确认删除该附件?" ok-text="删除" cancel-text="取消" @confirm="handleDeleteAttachment(record)">
+                      <a-button type="link" danger>删除</a-button>
+                    </a-popconfirm>
                   </a-space>
                 </template>
                 <template v-else>{{ record[column.dataIndex] || '-' }}</template>
@@ -118,16 +120,30 @@
         </aside>
       </div>
     </a-spin>
+
+    <a-modal v-model:open="uploadOpen" width="640px" title="上传文件" centered>
+      <template #footer>
+        <a-space>
+          <a-button @click="uploadOpen = false">取消</a-button>
+          <a-button type="primary" :loading="uploadLoading" @click="handleStartUpload">开始上传</a-button>
+        </a-space>
+      </template>
+      <a-upload-dragger class="upload-dragger" :file-list="uploadFiles" name="file" :before-upload="handleBeforeUpload" @remove="handleRemoveUploadFile">
+        <p class="upload-icon"><InboxOutlined /></p>
+        <p>拖拽文件到此处，或点击选择文件</p>
+        <p class="muted">支持：docx、xlsx、pdf、png、jpg、drawio，单个文件不超过 50MB</p>
+      </a-upload-dragger>
+    </a-modal>
   </section>
 </template>
 
 <script setup>
-import { BugOutlined, EditOutlined, FileOutlined, FileTextOutlined, LeftOutlined } from '@ant-design/icons-vue'
+import { BugOutlined, EditOutlined, FileOutlined, FileTextOutlined, InboxOutlined, LeftOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { getTaskById } from '@/api/managementProject'
+import { deleteProjectFile, downloadProjectFile, getProjectFiles, getTaskById, uploadProjectFile } from '@/api/managementProject'
 import { useDictStore } from '@/store/dictStore'
 import { formatDateTime } from '@/utils/dateTime'
 
@@ -137,6 +153,10 @@ const dictStore = useDictStore()
 
 const loading = ref(false)
 const taskDetail = ref(null)
+const attachmentRows = ref([])
+const uploadOpen = ref(false)
+const uploadLoading = ref(false)
+const uploadFiles = ref([])
 
 const attachmentColumns = [
   { title: '文件名', dataIndex: 'name', width: 230 },
@@ -148,30 +168,20 @@ const attachmentColumns = [
   { title: '操作', dataIndex: 'operation', width: 110 },
 ]
 
-const getArrayField = (record, fields) => {
-  for (const field of fields) {
-    if (Array.isArray(record?.[field])) {
-      return record[field]
-    }
-  }
-
-  return []
-}
-
 const attachments = computed(() =>
-  getArrayField(taskDetail.value, ['attachments', 'files', 'fileList', 'documents']).map((item, index) => ({
-    id: item.id || item.fileId || item.name || index,
-    name: item.name || item.fileName || item.originalName || '-',
-    type: item.type || item.fileType || item.extension || '-',
-    size: item.sizeText || item.fileSizeText || item.size || '-',
-    version: item.version || '-',
-    uploaderName: item.uploaderName || item.uploadUserName || item.creatorName || '-',
-    uploadTime: formatShortDateTime(item.uploadTime || item.createdAt || item.createTime),
+  attachmentRows.value.map(item => ({
+    id: item.id,
+    name: item.originalName || '-',
+    type: getFileType(item),
+    size: formatFileSize(item.fileSize),
+    version: item.versionNo || '-',
+    uploaderName: item.uploaderId ? `用户 ${item.uploaderId}` : '-',
+    uploadTime: formatShortDateTime(item.uploadedAt),
   }))
 )
 
-const operationLogs = computed(() => getArrayField(taskDetail.value, ['logs', 'operationLogs', 'histories', 'historyList']))
-const relatedBugs = computed(() => getArrayField(taskDetail.value, ['relatedBugs', 'bugs', 'bugList']))
+const operationLogs = computed(() => Array.isArray(taskDetail.value?.logs) ? taskDetail.value.logs : [])
+const relatedBugs = computed(() => [])
 
 const getDictLabel = (type, value) => {
   if (!value) {
@@ -196,6 +206,23 @@ const formatShortDateTime = value => {
 
   const text = String(value).replace('T', ' ')
   return text.length > 10 ? text.slice(5, 16) : text
+}
+
+const getFileType = file => {
+  const fileName = file?.originalName || ''
+  const extension = fileName.includes('.') ? fileName.split('.').pop() : ''
+  return extension ? extension.toUpperCase() : (file?.contentType || '-')
+}
+
+const formatFileSize = size => {
+  const value = Number(size)
+  if (!Number.isFinite(value)) {
+    return '-'
+  }
+  if (value >= 1024 * 1024) {
+    return `${(value / 1024 / 1024).toFixed(1)}MB`
+  }
+  return `${Math.ceil(value / 1024)}KB`
 }
 
 const getProjectName = task => task?.projectName || task?.project?.name || task?.projectTitle || task?.projectId || '-'
@@ -226,7 +253,12 @@ const fetchTaskDetail = async () => {
 
   try {
     await dictStore.loadDicts()
-    taskDetail.value = await getTaskById(route.params.id)
+    const [detail, files] = await Promise.all([
+      getTaskById(route.params.id),
+      getProjectFiles({ businessType: 'TASK', businessId: route.params.id }),
+    ])
+    taskDetail.value = detail
+    attachmentRows.value = Array.isArray(files) ? files : []
   } catch (error) {
     message.error(error.message || '任务详情加载失败')
   } finally {
@@ -236,6 +268,79 @@ const fetchTaskDetail = async () => {
 
 const handleBack = () => {
   router.push('/personal/tasks')
+}
+
+const handleBeforeUpload = file => {
+  if (file.size > 50 * 1024 * 1024) {
+    message.warning('单个文件不能超过50MB')
+    return false
+  }
+  uploadFiles.value.push({
+    uid: file.uid,
+    name: file.name,
+    status: 'done',
+    originFile: file,
+  })
+  return false
+}
+
+const handleRemoveUploadFile = file => {
+  uploadFiles.value = uploadFiles.value.filter(item => item.uid !== file.uid)
+}
+
+const refreshAttachments = async () => {
+  const files = await getProjectFiles({ businessType: 'TASK', businessId: route.params.id })
+  attachmentRows.value = Array.isArray(files) ? files : []
+}
+
+const handleStartUpload = async () => {
+  if (!uploadFiles.value.length) {
+    message.warning('请选择需要上传的文件')
+    return
+  }
+
+  uploadLoading.value = true
+  try {
+    for (const uploadFile of uploadFiles.value) {
+      const data = new FormData()
+      data.append('businessType', 'TASK')
+      data.append('businessId', route.params.id)
+      data.append('storageLocation', 'BUSINESS')
+      data.append('file', uploadFile.originFile)
+      await uploadProjectFile(data)
+    }
+    message.success('文件上传成功')
+    uploadOpen.value = false
+    uploadFiles.value = []
+    await refreshAttachments()
+  } catch (error) {
+    message.error(error.message || '文件上传失败')
+  } finally {
+    uploadLoading.value = false
+  }
+}
+
+const handleDownloadAttachment = async record => {
+  try {
+    const result = await downloadProjectFile(record.id)
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(result.blob)
+    link.download = result.fileName
+    link.click()
+    URL.revokeObjectURL(link.href)
+  } catch (error) {
+    message.error(error.message || '附件下载失败')
+  }
+}
+
+const handleDeleteAttachment = async record => {
+  try {
+    await deleteProjectFile(record.id)
+    attachmentRows.value = attachmentRows.value.filter(item => item.id !== record.id)
+    message.success('附件删除成功')
+  } catch (error) {
+    message.error(error.message || '附件删除失败')
+  }
 }
 
 onMounted(fetchTaskDetail)
@@ -280,25 +385,24 @@ onMounted(fetchTaskDetail)
 
 .native-info-table th,
 .native-info-table td {
-  height: 48px;
-  padding: 12px 14px;
+  height: 34px;
+  padding: 8px 11px;
   font-size: 14px;
   text-align: left;
-  border: 1px solid #e6ebf1;
+  border: 1px solid #edf0f3;
   word-break: break-word;
 }
 
 .native-info-table th {
-  width: 12%;
-  color: #334155;
-  font-weight: 700;
-  background: #f3f6fa;
+  width: 10%;
+  color: #111827;
+  font-weight: 500;
+  background: #fafafa;
 }
 
 .native-info-table td {
-  width: 21.333%;
+  width: 20%;
   background: #fff;
-  font-weight: 400;
 }
 
 .detail-content-grid {
@@ -383,6 +487,15 @@ onMounted(fetchTaskDetail)
 .related-bugs-card :deep(.ant-card-body) {
   max-height: 520px;
   overflow: auto;
+}
+
+.upload-dragger {
+  margin-bottom: 12px;
+}
+
+.upload-icon {
+  color: #1677ff;
+  font-size: 42px;
 }
 
 .bug-card {

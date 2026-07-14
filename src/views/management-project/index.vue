@@ -1586,7 +1586,7 @@ const handleSubmit = async () => {
 </script>
 
 <style scoped>
-.project-page { min-height: 100%; min-width: 0; overflow: visible; color: #262626; }
+.project-page { min-height: 100%;  width: min(1600px, 100%);  margin: 0 auto; overflow: visible; color: #262626; }
 .project-filter, .project-list, .project-form-card { border: 1px solid #edf0f3; box-shadow: 0 2px 8px rgb(0 0 0 / 3%); }
 .project-filter { margin-bottom: 16px; }
 .project-filter :deep(.ant-card-body) { padding: 16px 18px 2px; }

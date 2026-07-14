@@ -439,7 +439,8 @@ onMounted(initPage)
 
 <style scoped>
 .requirement-page {
-  min-width: 0;
+  width: min(1600px, 100%);
+  margin: 0 auto;
   color: #262626;
 }
 

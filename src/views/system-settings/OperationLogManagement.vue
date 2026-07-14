@@ -192,6 +192,8 @@ onMounted(fetchLogs)
 
 <style scoped>
 .operation-log-page {
+  width: min(1600px, 100%);
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 16px;

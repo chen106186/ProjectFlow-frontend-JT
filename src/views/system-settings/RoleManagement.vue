@@ -297,6 +297,8 @@ const handleSavePermissions = async () => {
 
 <style scoped>
 .role-management {
+  width: min(1600px, 100%);
+  margin: 0 auto;
   min-height: calc(100vh - 126px);
 }
 

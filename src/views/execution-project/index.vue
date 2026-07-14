@@ -311,7 +311,7 @@ onMounted(async () => { await fetchReferenceData(); await fetchProjects() })
 </script>
 
 <style scoped>
-.execution-project-page { height: 100%; min-width: 0; overflow-y: auto; color: #262626; }
+.execution-project-page { height: 100%;  width: min(1600px, 100%);  margin: 0 auto; overflow-y: auto; color: #262626; }
 .execution-filter, .execution-list { border: 1px solid #edf0f3; box-shadow: 0 2px 8px rgb(0 0 0 / 3%); }
 .execution-filter { margin-bottom: 16px; }
 .execution-filter :deep(.ant-card-body) { padding: 20px 30px 4px; }

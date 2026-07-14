@@ -1,12 +1,5 @@
 <template>
   <section class="requirement-detail-page">
-    <!-- breadcrumb for management context -->
-    <div v-if="from === 'management'" class="page-breadcrumb">
-      <span class="breadcrumb-link" @click="handleBack">需求管理</span>
-      <span class="breadcrumb-sep"> &gt; </span>
-      <span class="breadcrumb-current">需求详情</span>
-    </div>
-
     <div class="detail-actions">
       <a-button class="back-button" @click="handleBack">
         <template #icon><ArrowLeftOutlined /></template>
@@ -315,25 +308,12 @@ onMounted(initPage)
 
 <style scoped>
 .requirement-detail-page {
-  min-width: 0;
+  width: min(1600px, 100%);
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
-
-.page-breadcrumb {
-  font-size: 15px;
-  color: #595959;
-}
-
-.breadcrumb-link {
-  color: #1677ff;
-  cursor: pointer;
-}
-
-.breadcrumb-link:hover { text-decoration: underline; }
-.breadcrumb-sep { color: #bfbfbf; margin: 0 4px; }
-.breadcrumb-current { color: #1f1f1f; font-weight: 500; }
 
 .detail-actions {
   display: flex;

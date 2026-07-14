@@ -402,7 +402,8 @@ const handleSave = async () => {
   display: flex;
   flex-direction: column;
   height: calc(100vh - 68px);
-  min-height: 0;
+  width: min(1600px, 100%);
+  margin: 0 auto;
   background: #f5f6fa;
 }
 

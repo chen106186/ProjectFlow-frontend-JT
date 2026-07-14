@@ -1185,7 +1185,7 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.execution-detail { min-height: 100%; min-width: 0; overflow: visible; color: #262626; }
+.execution-detail { min-height: 100%;  width: min(1600px, 100%);  margin: 0 auto; overflow: visible; color: #262626; }
 .execution-detail__heading { display: flex; align-items: center; gap: 16px; margin-bottom: 8px; }
 .execution-detail__heading :deep(.ant-tag) { padding: 6px 14px; font-size: 16px; }
 .execution-summary { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; margin: 0 0 14px; padding: 16px 18px; background: #fff; border-radius: 8px; }
