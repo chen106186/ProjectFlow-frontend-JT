@@ -122,7 +122,10 @@
           </a-form-item>
         </div>
       </a-form>
-      <div class="form-actions"><a-button @click="handleBack">取消</a-button><a-button type="primary" :loading="submitLoading" @click="handleSubmit">确认</a-button></div>
+      <div class="form-actions">
+        <a-button type="primary" :loading="submitLoading" @click="handleSubmit"><CheckOutlined />确认</a-button>
+        <a-button @click="handleBack"><CloseOutlined />取消</a-button>
+      </div>
     </a-card>
 
     <template v-else>
@@ -222,20 +225,15 @@
             </div>
 
             <!-- Right: sidebar -->
-            <aside class="detail-sidebar">
-              <a-card class="detail-card" :bordered="false">
-                <template #title><span class="detail-card__title">操作</span></template>
-                <div v-if="!isClosedBug(selectedBug)" class="action-list">
-                  <a-button block type="primary" @click="handleEditFromDetail">编辑 Bug</a-button>
-                  <a-button block @click="assignVisible = true">重新指派</a-button>
-                  <a-button block danger :loading="closeLoading" @click="handleCloseBug">关闭 Bug</a-button>
-                </div>
-                <div v-else class="closed-tip">
-                  <a-tag color="green" style="font-size:13px;padding:4px 10px">已关闭</a-tag>
-                  <p>该 Bug 已关闭，不可再进行操作。</p>
-                </div>
-              </a-card>
-            </aside>
+            <div v-if="isClosedBug(selectedBug)" class="closed-tip detail-closed-tip">
+              <a-tag color="green" style="font-size:13px;padding:4px 10px">已关闭</a-tag>
+              <p>该 Bug 已关闭，不可再进行操作。</p>
+            </div>
+          </div>
+          <div v-if="selectedBug && !isClosedBug(selectedBug)" class="detail-floating-actions">
+            <a-button type="primary" @click="handleEditFromDetail">编辑 Bug</a-button>
+            <a-button @click="assignVisible = true">重新指派</a-button>
+            <a-button danger :loading="closeLoading" @click="handleCloseBug">关闭 Bug</a-button>
           </div>
         </a-spin>
       </div>
@@ -251,7 +249,7 @@
 </template>
 
 <script setup>
-import { ArrowLeftOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { ArrowLeftOutlined, CheckOutlined, CloseOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
 import '@wangeditor/editor/dist/css/style.css'
@@ -440,7 +438,28 @@ const richTextImageUploadConf = {
   },
 }
 
-const toolbarConfig = {}
+const toolbarConfig = {
+  toolbarKeys: [
+    'headerSelect',
+    'fontSize',
+    '|',
+    'bold',
+    'italic',
+    'underline',
+    'through',
+    'color',
+    'bgColor',
+    '|',
+    'bulletedList',
+    'numberedList',
+    'justifyLeft',
+    'justifyCenter',
+    'justifyRight',
+    '|',
+    'uploadImage',
+    'insertImage',
+  ],
+}
 const commentEditorConfig = { placeholder: '请输入评论内容', scroll: true, ...richTextImageUploadConf }
 
 const handleCommentEditorCreated = editor => { commentEditorRef.value = editor }
@@ -667,10 +686,33 @@ onMounted(async () => {
 .bug-rich-editor :deep(.w-e-toolbar) { border-bottom: 1px solid #d9d9d9; }
 .bug-rich-editor :deep(.w-e-text-container) { min-height: 260px; }
 .bug-rich-editor :deep(.w-e-text-container img) { max-width: 100%; height: auto; }
-.form-actions { display: flex; justify-content: flex-end; gap: 20px; margin-top: 18px; }
-.form-actions .ant-btn { width: 120px; }
+.bug-form-card { padding-bottom: 96px; }
+
+.form-actions {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  z-index: 30;
+  display: flex;
+  gap: 26px;
+  align-items: center;
+  justify-content: center;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  padding: 10px 30px;
+  background: rgba(0, 0, 0, 0.28);
+  border-radius: 12px;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
+  transform: translateX(-50%);
+}
+.form-actions .ant-btn {
+  min-width: 80px;
+  height: 30px;
+  font-weight: 600;
+  border-radius: 3px;
+}
 /* ── Detail page ── */
-.detail-page { width: 100%; }
+.detail-page { width: min(1100px, 100%); margin: 0 auto; padding-bottom: 96px; }
 
 .detail-header {
   display: flex;
@@ -712,9 +754,7 @@ onMounted(async () => {
 .detail-header__tags { display: flex; gap: 6px; flex-shrink: 0; }
 
 .detail-body {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 240px;
-  gap: 18px;
+  display: block;
   align-items: start;
 }
 
@@ -839,16 +879,40 @@ onMounted(async () => {
 
 .send-row { display: flex; justify-content: flex-end; margin-top: 10px; }
 
-.detail-sidebar { position: sticky; top: 16px; display: flex; flex-direction: column; gap: 14px; }
-
-.action-list { display: flex; flex-direction: column; gap: 10px; }
+.detail-floating-actions {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  z-index: 20;
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  justify-content: center;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  padding: 10px 30px;
+  background: rgba(0, 0, 0, 0.28);
+  border-radius: 12px;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
+  transform: translateX(-50%);
+}
+.detail-floating-actions .ant-btn {
+  min-width: 80px;
+  height: 30px;
+  font-weight: 600;
+  border-radius: 3px;
+}
 
 .closed-tip { text-align: center; }
 .closed-tip p { margin: 10px 0 0; color: #8c8c8c; font-size: 13px; }
+.detail-closed-tip { padding: 18px 0; }
 
 @media (max-width: 1000px) {
-  .detail-body { grid-template-columns: 1fr; }
-  .detail-sidebar { position: static; }
+  .detail-floating-actions,
+  .form-actions {
+    gap: 18px;
+    padding: 10px 22px;
+  }
 }
 :deep(.ant-modal-body) { padding-top: 10px; }
 @media (max-width: 1200px) {

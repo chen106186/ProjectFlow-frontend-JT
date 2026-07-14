@@ -116,15 +116,22 @@
               新建任务
             </a-button>
             <span v-else></span>
-            <a-space>
-              <span class="muted">分组条件：</span>
-              <a-select class="group-select" value="所属项目" :options="projectGroupOptions" />
-              <a-button type="link">列表</a-button>
-              <a-button>分组</a-button>
-            </a-space>
+            <div class="task-list__display">
+              <template v-if="taskDisplayMode === 'group'">
+                <span>分组条件：</span>
+                <a-select v-model:value="taskGroupField" :options="taskGroupOptions" />
+              </template>
+              <a-radio-group v-model:value="taskDisplayMode" button-style="solid">
+                <a-radio-button value="list">列表</a-radio-button>
+                <a-radio-button value="group">分组</a-radio-button>
+              </a-radio-group>
+            </div>
           </div>
-          <div class="prototype-table-scroll">
+          <div v-if="taskDisplayMode === 'list'" class="prototype-table-scroll">
             <table class="prototype-table task-prototype-table">
+              <colgroup>
+                <col v-for="column in personalTaskColumns" :key="column.dataIndex" :style="{ width: `${column.width}px` }" />
+              </colgroup>
               <thead>
                 <tr>
                   <th v-for="column in personalTaskColumns" :key="column.dataIndex" :style="{ width: `${column.width}px` }">{{ column.title }}</th>
@@ -155,6 +162,54 @@
                 </tr>
               </tbody>
             </table>
+          </div>
+          <div v-else class="task-group-list">
+            <section v-for="(group, groupIndex) in groupedTasks" :key="group.value" class="task-group">
+              <header class="task-group__header">
+                <button type="button" @click="handleToggleTaskGroup(group.value)">
+                  <RightOutlined v-if="isTaskGroupCollapsed(group.value)" />
+                  <DownOutlined v-else />
+                  {{ group.label }}
+                </button>
+                <a-tag>{{ group.rows.length }}</a-tag>
+              </header>
+              <div v-if="!isTaskGroupCollapsed(group.value)" class="prototype-table-scroll">
+                <table class="prototype-table task-prototype-table">
+                  <colgroup>
+                    <col v-for="column in personalTaskColumns" :key="column.dataIndex" :style="{ width: `${column.width}px` }" />
+                  </colgroup>
+                  <thead v-if="groupIndex === 0">
+                    <tr>
+                      <th v-for="column in personalTaskColumns" :key="column.dataIndex" :style="{ width: `${column.width}px` }">{{ column.title }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="record in group.rows" :key="record.id">
+                      <td>{{ record.index }}</td>
+                      <td><button class="text-link" type="button" @click="handleTaskDetail(record)">{{ record.name }}</button></td>
+                      <td><button class="text-link" type="button">{{ record.project }}</button></td>
+                      <td>{{ record.role }}</td>
+                      <td>{{ record.tag }}</td>
+                      <td>{{ record.owner }}</td>
+                      <td><span class="tag-soft tag-priority">{{ record.priority }}</span></td>
+                      <td><span class="tag-soft tag-processing">{{ record.status }}</span></td>
+                      <td>{{ record.planStart }}</td>
+                      <td>{{ record.actualStart }}</td>
+                      <td>{{ record.planEnd }}</td>
+                      <td>{{ record.actualEnd }}</td>
+                      <td>
+                        <a-space :size="4">
+                          <button class="icon-link" type="button" title="编辑任务" @click="openTaskModal('edit', record)"><EditOutlined /></button>
+                          <a-popconfirm v-if="!isPersonalTasks" title="确认删除该任务?" ok-text="删除" cancel-text="取消" @confirm="handleDeleteTask(record)">
+                            <button class="icon-link danger" type="button" title="删除任务"><DeleteOutlined /></button>
+                          </a-popconfirm>
+                        </a-space>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
           </div>
           <div class="prototype-pagination">
             <span>共 {{ visibleTasks.length }} 条</span>
@@ -544,6 +599,7 @@ import {
   CheckCircleOutlined,
   CheckOutlined,
   DeleteOutlined,
+  DownOutlined,
   DownloadOutlined,
   EditOutlined,
   ExclamationCircleOutlined,
@@ -608,6 +664,9 @@ const taskSubmitLoading = ref(false)
 const taskDetailLoading = ref(false)
 const selectedTaskDetail = ref(null)
 const editingTaskId = ref(null)
+const taskDisplayMode = ref('list')
+const taskGroupField = ref('project')
+const collapsedTaskGroups = ref([])
 const bugApiRows = ref([])
 const bugUsers = ref([])
 const bugProjects = ref([])
@@ -667,6 +726,14 @@ const taskModalTitle = computed(() => {
   if (isPersonalTasks.value) return '更新进度'
   return '编辑任务'
 })
+const taskGroupOptions = [
+  { label: '所属项目', value: 'project' },
+  { label: '负责人', value: 'owner' },
+  { label: '角色', value: 'role' },
+  { label: '优先级', value: 'priority' },
+  { label: '状态', value: 'status' },
+]
+const taskGroupLabelMap = { project: '所属项目', owner: '负责人', role: '角色', priority: '优先级', status: '状态' }
 const visibleTasks = computed(() => {
   if (route.name === 'TestingTasks') {
     return taskApiRows.value.filter(task => task.role === '测试')
@@ -675,6 +742,15 @@ const visibleTasks = computed(() => {
     return taskApiRows.value.filter(task => task.role !== '测试')
   }
   return taskApiRows.value
+})
+const groupedTasks = computed(() => {
+  const groups = new Map()
+  visibleTasks.value.forEach(task => {
+    const value = task[taskGroupField.value] || '未设置'
+    if (!groups.has(value)) groups.set(value, [])
+    groups.get(value).push(task)
+  })
+  return Array.from(groups, ([value, rows]) => ({ value, label: `${taskGroupLabelMap[taskGroupField.value]}：${value}`, rows }))
 })
 const isExecutionProject = project => (project?.projectType || project?.type) === 'EXECUTION'
 const taskFilterProjectOptions = computed(() =>
@@ -778,6 +854,10 @@ watch(
   },
   { immediate: true },
 )
+
+watch([taskGroupField, () => route.name], () => {
+  collapsedTaskGroups.value = []
+})
 
 function getTaskLabel(type, value) {
   return taskDictLabels.value[type]?.[value] || value || '-'
@@ -1194,6 +1274,13 @@ const handleTaskReset = () => {
     plannedEndDate: undefined,
   }
   loadTasks()
+}
+
+const isTaskGroupCollapsed = value => collapsedTaskGroups.value.includes(value)
+const handleToggleTaskGroup = value => {
+  collapsedTaskGroups.value = isTaskGroupCollapsed(value)
+    ? collapsedTaskGroups.value.filter(item => item !== value)
+    : [...collapsedTaskGroups.value, value]
 }
 
 const handleTaskSubmit = async () => {
@@ -1847,6 +1934,17 @@ const trendPoints = [
   margin-bottom: 16px;
 }
 
+.task-list__display {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  color: #666;
+}
+
+.task-list__display :deep(.ant-select) {
+  width: 130px;
+}
+
 .group-select {
   width: 126px;
 }
@@ -1868,6 +1966,42 @@ const trendPoints = [
   overflow: auto;
   scrollbar-color: #9b9b9b #f1f1f1;
   scrollbar-width: thin;
+}
+
+.task-group-list {
+  max-height: 520px;
+  overflow-y: auto;
+}
+
+.task-group + .task-group {
+  margin-top: 8px;
+}
+
+.task-group__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 40px;
+  padding: 0 14px;
+  font-weight: 600;
+  background: #fafafa;
+  border-top: 1px solid #edf0f3;
+  border-bottom: 1px solid #edf0f3;
+}
+
+.task-group__header button {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  padding: 0;
+  font-weight: 600;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.task-group .prototype-table-scroll {
+  min-height: auto;
 }
 
 .prototype-table {
