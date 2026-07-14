@@ -25,12 +25,19 @@ export const getProjectReportDetail = id => request(`/api/project-reports/${id}`
 export const createProjectReport = data => request('/api/project-reports', { method: 'POST', body: data })
 export const updateProjectReport = (id, data) => request(`/api/project-reports/${id}`, { method: 'PUT', body: data })
 export const deleteProjectReport = id => request(`/api/project-reports/${id}`, { method: 'DELETE' })
+export const updateReportStatus = (id, data) => request(`/api/project-reports/${id}/status`, { method: 'PATCH', body: data })
+export const createReportItem = (reportId, data) => request(`/api/project-reports/${reportId}/items`, { method: 'POST', body: data })
+export const updateReportItem = (reportId, itemId, data) => request(`/api/project-reports/${reportId}/items/${itemId}`, { method: 'PUT', body: data })
+export const deleteReportItem = (reportId, itemId) => request(`/api/project-reports/${reportId}/items/${itemId}`, { method: 'DELETE' })
 
 export const getProjectFiles = params => request('/api/files', { params })
+export const getProjectFolders = params => request('/api/files/folders', { params })
 export const uploadProjectFile = data => request('/api/files', { method: 'POST', body: data })
 export const deleteProjectFile = id => request(`/api/files/${id}`, { method: 'DELETE' })
 export const deleteProjectFiles = ids => request('/api/files/batch', { method: 'DELETE', body: { ids } })
 export const downloadProjectFile = id => download(`/api/files/${id}/download`)
+export const createProjectFolder = data => request('/api/files/folders', { method: 'POST', body: data })
+export const downloadProjectFiles = ids => download('/api/files/batch-download', { method: 'POST', body: ids })
 
 export const getProjectStats = projectIds => request('/api/projects/stats', { params: { projectIds: projectIds.join(',') } })
 

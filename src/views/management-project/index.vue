@@ -118,6 +118,8 @@
           @edit-report="handleEditReport"
           @delete-report="handleDeleteReport"
           @open-upload="handleOpenUploadModal"
+          @create-folder="handleCreateFolder"
+          @batch-download="handleBatchDownload"
           @select-document-category="handleSelectDocumentCategory"
           @delete-documents="handleDeleteDocuments"
           @download-document="handleDownloadDocument"
@@ -154,6 +156,24 @@
         <a-form-item label="版本说明"><a-textarea v-model:value="uploadForm.description" :rows="4" placeholder="请输入版本更新说明..." /></a-form-item>
       </a-form>
       <div class="upload-modal-actions"><a-button @click="uploadVisible = false">取消</a-button><a-button type="primary" :loading="uploadLoading" @click="handleStartUpload">开始上传</a-button></div>
+    </a-modal>
+
+    <a-modal
+      v-model:open="folderVisible"
+      title="新建文件夹"
+      :width="460"
+      :confirm-loading="folderLoading"
+      ok-text="确定"
+      cancel-text="取消"
+      destroy-on-close
+      @ok="handleSubmitFolder"
+      @cancel="folderName = ''"
+    >
+      <a-form :label-col="{ span: 5 }" :wrapper-col="{ span: 18 }">
+        <a-form-item label="文件夹名称" required>
+          <a-input v-model:value="folderName" placeholder="请输入文件夹名称" maxlength="50" show-count />
+        </a-form-item>
+      </a-form>
     </a-modal>
 
     <a-modal v-model:open="reportDetailVisible" class="report-detail-modal" :width="1120" :footer="null" destroy-on-close>
@@ -265,17 +285,22 @@ import { useRoute, useRouter } from 'vue-router'
 import ProjectDetailTabs from './components/ProjectDetailTabs.vue'
 import {
   createProject,
+  createProjectFolder,
   createProjectReport,
+  createReportItem,
   deleteProject,
   deleteProjectFile,
   deleteProjectFiles,
   deleteProjectReport,
+  deleteReportItem,
   downloadProjectFile,
+  downloadProjectFiles,
   getGanttNodes,
   getGanttSummary,
   getProjectBugs,
   getProjectDetail,
   getProjectFiles,
+  getProjectFolders,
   getProjectList,
   getProjectReportDetail,
   getProjectReports,
@@ -284,9 +309,12 @@ import {
   updateGanttNode,
   updateProject,
   updateProjectReport,
+  updateReportItem,
+  updateReportStatus,
   uploadProjectFile,
 } from '@/api/managementProject'
 import { useDictStore } from '@/store/dictStore'
+import { formatDateTime } from '@/utils/dateTime'
 import { OPERATION_ACTIONS, OPERATION_MODULES, recordOperationLog } from '@/utils/operationLog'
 
 const route = useRoute()
@@ -310,6 +338,10 @@ const detailTabsRef = ref()
 const uploadVisible = ref(false)
 const uploadLoading = ref(false)
 const uploadFiles = ref([])
+const folderVisible = ref(false)
+const folderLoading = ref(false)
+const folderName = ref('')
+const folderRows = ref([])
 const reportVisible = ref(false)
 const reportDetailVisible = ref(false)
 const reportDetailLoading = ref(false)
@@ -323,6 +355,11 @@ const reportMode = ref('create')
 const reportFormRef = ref()
 const reportSubmitLoading = ref(false)
 const editingReportId = ref(null)
+const reportItemVisible = ref(false)
+const reportItemMode = ref('create')
+const reportItemLoading = ref(false)
+const editingItemId = ref(null)
+const reportItemFormRef = ref()
 let ganttInstance
 
 const toOptions = values => values.map(value => ({ label: value, value }))
@@ -483,25 +520,44 @@ const reportTableColumns = [
   { title: '操作', dataIndex: 'operation', width: 140, fixed: 'right' },
 ]
 const reportItemColumns = [
-  { title: '任务', dataIndex: 'content', width: 240 },
+  { title: '任务内容', dataIndex: 'content', width: 220 },
   { title: '负责人', dataIndex: 'owner', width: 100 },
   { title: '优先级', dataIndex: 'priority', width: 90 },
   { title: '状态', dataIndex: 'status', width: 100 },
   { title: '截止日期', dataIndex: 'plannedDate', width: 120 },
-  { title: '备注', dataIndex: 'description', width: 180 },
+  { title: '描述', dataIndex: 'description', width: 160 },
+  { title: '操作', dataIndex: 'operation', width: 100, fixed: 'right' },
 ]
 const createDefaultReportForm = () => ({ title: '', type: 'WEEKLY', status: 'DRAFT', planDate: undefined, actualDate: undefined, task: undefined, target: '', place: '', description: '' })
+const createDefaultItemForm = () => ({ content: '', ownerId: undefined, priority: 'MEDIUM', status: 'NOT_STARTED', plannedDate: undefined, description: '' })
+const reportItemForm = reactive(createDefaultItemForm())
+const reportItemRules = { content: [{ required: true, message: '请输入任务内容', trigger: 'blur' }], ownerId: [{ required: true, message: '请选择负责人', trigger: 'change' }], priority: [{ required: true, message: '请选择优先级', trigger: 'change' }], status: [{ required: true, message: '请选择状态', trigger: 'change' }] }
 const reportForm = reactive(createDefaultReportForm())
 const reportTaskOptions = computed(() => taskRows.value.map(item => ({ label: item.name, value: item.id })))
 const reportRules = { title: [{ required: true, message: '请输入汇报标题', trigger: 'blur' }], type: [{ required: true, message: '请选择汇报类型', trigger: 'change' }], status: [{ required: true, message: '请选择汇报状态', trigger: 'change' }], planDate: [{ required: true, message: '请选择计划日期', trigger: 'change' }], target: [{ required: true, message: '请输入汇报对象', trigger: 'blur' }], place: [{ required: true, message: '请输入地点或汇报方式', trigger: 'blur' }], description: [{ required: true, message: '请输入汇报描述', trigger: 'blur' }] }
 const documentCategoryLabels = ['合同类', '需求类', '设计类', '开发类', '验收类']
 const documentCategories = computed(() => [{ label: '全部', value: documentRows.value.length, class: 'category-all', icon: FolderOpenOutlined }, ...documentCategoryLabels.map((label, index) => ({ label, value: documentRows.value.filter(item => item.category === label).length, class: ['category-contract', 'category-requirement', 'category-design', 'category-development', 'category-acceptance'][index], icon: [FileProtectOutlined, FileTextOutlined, SnippetsOutlined, CodeOutlined, FileDoneOutlined][index] }))].map(item => ({ ...item, active: item.label === selectedDocumentCategory.value })))
-const documentColumns = [{ title: '文件名', dataIndex: 'name' }, { title: '类型', dataIndex: 'type', width: 90 }, { title: '大小', dataIndex: 'size', width: 90 }, { title: '版本', dataIndex: 'version', width: 80 }, { title: '上传人', dataIndex: 'uploader', width: 80 }, { title: '分类', dataIndex: 'category', width: 90 }, { title: '上传时间', dataIndex: 'uploadTime', width: 130 }, { title: '操作', dataIndex: 'operation', width: 120 }]
+const documentColumns = [{ title: '文件名', dataIndex: 'name' }, { title: '类型', dataIndex: 'type', width: 90 }, { title: '大小', dataIndex: 'size', width: 90 }, { title: '版本', dataIndex: 'version', width: 80 }, { title: '上传人', dataIndex: 'uploader', width: 80 }, { title: '分类', dataIndex: 'category', width: 90 }, { title: '上传时间', dataIndex: 'uploadTime', width: 170 }, { title: '操作', dataIndex: 'operation', width: 120 }]
 const documentRows = ref([])
-const filteredDocumentRows = computed(() => selectedDocumentCategory.value === '全部' ? documentRows.value : documentRows.value.filter(item => item.category === selectedDocumentCategory.value))
+const folderDisplayRows = computed(() => folderRows.value.map(folder => ({
+  id: `folder-${folder.id}`,
+  rowKey: `folder-${folder.id}`,
+  name: folder.name,
+  type: '文件夹',
+  size: '-',
+  version: '-',
+  uploader: '-',
+  category: '文件夹',
+  uploadTime: formatDateTime(folder.createdAt),
+  isFolder: true,
+})))
+const documentDisplayRows = computed(() => documentRows.value.map(file => ({ ...file, rowKey: `file-${file.id}`, isFolder: false })))
+const allDocumentRows = computed(() => [...folderDisplayRows.value, ...documentDisplayRows.value])
+const filteredDocumentRows = computed(() => selectedDocumentCategory.value === '全部' ? allDocumentRows.value : documentDisplayRows.value.filter(item => item.category === selectedDocumentCategory.value))
 const documentRowSelection = computed(() => ({
   selectedRowKeys: selectedDocumentIds.value,
   onChange: keys => { selectedDocumentIds.value = keys },
+  getCheckboxProps: record => ({ disabled: record.isFolder }),
 }))
 const uploadForm = reactive({ location: '项目文档库', category: '需求类', description: '' })
 const storageOptions = toOptions(['项目文档库', '公共文档库'])
@@ -523,7 +579,7 @@ const summaryItems = computed(() => [
 
 const getDictLabel = (type, value) => dictLabels[type]?.[value] || value || '-'
 const getUserName = id => managerOptions.value.find(item => item.value === id)?.label || (id ? `用户 ${id}` : '-')
-const formatDateTime = value => value ? dayjs(value).format('YYYY-MM-DD HH:mm') : '-'
+// const formatDateTime = value => value ? dayjs(value).format('YYYY-MM-DD HH:mm') : '-'
 const isFinishedStatus = value => ['COMPLETED', 'DONE', 'FINISHED', '已完成'].includes(value)
 const mapReportDetail = report => {
   const items = (report.items || []).map(item => ({
@@ -659,7 +715,7 @@ const fetchProjectRelatedData = async projectId => {
   reportLoading.value = true
   documentLoading.value = true
   try {
-    const [project, nodes, ganttResult, taskResult, bugResult, reportResult, files] = await Promise.all([
+    const [project, nodes, ganttResult, taskResult, bugResult, reportResult, files, folders] = await Promise.all([
       getProjectDetail(projectId),
       getGanttNodes(projectId),
       getGanttSummary(projectId),
@@ -667,6 +723,7 @@ const fetchProjectRelatedData = async projectId => {
       getProjectBugs({ projectId, pageNo: 1, pageSize: 200 }),
       getProjectReports({ projectId, pageNo: 1, pageSize: 200 }),
       getProjectFiles({ businessType: 'PROJECT', businessId: projectId }),
+      getProjectFolders({ businessType: 'PROJECT', businessId: projectId }),
     ])
     currentProject.value = mapProject(project)
     if (viewMode.value === 'detail') {
@@ -691,7 +748,8 @@ const fetchProjectRelatedData = async projectId => {
     taskRows.value = taskResult.records.map(task => ({ id: task.id, name: task.name, owner: getUserName(task.assigneeId), priority: getDictLabel('taskPriority', task.priority), status: getDictLabel('taskStatus', task.status), planStart: task.plannedStartDate || '-', planEnd: task.plannedEndDate || '-', actualStart: task.actualStartDate || '-', actualEnd: task.actualEndDate || '-' }))
     bugRows.value = bugResult.records.map(bug => ({ id: bug.id, code: `BUG-${bug.id}`, title: bug.title, severity: getDictLabel('bugPriority', bug.priority), priorityCode: bug.priority, status: getDictLabel('bugStatus', bug.status), statusCode: bug.status, assignee: getUserName(bug.assigneeId), creator: getUserName(bug.creatorId) }))
     reportRows.value = reportResult.records.map(report => ({ id: report.id, title: report.title, type: getDictLabel('reportType', report.reportType), typeCode: report.reportType, status: getDictLabel('reportStatus', report.status), statusCode: report.status, planTime: report.plannedDate, actualTime: report.actualDate || '-', target: report.targetAudience, place: report.locationMethod, description: report.description, taskId: report.taskId || report.relatedTaskId || undefined, taskName: report.taskName || report.relatedTaskName || undefined }))
-    documentRows.value = files.map(file => ({ id: file.id, name: file.originalName, type: file.originalName.split('.').pop()?.toUpperCase() || '-', size: formatFileSize(file.fileSize), version: file.versionNo || '-', uploader: getUserName(file.uploaderId), category: file.fileCategory || '-', uploadTime: file.uploadedAt || '-' }))
+    folderRows.value = folders || []
+    documentRows.value = files.map(file => ({ id: file.id, name: file.originalName, type: file.originalName.split('.').pop()?.toUpperCase() || '-', size: formatFileSize(file.fileSize), version: file.versionNo || '-', uploader: getUserName(file.uploaderId), category: file.fileCategory || '-', uploadTime: formatDateTime(file.uploadedAt) }))
     await renderGantt()
   } catch (error) {
     message.error(error.message)
@@ -748,8 +806,9 @@ const syncRoute = async () => {
   if (viewMode.value === 'edit') {
     detailLoading.value = true
     try {
-      const project = await getProjectDetail(projectId)
-      Object.assign(formState, createDefaultForm(), mapProjectToForm(project))
+      const [project, ganttNodes] = await Promise.all([getProjectDetail(projectId), getGanttNodes(projectId)])
+      const existingNodeNames = Array.isArray(ganttNodes) ? ganttNodes.map(n => n.nodeName).filter(Boolean) : []
+      Object.assign(formState, createDefaultForm(), mapProjectToForm(project), { nodes: existingNodeNames })
       editingId.value = project.id
     } catch (error) {
       message.error(error.message)
@@ -863,9 +922,57 @@ const handleDelete = async record => {
 const handleOpenUploadModal = () => {
   uploadVisible.value = true
 }
+const handleCreateFolder = () => {
+  folderName.value = ''
+  folderVisible.value = true
+}
+const handleSubmitFolder = async () => {
+  const name = folderName.value.trim()
+  if (!name) {
+    message.warning('请输入文件夹名称')
+    return
+  }
+  folderLoading.value = true
+  try {
+    const folder = await createProjectFolder({
+      businessType: 'PROJECT',
+      businessId: route.params.id,
+      name,
+    })
+    folderRows.value = [folder, ...folderRows.value]
+    folderName.value = ''
+    folderVisible.value = false
+    selectedDocumentCategory.value = '全部'
+    message.success('文件夹新建成功')
+  } catch (error) {
+    message.error(error.message || '文件夹新建失败')
+  } finally {
+    folderLoading.value = false
+  }
+}
+const handleBatchDownload = async () => {
+  if (!documentRows.value.length) {
+    message.warning('暂无可下载文件')
+    return
+  }
+  if (!selectedDocumentIds.value.length) {
+    message.warning('请先选择要下载的文件')
+    return
+  }
+  try {
+    const result = await downloadProjectFiles(selectedDocumentIds.value)
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(result.blob)
+    link.download = result.fileName || 'files.zip'
+    link.click()
+    URL.revokeObjectURL(link.href)
+  } catch (error) {
+    message.error(error.message || '批量下载失败')
+  }
+}
 const handleSelectDocumentCategory = category => {
   selectedDocumentCategory.value = category
-  const visibleIds = new Set(filteredDocumentRows.value.map(item => item.id))
+  const visibleIds = new Set(filteredDocumentRows.value.filter(item => !item.isFolder).map(item => item.id))
   selectedDocumentIds.value = selectedDocumentIds.value.filter(id => visibleIds.has(id))
 }
 const handleDocumentBeforeUpload = file => {
@@ -1024,6 +1131,11 @@ const handleSubmit = async () => {
       businessSupervisor: formState.supervisor,
       receivableAmount: formState.amount,
       description: formState.description,
+    }
+    if (editingId.value) {
+      projectData.nodeNames = formState.nodes
+    } else {
+      projectData.nodes = formState.nodes.map(name => ({ nodeName: name }))
     }
     const savedProject = editingId.value
       ? await updateProject(editingId.value, projectData)

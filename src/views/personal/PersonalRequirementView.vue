@@ -157,6 +157,7 @@ import { useRouter } from 'vue-router'
 import { getProjectList, getSystemUsers } from '@/api/managementProject'
 import { createRequirement, listMyRequirements } from '@/api/requirements'
 import { useDictStore } from '@/store/dictStore'
+import { formatDateTime } from '@/utils/dateTime'
 
 const router = useRouter()
 const dictStore = useDictStore()
@@ -290,7 +291,7 @@ const mapRequirement = item => ({
   status: optionLabel(statusOptions.value, item.status),
   statusCode: item.status,
   submitter: currentUserName(),
-  createdAt: item.createdAt ? dayjs(item.createdAt).format('YYYY-MM-DD') : '-',
+  createdAt: formatDateTime(item.createdAt),
 })
 
 const filteredRows = computed(() => {
@@ -336,7 +337,7 @@ const columns = [
   { title: '状态', dataIndex: 'status', width: 110 },
   { title: '提交人', dataIndex: 'submitter', width: 110 },
   { title: '审核人', dataIndex: 'reviewerName', width: 110 },
-  { title: '创建时间', dataIndex: 'createdAt', width: 120 },
+  { title: '创建时间', dataIndex: 'createdAt', width: 170 },
 ]
 
 const priorityColor = value => ({ URGENT: 'red', HIGH: 'orange', MEDIUM: 'gold', LOW: 'default' }[value] || 'default')

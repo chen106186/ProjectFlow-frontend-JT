@@ -127,6 +127,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { getProjectList, getSystemUsers } from '@/api/managementProject'
 import { getRequirementById, getRequirementLogs, updateRequirement, updateRequirementStatus } from '@/api/requirements'
 import { useDictStore } from '@/store/dictStore'
+import { formatDateTime } from '@/utils/dateTime'
 
 const route = useRoute()
 const router = useRouter()
@@ -177,7 +178,7 @@ const projectName = computed(() => projectMap.value[requirement.value?.projectId
 const typeLabel = computed(() => dictStore.getDictLabel('requirementType', requirement.value?.requirementType) || '-')
 const priorityLabel = computed(() => dictStore.getDictLabel('requirementPriority', requirement.value?.priority) || '-')
 const statusLabel = computed(() => dictStore.getDictLabel('requirementStatus', requirement.value?.status) || '-')
-const createdAtText = computed(() => requirement.value?.createdAt ? dayjs(requirement.value.createdAt).format('YYYY-MM-DD') : '-')
+const createdAtText = computed(() => formatDateTime(requirement.value?.createdAt))
 const logsReversed = computed(() => [...logs.value].reverse())
 
 const currentUserId = () => {
@@ -192,7 +193,7 @@ const reviewerOptions = computed(() => userRows.value.map(user => ({ label: user
 
 const priorityColor = value => ({ URGENT: 'red', HIGH: 'orange', MEDIUM: 'gold', LOW: 'default' }[value] || 'default')
 const statusColor = value => ({ PENDING_REVIEW: 'blue', ACCEPTED: 'green', REJECTED: 'red' }[value] || 'default')
-const formatLogTime = dt => dt ? dayjs(dt).format('YYYY-MM-DD HH:mm') : '-'
+const formatLogTime = dt => formatDateTime(dt)
 const loadProjects = async () => {
   const result = await getProjectList({ pageNo: 1, pageSize: 200, projectType: 'EXECUTION' })
   projectMap.value = Object.fromEntries((result.records || []).map(item => [item.id, item.name]))
