@@ -107,19 +107,25 @@
 
       <div v-show="activeTab === 'reports'" class="execution-tab-panel">
         <div class="section-heading">
-          <h2>汇报管理 <small>（共 {{ reportRows.length }} 条）</small></h2>
-          <a-button type="primary"><PlusOutlined />新建汇报</a-button>
+          <h2>汇报管理 <small>（共 {{ filteredReportRows.length }} 条）</small></h2>
+          <a-button type="primary" @click="handleCreateReport"><PlusOutlined />新建汇报</a-button>
         </div>
         <a-form class="report-filter" layout="inline">
-          <a-form-item><a-input placeholder="搜索汇报标题 / 汇报对象 / 地点方式" /></a-form-item>
-          <a-form-item><a-select value="全部" :options="reportStatusFilters" /></a-form-item>
-          <a-form-item><a-range-picker /></a-form-item>
-          <a-button>重置</a-button>
+          <a-form-item><a-input v-model:value="reportFilter.keyword" allow-clear placeholder="搜索汇报标题 / 汇报对象 / 地点方式" /></a-form-item>
+          <a-form-item><a-select v-model:value="reportFilter.status" :options="reportStatusFilters" /></a-form-item>
+          <a-form-item><a-range-picker v-model:value="reportFilter.dateRange" value-format="YYYY-MM-DD" /></a-form-item>
+          <a-button @click="handleResetReportFilter">重置</a-button>
         </a-form>
-        <a-table row-key="id" :columns="reportColumns" :data-source="reportRows" :loading="reportLoading" :pagination="pagination" :scroll="{ x: 900 }">
-          <template #bodyCell="{ column, text }">
-            <a-button v-if="column.dataIndex === 'title'" type="link">{{ text }}</a-button>
+        <a-table row-key="id" :columns="reportColumns" :data-source="filteredReportRows" :loading="reportLoading" :pagination="pagination" :scroll="{ x: 1040 }" :custom-row="getReportCustomRow">
+          <template #bodyCell="{ column, record, text }">
+            <a-button v-if="column.dataIndex === 'title'" type="link" @click.stop="handleViewReport(record)">{{ text }}</a-button>
             <a-tag v-else-if="column.dataIndex === 'status'" color="green">{{ text }}</a-tag>
+            <a-space v-else-if="column.dataIndex === 'operation'" :size="2" @click.stop>
+              <a-button type="link" size="small" @click.stop="handleEditReport(record)">编辑</a-button>
+              <a-popconfirm title="确定删除该汇报吗？" ok-text="删除" cancel-text="取消" @confirm="handleDeleteReport(record)">
+                <a-button type="link" size="small" danger>删除</a-button>
+              </a-popconfirm>
+            </a-space>
           </template>
         </a-table>
       </div>
@@ -194,6 +200,90 @@
       <div class="upload-modal-actions"><a-button @click="uploadVisible = false">取消</a-button><a-button type="primary" :loading="uploadLoading" @click="handleStartUpload">开始上传</a-button></div>
     </a-modal>
 
+    <a-modal v-model:open="reportDetailVisible" class="report-detail-modal" :width="1120" :footer="null" destroy-on-close>
+      <a-spin :spinning="reportDetailLoading">
+        <div v-if="currentReportDetail" class="report-detail-view">
+          <div class="report-detail-header">
+            <strong>{{ currentReportDetail.title }}</strong>
+          </div>
+
+          <div class="report-detail-info-table">
+            <div class="report-detail-info-grid">
+              <span>类型</span><strong>{{ currentReportDetail.type }}</strong>
+              <span>状态</span><strong><a-tag color="processing">{{ currentReportDetail.status }}</a-tag></strong>
+              <span>汇报对象</span><strong>{{ currentReportDetail.target }}</strong>
+              <span>地点/方式</span><strong>{{ currentReportDetail.place }}</strong>
+              <span>计划日期</span><strong>{{ currentReportDetail.planTime }}</strong>
+              <span>实际日期</span><strong>{{ currentReportDetail.actualTime }}</strong>
+              <span>创建时间</span><strong>{{ currentReportDetail.createdAt }}</strong>
+              <span>任务进度</span>
+              <strong class="report-detail-progress">
+                <a-progress :percent="currentReportDetail.progress" :show-info="false" size="small" />
+                <em>{{ currentReportDetail.progress }}%</em>
+              </strong>
+            </div>
+            <div class="report-detail-description">
+              <span>描述</span>
+              <p>{{ currentReportDetail.description }}</p>
+            </div>
+          </div>
+
+          <div class="report-detail-section-title">
+            <FileTextOutlined />
+            <span>准备工作 ({{ currentReportDetail.items.length }})</span>
+          </div>
+          <div class="report-detail-remark">
+            <label>备注：</label>
+            <a-textarea v-model:value="reportDetailRemark" :rows="3" placeholder="请输入备注" />
+          </div>
+          <div class="report-detail-remark-actions">
+            <a-button type="primary" @click="handleConfirmReportRemark">确认</a-button>
+          </div>
+          <div class="report-task-toolbar">
+            <a-button type="primary" @click="handleAddReportTask">添加任务</a-button>
+            <a-radio-group v-model:value="reportDetailTaskType" button-style="solid">
+              <a-radio-button value="meeting">会议任务</a-radio-button>
+              <a-radio-button value="related">关联任务</a-radio-button>
+            </a-radio-group>
+          </div>
+          <a-table row-key="id" :columns="reportItemColumns" :data-source="currentReportDetail.items" :pagination="false" size="small" :scroll="{ x: 980 }">
+            <template #bodyCell="{ column, text }">
+              <a-tag v-if="column.dataIndex === 'priority'" color="red">{{ text }}</a-tag>
+              <a-tag v-else-if="column.dataIndex === 'status'" color="processing">{{ text }}</a-tag>
+            </template>
+          </a-table>
+
+          <div class="report-detail-section-title report-detail-log-title">
+            <FileTextOutlined />
+            <span>操作日志</span>
+          </div>
+          <a-timeline v-if="currentReportDetail.logs.length" class="report-detail-logs">
+            <a-timeline-item v-for="log in currentReportDetail.logs" :key="log.id">
+              <span class="report-detail-log-meta">{{ log.time }}　{{ log.user }}</span>
+              <p>{{ log.content }}</p>
+            </a-timeline-item>
+          </a-timeline>
+          <a-empty v-else description="暂无操作日志" />
+        </div>
+        <a-empty v-else-if="!reportDetailLoading" description="暂无汇报详情" />
+      </a-spin>
+    </a-modal>
+
+    <a-modal v-model:open="reportVisible" class="report-modal" :title="reportMode === 'create' ? '新建汇报' : '编辑汇报'" :width="640" :footer="null" destroy-on-close>
+      <a-form ref="reportFormRef" :model="reportForm" :rules="reportRules" :label-col="{ span: 5 }" :wrapper-col="{ span: 19 }">
+        <a-form-item label="汇报标题" name="title"><a-input v-model:value="reportForm.title" placeholder="请输入汇报标题" /></a-form-item>
+        <a-form-item label="汇报类型" name="type"><a-select v-model:value="reportForm.type" :options="reportTypeOptions" placeholder="请选择汇报类型" /></a-form-item>
+        <a-form-item label="状态" name="status"><a-select v-model:value="reportForm.status" :options="reportStatusOptions" placeholder="请选择汇报状态" /></a-form-item>
+        <a-form-item label="计划日期" name="planDate"><a-date-picker v-model:value="reportForm.planDate" format="YYYY-MM-DD" placeholder="请选择计划日期" /></a-form-item>
+        <a-form-item label="实际日期"><a-date-picker v-model:value="reportForm.actualDate" format="YYYY-MM-DD" placeholder="请选择实际日期" /></a-form-item>
+        <a-form-item label="关联任务"><a-select v-model:value="reportForm.task" :options="reportTaskOptions" placeholder="请选择关联任务" allow-clear /></a-form-item>
+        <a-form-item label="汇报对象" name="target"><a-input v-model:value="reportForm.target" placeholder="请输入汇报对象" /></a-form-item>
+        <a-form-item label="地点/方式" name="place"><a-input v-model:value="reportForm.place" placeholder="请输入地点或汇报方式" /></a-form-item>
+        <a-form-item label="描述" name="description"><a-textarea v-model:value="reportForm.description" :rows="4" placeholder="请输入汇报描述" /></a-form-item>
+      </a-form>
+      <div class="report-modal__actions"><a-button @click="reportVisible = false">取消</a-button><a-button type="primary" :loading="reportSubmitLoading" @click="handleSubmitReport">确定</a-button></div>
+    </a-modal>
+
     <a-modal v-model:open="ganttEditVisible" title="编辑节点" :width="560" :footer="null" destroy-on-close>
       <a-form ref="ganttFormRef" :model="ganttForm" :rules="ganttFormRules" :label-col="{ span: 5 }" :wrapper-col="{ span: 19 }">
         <a-form-item label="节点名称"><a-input :value="ganttForm.name" disabled /></a-form-item>
@@ -245,6 +335,8 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } 
 import { useRoute, useRouter } from 'vue-router'
 
 import {
+  createProjectReport,
+  deleteProjectReport,
   deleteProjectFile,
   deleteProjectFiles,
   downloadProjectFile,
@@ -254,9 +346,11 @@ import {
   getProjectBugs,
   getProjectDetail,
   getProjectFiles,
+  getProjectReportDetail,
   getProjectReports,
   getProjectTasks,
   getSystemUsers,
+  updateProjectReport,
   updateGanttNode,
   uploadProjectFile,
 } from '@/api/managementProject'
@@ -276,11 +370,19 @@ const selectedDocumentIds = ref([])
 const selectedDocumentCategory = ref('全部')
 const uploadVisible = ref(false)
 const uploadLoading = ref(false)
+const reportVisible = ref(false)
+const reportDetailVisible = ref(false)
+const reportDetailLoading = ref(false)
+const currentReportDetail = ref(null)
+const reportDetailRemark = ref('')
+const reportDetailTaskType = ref('meeting')
 const ganttEditVisible = ref(false)
 const ganttSubmitLoading = ref(false)
 const uploadFiles = ref([])
 const managerOptions = ref([])
 const taskStatusOptions = ref([])
+const reportTypeOptions = ref([])
+const reportStatusOptions = ref([])
 const dictLabels = reactive({})
 let ganttInstance
 
@@ -378,8 +480,41 @@ const bugColumns = [{ title: '序号', dataIndex: 'id', width: 60 }, { title: 'B
 const bugRows = ref([])
 const bugStatusFilters = toOptions(['全部状态', '待处理', '修复中', '已完成'])
 const reportStatusFilters = toOptions(['全部', '准备中', '进行中', '已完成'])
-const reportColumns = [{ title: '汇报标题', dataIndex: 'title', width: 220 }, { title: '汇报类型', dataIndex: 'type', width: 110 }, { title: '状态', dataIndex: 'status', width: 100 }, { title: '计划时间', dataIndex: 'planTime', width: 150 }, { title: '实际时间', dataIndex: 'actualTime', width: 150 }, { title: '汇报对象', dataIndex: 'target', width: 110 }, { title: '地点/方式', dataIndex: 'place', width: 120 }]
+const reportColumns = [{ title: '汇报标题', dataIndex: 'title', width: 220 }, { title: '汇报类型', dataIndex: 'type', width: 110 }, { title: '状态', dataIndex: 'status', width: 100 }, { title: '计划时间', dataIndex: 'planTime', width: 150 }, { title: '实际时间', dataIndex: 'actualTime', width: 150 }, { title: '汇报对象', dataIndex: 'target', width: 110 }, { title: '地点/方式', dataIndex: 'place', width: 120 }, { title: '操作', dataIndex: 'operation', width: 140, fixed: 'right' }]
 const reportRows = ref([])
+const reportItemColumns = [
+  { title: '任务', dataIndex: 'content', width: 240 },
+  { title: '负责人', dataIndex: 'owner', width: 100 },
+  { title: '优先级', dataIndex: 'priority', width: 90 },
+  { title: '状态', dataIndex: 'status', width: 100 },
+  { title: '截止日期', dataIndex: 'plannedDate', width: 120 },
+  { title: '备注', dataIndex: 'description', width: 180 },
+]
+const reportFilter = reactive({ keyword: '', status: '全部', dateRange: [] })
+const reportMode = ref('create')
+const reportFormRef = ref()
+const reportSubmitLoading = ref(false)
+const editingReportId = ref(null)
+const createDefaultReportForm = () => ({ title: '', type: 'WEEKLY', status: 'DRAFT', planDate: undefined, actualDate: undefined, task: undefined, target: '', place: '', description: '' })
+const reportForm = reactive(createDefaultReportForm())
+const reportTaskOptions = computed(() => taskRows.value.map(item => ({ label: item.name, value: item.id })))
+const reportRules = { title: [{ required: true, message: '请输入汇报标题', trigger: 'blur' }], type: [{ required: true, message: '请选择汇报类型', trigger: 'change' }], status: [{ required: true, message: '请选择汇报状态', trigger: 'change' }], planDate: [{ required: true, message: '请选择计划日期', trigger: 'change' }], target: [{ required: true, message: '请输入汇报对象', trigger: 'blur' }], place: [{ required: true, message: '请输入地点或汇报方式', trigger: 'blur' }], description: [{ required: true, message: '请输入汇报描述', trigger: 'blur' }] }
+const filteredReportRows = computed(() => reportRows.value.filter(record => {
+  const keyword = reportFilter.keyword.trim()
+  if (keyword) {
+    const content = [record.title, record.target, record.place, record.description, record.taskName].filter(Boolean).join(' ')
+    if (!content.includes(keyword)) return false
+  }
+  if (reportFilter.status && reportFilter.status !== '全部' && record.status !== reportFilter.status) return false
+  if (reportFilter.dateRange?.length === 2) {
+    const [startDate, endDate] = reportFilter.dateRange
+    const planDate = record.planTime
+    if (!planDate) return false
+    const current = dayjs(planDate)
+    if (current.isBefore(dayjs(startDate), 'day') || current.isAfter(dayjs(endDate), 'day')) return false
+  }
+  return true
+}))
 const documentCategoryLabels = ['合同类', '需求类', '设计类', '开发类', '验收类']
 const documentCategories = computed(() => [{ label: '全部', value: documentRows.value.length, class: 'category-all', icon: FolderOpenOutlined }, ...documentCategoryLabels.map((label, index) => ({ label, value: documentRows.value.filter(item => item.category === label).length, class: ['category-contract', 'category-requirement', 'category-design', 'category-development', 'category-acceptance'][index], icon: [FileProtectOutlined, FileTextOutlined, SnippetsOutlined, CodeOutlined, FileDoneOutlined][index] }))].map(item => ({ ...item, active: item.label === selectedDocumentCategory.value })))
 const documentColumns = [{ title: '文件名', dataIndex: 'name' }, { title: '类型', dataIndex: 'type', width: 90 }, { title: '大小', dataIndex: 'size', width: 90 }, { title: '版本', dataIndex: 'version', width: 80 }, { title: '上传人', dataIndex: 'uploader', width: 80 }, { title: '分类', dataIndex: 'category', width: 90 }, { title: '上传时间', dataIndex: 'uploadTime', width: 130 }, { title: '操作', dataIndex: 'operation', width: 120 }]
@@ -406,6 +541,44 @@ const summaryItems = computed(() => [
 ])
 const getDictLabel = (type, value) => dictLabels[type]?.[value] || value || '-'
 const getUserName = id => managerOptions.value.find(item => item.value === id)?.label || (id ? `用户 ${id}` : '-')
+const formatDateTime = value => value ? dayjs(value).format('YYYY-MM-DD HH:mm') : '-'
+const isFinishedStatus = value => ['COMPLETED', 'DONE', 'FINISHED', '已完成'].includes(value)
+const mapReportDetail = report => {
+  const items = (report.items || []).map(item => ({
+    id: item.id,
+    content: item.content || '-',
+    owner: getUserName(item.ownerId),
+    priority: getDictLabel('taskPriority', item.priority),
+    status: getDictLabel('taskStatus', item.status),
+    statusCode: item.status,
+    plannedDate: item.plannedDate || '-',
+    description: item.description || '-',
+  }))
+  const completedCount = items.filter(item => isFinishedStatus(item.statusCode) || isFinishedStatus(item.status)).length
+  const logs = []
+  if (report.updatedAt && report.updatedAt !== report.createdAt) {
+    logs.push({ id: 'updated', time: formatDateTime(report.updatedAt), user: getUserName(report.updatedBy), content: '更新项目汇报信息' })
+  }
+  if (report.createdAt) {
+    logs.push({ id: 'created', time: formatDateTime(report.createdAt), user: getUserName(report.createdBy), content: `新建汇报【${report.title}】，状态${getDictLabel('reportStatus', report.status)}` })
+  }
+
+  return {
+    id: report.id,
+    title: report.title || '-',
+    type: getDictLabel('reportType', report.reportType),
+    status: getDictLabel('reportStatus', report.status),
+    planTime: report.plannedDate || '-',
+    actualTime: report.actualDate || '-',
+    target: report.targetAudience || '-',
+    place: report.locationMethod || '-',
+    description: report.description || '-',
+    createdAt: formatDateTime(report.createdAt),
+    progress: items.length ? Math.round((completedCount / items.length) * 100) : 0,
+    items,
+    logs,
+  }
+}
 const mapProject = project => ({
   ...project,
   department: project.department || project.businessDepartment || '-',
@@ -432,6 +605,8 @@ const fetchReferenceData = async () => {
       dictLabels[group.type] = Object.fromEntries(group.items.map(item => [item.value, item.label]))
     })
     taskStatusOptions.value = dictGroups.find(item => item.type === 'taskStatus')?.items || []
+    reportTypeOptions.value = dictGroups.find(item => item.type === 'reportType')?.items || []
+    reportStatusOptions.value = dictGroups.find(item => item.type === 'reportStatus')?.items || []
     managerOptions.value = userPage.records.map(user => ({ label: user.realName, value: user.id }))
   } catch (error) {
     message.error(error.message)
@@ -475,7 +650,7 @@ const fetchProjectRelatedData = async projectId => {
     })
     taskRows.value = taskResult.records.map(task => ({ id: task.id, name: task.name, owner: getUserName(task.assigneeId), priority: getDictLabel('taskPriority', task.priority), priorityCode: task.priority, status: getDictLabel('taskStatus', task.status), planStart: task.plannedStartDate || '-', planEnd: task.plannedEndDate || '-', actualStart: task.actualStartDate || '-', actualEnd: task.actualEndDate || '-' }))
     bugRows.value = bugResult.records.map(bug => ({ id: bug.id, code: `BUG-${bug.id}`, title: bug.title, severity: getDictLabel('bugPriority', bug.priority), priorityCode: bug.priority, status: getDictLabel('bugStatus', bug.status), statusCode: bug.status, assignee: getUserName(bug.assigneeId), creator: getUserName(bug.creatorId) }))
-    reportRows.value = reportResult.records.map(report => ({ id: report.id, title: report.title, type: getDictLabel('reportType', report.reportType), status: getDictLabel('reportStatus', report.status), planTime: report.plannedDate, actualTime: report.actualDate || '-', target: report.targetAudience, place: report.locationMethod }))
+    reportRows.value = reportResult.records.map(report => ({ id: report.id, title: report.title, type: getDictLabel('reportType', report.reportType), typeCode: report.reportType, status: getDictLabel('reportStatus', report.status), statusCode: report.status, planTime: report.plannedDate, actualTime: report.actualDate || '-', target: report.targetAudience, place: report.locationMethod, description: report.description, taskId: report.taskId || report.relatedTaskId || undefined, taskName: report.taskName || report.relatedTaskName || undefined }))
     documentRows.value = files.map(file => ({ id: file.id, name: file.originalName, type: file.originalName.split('.').pop()?.toUpperCase() || '-', size: formatFileSize(file.fileSize), version: file.versionNo || '-', uploader: getUserName(file.uploaderId), category: file.fileCategory || '-', uploadTime: file.uploadedAt || '-' }))
     await renderGantt()
   } catch (error) {
@@ -657,6 +832,102 @@ const handleDeleteDocuments = async () => {
   }
 }
 
+const handleResetReportFilter = () => {
+  reportFilter.keyword = ''
+  reportFilter.status = '全部'
+  reportFilter.dateRange = []
+}
+
+const getReportCustomRow = record => ({
+  onClick: () => handleViewReport(record),
+})
+
+const handleViewReport = async record => {
+  reportDetailVisible.value = true
+  reportDetailLoading.value = true
+  currentReportDetail.value = null
+  reportDetailRemark.value = ''
+  reportDetailTaskType.value = 'meeting'
+  try {
+    const report = await getProjectReportDetail(record.id)
+    currentReportDetail.value = mapReportDetail(report)
+  } catch (error) {
+    message.error(error.message)
+    reportDetailVisible.value = false
+  } finally {
+    reportDetailLoading.value = false
+  }
+}
+
+const handleConfirmReportRemark = () => {
+  message.success('备注已确认')
+}
+
+const handleAddReportTask = () => {
+  message.info('新增任务功能待接口确认')
+}
+
+const handleCreateReport = () => {
+  reportMode.value = 'create'
+  editingReportId.value = null
+  Object.assign(reportForm, createDefaultReportForm())
+  reportVisible.value = true
+}
+
+const handleEditReport = record => {
+  reportMode.value = 'edit'
+  editingReportId.value = record.id
+  Object.assign(reportForm, { title: record.title, type: record.typeCode, status: record.statusCode, planDate: dayjs(record.planTime), actualDate: record.actualTime === '-' ? undefined : dayjs(record.actualTime), task: record.taskId || undefined, target: record.target, place: record.place, description: record.description })
+  reportVisible.value = true
+}
+
+const handleSubmitReport = async () => {
+  if (reportSubmitLoading.value) return
+
+  await reportFormRef.value?.validate()
+  reportSubmitLoading.value = true
+  try {
+    const reportData = { projectId: route.params.id, title: reportForm.title, reportType: reportForm.type, status: reportForm.status, plannedDate: reportForm.planDate.format('YYYY-MM-DD'), actualDate: reportForm.actualDate?.format('YYYY-MM-DD') || null, taskId: reportForm.task || undefined, targetAudience: reportForm.target, locationMethod: reportForm.place, description: reportForm.description }
+    if (editingReportId.value) await updateProjectReport(editingReportId.value, reportData)
+    else await createProjectReport(reportData)
+    void recordOperationLog({
+      module: OPERATION_MODULES.EXECUTION_PROJECT,
+      action: editingReportId.value ? OPERATION_ACTIONS.UPDATE : OPERATION_ACTIONS.CREATE,
+      bizType: 'PROJECT_REPORT',
+      bizId: editingReportId.value,
+      bizName: reportForm.title,
+      detail: editingReportId.value ? `编辑项目汇报：${reportForm.title}` : `新建项目汇报：${reportForm.title}`,
+      routeName: 'ExecutionProjectDetail',
+    })
+    message.success(editingReportId.value ? '汇报编辑成功' : '汇报新建成功')
+    reportVisible.value = false
+    await fetchProjectRelatedData(route.params.id)
+  } catch (error) {
+    message.error(error.message)
+  } finally {
+    reportSubmitLoading.value = false
+  }
+}
+
+const handleDeleteReport = async record => {
+  try {
+    await deleteProjectReport(record.id)
+    void recordOperationLog({
+      module: OPERATION_MODULES.EXECUTION_PROJECT,
+      action: OPERATION_ACTIONS.DELETE,
+      bizType: 'PROJECT_REPORT',
+      bizId: record.id,
+      bizName: record.title,
+      detail: `删除项目汇报：${record.title}`,
+      routeName: 'ExecutionProjectDetail',
+    })
+    message.success('汇报删除成功')
+    await fetchProjectRelatedData(route.params.id)
+  } catch (error) {
+    message.error(error.message)
+  }
+}
+
 watch(activeTab, renderGantt)
 onBeforeUnmount(() => { ganttInstance = null })
 onMounted(async () => {
@@ -740,6 +1011,40 @@ onMounted(async () => {
 .section-heading small { color: #8c8c8c; font-weight: 400; }
 .report-filter { margin-bottom: 18px; }
 .report-filter :deep(.ant-input) { width: 280px; }
+.report-detail-modal :deep(.ant-modal-body) { padding: 0; background: #f5f5f5; border-radius: 8px; }
+.report-detail-modal :deep(.ant-modal-close) { top: 12px; right: 12px; }
+.report-detail-view { min-height: 620px; padding: 18px 22px 22px; background: #fff; border-radius: 8px; }
+.report-detail-header { display: flex; align-items: center; min-height: 32px; padding-right: 42px; margin-bottom: 14px; }
+.report-detail-header strong { font-size: 16px; }
+.report-detail-info-table { margin-bottom: 24px; border: 1px solid #e5e6eb; border-right: 0; border-bottom: 0; }
+.report-detail-info-grid { display: grid; grid-template-columns: 86px minmax(120px, 1fr) 86px minmax(120px, 1fr) 86px minmax(120px, 1fr) 86px minmax(120px, 1fr); }
+.report-detail-info-grid span,
+.report-detail-info-grid strong,
+.report-detail-description span,
+.report-detail-description p { min-height: 42px; padding: 10px 12px; border-right: 1px solid #e5e6eb; border-bottom: 1px solid #e5e6eb; }
+.report-detail-info-grid span,
+.report-detail-description span { color: #1f1f1f; font-weight: 600; background: #fafafa; }
+.report-detail-info-grid strong { min-width: 0; font-weight: 400; overflow-wrap: anywhere; }
+.report-detail-progress { display: grid; grid-template-columns: minmax(0, 80px) 38px; gap: 10px; align-items: center; }
+.report-detail-progress em { font-style: normal; font-size: 12px; }
+.report-detail-description { display: grid; grid-template-columns: 86px minmax(0, 1fr); margin: 0; color: #404040; }
+.report-detail-description p { margin: 0; }
+.report-detail-section-title { display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 12px; font-size: 18px; }
+.report-detail-remark { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 10px; align-items: flex-start; margin-bottom: 10px; }
+.report-detail-remark label { padding-top: 6px; font-weight: 500; }
+.report-detail-remark-actions { display: flex; justify-content: flex-end; margin-bottom: 14px; }
+.report-task-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
+.report-detail-log-title { margin-top: 28px; }
+.report-detail-logs { min-height: 130px; padding: 16px 18px 4px; border: 1px solid #f0f0f0; border-radius: 6px; }
+.report-detail-log-meta { color: #8c8c8c; font-size: 12px; }
+.report-detail-logs p { margin: 6px 0 0; color: #1f1f1f; }
+.report-detail-view :deep(.ant-table-cell) { white-space: nowrap; }
+.report-modal :deep(.ant-modal-body) { padding-top: 12px; }
+.report-modal :deep(.ant-form-item) { margin-bottom: 20px; }
+.report-modal :deep(.ant-picker),
+.report-modal :deep(.ant-select) { width: 100%; }
+.report-modal__actions { display: flex; justify-content: flex-end; gap: 10px; }
+.report-modal__actions .ant-btn { min-width: 80px; }
 .document-toolbar :deep(.ant-input-group-wrapper) { width: 300px; }
 .document-categories { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 .document-categories button { display: grid; grid-template-columns: 42px 1fr; padding: 15px; color: #1d1d1f; text-align: left; background: #fff; border: 1px solid rgb(0 0 0 / 5%); border-radius: 16px; box-shadow: 0 4px 16px rgb(0 0 0 / 5%); cursor: pointer; transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.28s ease; }
