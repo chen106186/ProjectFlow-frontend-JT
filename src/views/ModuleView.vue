@@ -767,13 +767,13 @@ const groupedTasks = computed(() => {
   })
   return Array.from(groups, ([value, rows]) => ({ value, label: `${taskGroupLabelMap[taskGroupField.value]}：${value}`, rows }))
 })
-const isExecutionProject = project => (project?.projectType || project?.type) === 'EXECUTION'
+const isManagementProject = project => (project?.projectType || project?.type) === 'MANAGEMENT'
 const taskFilterProjectOptions = computed(() =>
   taskProjects.value.map(p => ({ label: p.name, value: p.id }))
 )
 const taskFormProjectOptions = computed(() => {
   const projects = taskModalMode.value === 'create'
-    ? taskProjects.value.filter(isExecutionProject)
+    ? taskProjects.value.filter(isManagementProject)
     : taskProjects.value
 
   return projects.map(p => ({ label: p.name, value: p.id }))
@@ -906,7 +906,7 @@ async function fetchTaskModuleData() {
     const [dicts, users, projects] = await Promise.all([
       getDicts(),
       getSystemUsers({ pageNo: 1, pageSize: 200, enabled: true }),
-      getProjectList({ pageNo: 1, pageSize: 200 }),
+      getProjectList({ pageNo: 1, pageSize: 200, projectType: 'MANAGEMENT' }),
     ])
     taskUsers.value = users.records || []
     taskProjects.value = projects.records || []
@@ -980,7 +980,7 @@ async function fetchBugModuleData() {
     const [dicts, users, projects] = await Promise.all([
       getDicts(),
       getSystemUsers({ pageNo: 1, pageSize: 200, enabled: true }),
-      getProjectList({ pageNo: 1, pageSize: 200, projectType: 'EXECUTION' }),
+      getProjectList({ pageNo: 1, pageSize: 200, projectType: 'MANAGEMENT' }),
     ])
     bugUsers.value = users.records || []
     bugProjects.value = projects.records || []
@@ -1312,8 +1312,8 @@ const handleTaskSubmit = async () => {
     if (isPersonalTasks.value && editingTaskId.value) {
       if (!editingTaskId.value) {
         const selectedProject = taskProjects.value.find(project => project.id === fs.projectId)
-        if (selectedProject && !isExecutionProject(selectedProject)) {
-          message.warning('新建任务只能选择执行类项目')
+        if (selectedProject && !isManagementProject(selectedProject)) {
+          message.warning('新建任务只能选择管理类项目')
           taskSubmitLoading.value = false
           return
         }
@@ -1329,8 +1329,8 @@ const handleTaskSubmit = async () => {
       if (!fs.priority) { message.warning('请选择优先级'); taskSubmitLoading.value = false; return }
       if (!editingTaskId.value) {
         const selectedProject = taskProjects.value.find(project => project.id === fs.projectId)
-        if (selectedProject && !isExecutionProject(selectedProject)) {
-          message.warning('新建任务只能选择执行类项目')
+        if (selectedProject && !isManagementProject(selectedProject)) {
+          message.warning('新建任务只能选择管理类项目')
           taskSubmitLoading.value = false
           return
         }
@@ -1927,12 +1927,13 @@ const trendPoints = [
   height: 36px;
 }
 
-.bug-filter {
-  grid-template-columns: minmax(150px, 1.2fr) minmax(150px, 1fr) minmax(120px, 0.8fr) minmax(120px, 0.8fr) max-content;
-  gap: 18px 24px;
+.prototype-filter.bug-filter {
+  grid-template-columns: minmax(180px, 1.2fr) minmax(180px, 1fr) minmax(140px, 0.8fr) minmax(140px, 0.8fr) max-content !important;
+  column-gap: 28px !important;
+  row-gap: 0 !important;
 }
 
-.bug-filter .filter-buttons {
+.prototype-filter.bug-filter .filter-buttons {
   grid-column: auto;
 }
 

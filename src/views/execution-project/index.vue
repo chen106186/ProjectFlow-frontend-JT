@@ -315,12 +315,12 @@ onMounted(async () => { await fetchReferenceData(); await fetchProjects() })
 .execution-filter, .execution-list { border: 1px solid #edf0f3; box-shadow: 0 2px 8px rgb(0 0 0 / 3%); }
 .execution-filter { margin-bottom: 16px; }
 .execution-filter :deep(.ant-card-body) { padding: 20px 30px 4px; }
-.execution-filter__form { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: 32px; }
+.execution-filter__form.app-filter-form { display: grid; grid-template-columns: minmax(180px, 1.3fr) repeat(3, minmax(140px, 1fr)) max-content !important; column-gap: 24px !important; align-items: end; }
 .execution-filter__form :deep(.ant-form-item) { margin: 0 0 16px; }
 .execution-filter__form :deep(.ant-form-item-row) { width: 100%; flex-wrap: nowrap; }
 .execution-filter__form :deep(.ant-form-item-label) { flex: 0 0 76px; }
 .execution-filter__form :deep(.ant-form-item-control), .execution-filter__form :deep(.ant-select), .execution-filter__form :deep(.ant-input) { width: 100%; }
-.execution-filter__actions { grid-column: 4; justify-self: end; }
+.execution-filter__actions { grid-column: auto !important; justify-self: end; }
 .execution-list :deep(.ant-card-body) { padding: 22px 30px 18px; }
 .execution-list__toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .execution-list__display { display: flex; align-items: center; gap: 12px; color: #8c8c8c; }
@@ -342,5 +342,5 @@ onMounted(async () => { await fetchReferenceData(); await fetchProjects() })
 .execution-form :deep(textarea.ant-input) { height: 100px; resize: none; }
 .form-actions { display: flex; justify-content: flex-end; gap: 12px; padding: 54px 40px 0 0; }
 .form-actions .ant-btn { min-width: 94px; height: 44px; font-size: 16px; border-radius: 7px; }
-@media (max-width: 1200px) { .execution-filter__form { grid-template-columns: repeat(2, minmax(0, 1fr)); }.execution-filter__actions { grid-column: 2; } }
+@media (max-width: 960px) { .execution-filter__form.app-filter-form { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }.execution-filter__actions { grid-column: 2 !important; } }
 </style>

@@ -673,7 +673,7 @@ onBeforeUnmount(() => {
 
 onMounted(async () => {
   const [projectRes, userRes] = await Promise.all([
-    getProjectList({ projectType: 'EXECUTION', pageSize: 200 }).catch(() => ({ records: [] })),
+    getProjectList({ projectType: 'MANAGEMENT', pageSize: 200 }).catch(() => ({ records: [] })),
     getSystemUsers({ pageSize: 200 }).catch(() => ({ records: [] })),
   ])
   projects.value = projectRes.records || []
@@ -686,12 +686,12 @@ onMounted(async () => {
 .bug-filter, .bug-list, .bug-form-card { border: 1px solid #edf0f3; box-shadow: 0 2px 8px rgb(0 0 0 / 3%); }
 .bug-filter { margin-bottom: 16px; }
 .bug-filter :deep(.ant-card-body) { padding: 16px 18px 2px; }
-.bug-filter__form { display: grid; grid-template-columns: minmax(180px, 1.4fr) repeat(3, minmax(130px, 1fr)) max-content; column-gap: 16px; align-items: end; }
+.bug-filter__form.app-filter-form { display: grid; grid-template-columns: minmax(180px, 1.4fr) repeat(3, minmax(130px, 1fr)) max-content !important; column-gap: 16px !important; align-items: end; }
 .bug-filter__form :deep(.ant-form-item) { margin: 0 0 14px; }
 .bug-filter__form :deep(.ant-form-item-row) { width: 100%; flex-wrap: nowrap; }
 .bug-filter__form :deep(.ant-form-item-control) { flex: 1; }
 .bug-filter__form :deep(.ant-input), .bug-filter__form :deep(.ant-select) { width: 100%; }
-.bug-filter__actions { justify-self: end; }
+.bug-filter__actions { grid-column: auto !important; justify-self: end; }
 .bug-list__toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .bug-list__group { display: flex; align-items: center; gap: 12px; color: #666; }
 .bug-list__group :deep(.ant-select) { width: 130px; }
@@ -959,7 +959,7 @@ onMounted(async () => {
   }
 }
 :deep(.ant-modal-body) { padding-top: 10px; }
-@media (max-width: 1200px) {
+@media (max-width: 960px) {
   .bug-filter__form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .bug-filter__actions { grid-column: 2; }
 }
