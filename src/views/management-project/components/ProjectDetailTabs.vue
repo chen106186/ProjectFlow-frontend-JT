@@ -161,18 +161,21 @@
             </a-space>
             <a-input-search v-model:value="documentSearch" placeholder="搜索文件名、上传人、分类..." style="width: 300px" />
           </div>
+          <div class="document-breadcrumb">
+            <span>文件夹支持展开查看，上传时可选择目标文件夹。</span>
+          </div>
           <h3>分类导航</h3>
           <div class="document-categories">
-            <button v-for="item in documentCategories" :key="item.label" type="button" :class="[item.class, { active: item.active }]" @click="emit('select-document-category', item.label)">
+            <button v-for="item in documentCategories" :key="item.value" type="button" :class="[item.class, { active: item.active }]" @click="emit('select-document-category', item.value)">
               <span class="document-category__icon"><component :is="item.icon" /></span>
               <span>{{ item.label }}</span>
-              <strong>{{ item.value }}</strong>
+              <strong>{{ item.count }}</strong>
             </button>
           </div>
           <a-table row-key="id" :row-selection="documentRowSelection" :columns="documentColumns" :data-source="filteredDocsBySearch" :loading="documentLoading" :pagination="false">
             <template #bodyCell="{ column, record }">
               <template v-if="column.dataIndex === 'name'">
-                <button type="button" class="document-name" :class="{ 'document-name--folder': record.isFolder }" :disabled="record.isFolder" @click="!record.isFolder && emit('download-document', record)">
+                <button type="button" class="document-name" :class="{ 'document-name--folder': record.isFolder, 'document-name--child': record.isChildFile }" @click="record.isFolder ? emit('toggle-folder', record) : emit('download-document', record)">
                   <FolderOpenOutlined v-if="record.isFolder" />
                   <FileOutlined v-else />
                   <span>{{ record.name }}</span>
@@ -199,7 +202,7 @@
 </template>
 
 <script setup>
-import { DeleteOutlined, DownloadOutlined, FileOutlined, FolderAddOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons-vue'
+import { DeleteOutlined, DownloadOutlined, FileOutlined, FolderAddOutlined, FolderOpenOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons-vue'
 import dayjs from 'dayjs'
 import { computed, reactive, ref } from 'vue'
 
@@ -235,6 +238,7 @@ const props = defineProps({
   documentLoading: { type: Boolean, default: false },
   documentRowSelection: { type: Object, required: true },
   selectedDocumentIds: { type: Array, required: true },
+  expandedDocumentFolderIds: { type: Array, default: () => [] },
   pagination: { type: Object, required: true },
 })
 
@@ -248,6 +252,7 @@ const emit = defineEmits([
   'create-folder',
   'batch-download',
   'select-document-category',
+  'toggle-folder',
   'delete-documents',
   'download-document',
   'delete-document',
@@ -255,7 +260,7 @@ const emit = defineEmits([
 
 const ganttRef = ref()
 const documentSearch = ref('')
-const canBatchDownload = computed(() => props.documentRows.some(row => !row.isFolder) && props.selectedDocumentIds.length > 0)
+const canBatchDownload = computed(() => props.selectedDocumentIds.length > 0)
 const filteredDocsBySearch = computed(() => {
   const q = documentSearch.value.trim().toLowerCase()
   if (!q) return props.documentRows
@@ -278,7 +283,7 @@ const filteredReportRows = computed(() =>
       if (!content.includes(keyword)) return false
     }
 
-    if (reportFilter.status && reportFilter.status !== '全部' && record.status !== reportFilter.status) {
+    if (reportFilter.status && reportFilter.status !== '全部' && record.statusCode !== reportFilter.status) {
       return false
     }
 
@@ -659,6 +664,20 @@ defineExpose({
   min-width: 220px;
 }
 
+.document-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: -2px 0 16px;
+  color: #8c8c8c;
+  font-size: 13px;
+}
+
+.document-breadcrumb strong {
+  color: #262626;
+  font-weight: 600;
+}
+
 .document-categories {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -733,6 +752,10 @@ defineExpose({
   cursor: pointer;
   background: transparent;
   border: 0;
+}
+
+.document-name--child {
+  padding-left: 28px;
 }
 
 .document-name span {

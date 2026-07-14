@@ -36,7 +36,7 @@
         :data-source="logs"
         :loading="loading"
         :pagination="pagination"
-        :scroll="{ x: 1300 }"
+        :scroll="{ x: 1500 }"
         size="middle"
         @change="handleTableChange"
       >
@@ -52,6 +52,9 @@
           </template>
           <template v-else-if="column.dataIndex === 'businessType'">
             <span class="log-biz-type">{{ bizTypeLabel(text) }}</span>
+          </template>
+          <template v-else-if="column.dataIndex === 'businessId'">
+            <span class="log-business-id">{{ text || '-' }}</span>
           </template>
           <template v-else-if="column.dataIndex === 'content'">
             <span class="log-content" :title="text">{{ text || '-' }}</span>
@@ -146,13 +149,13 @@ const actionColor = v => ACTION_MAP[v]?.color || 'default'
 const bizTypeLabel = v => BIZ_TYPE_MAP[v] || v || '-'
 
 const columns = [
-  { title: '操作时间', dataIndex: 'createdAt', width: 170, fixed: 'left' },
-  { title: '操作人', dataIndex: 'operatorName', width: 100 },
-  { title: '模块', dataIndex: 'module', width: 110 },
-  { title: '操作类型', dataIndex: 'operationType', width: 110 },
-  { title: '业务类型', dataIndex: 'businessType', width: 100 },
-  { title: '业务ID', dataIndex: 'businessId', width: 90 },
-  { title: '日志内容', dataIndex: 'content', ellipsis: true },
+  { title: '操作时间', dataIndex: 'createdAt', width: 180 },
+  { title: '操作人', dataIndex: 'operatorName', width: 150 },
+  { title: '模块', dataIndex: 'module', width: 150 },
+  { title: '操作类型', dataIndex: 'operationType', width: 150 },
+  { title: '业务类型', dataIndex: 'businessType', width: 150 },
+  { title: '业务ID', dataIndex: 'businessId', width: 190 },
+  { title: '日志内容', dataIndex: 'content', width: 530, ellipsis: true },
 ]
 
 const fetchLogs = async () => {
@@ -200,32 +203,75 @@ onMounted(fetchLogs)
   box-shadow: 0 2px 8px rgb(0 0 0 / 3%);
 }
 
-.log-filter {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px 20px;
+.log-filter-card :deep(.ant-card-body),
+.log-list-card :deep(.ant-card-body) {
+  padding: 24px 28px;
 }
 
-.log-filter :deep(.ant-form-item) { margin-bottom: 0; }
+.log-filter {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(280px, 1fr));
+  gap: 18px 28px;
+  align-items: end;
+}
+
+.log-filter :deep(.ant-form-item) {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  margin-bottom: 0;
+}
+
+.log-filter :deep(.ant-form-item-label) {
+  padding: 0 0 8px;
+  text-align: left;
+}
+
+.log-filter :deep(.ant-form-item-label > label) {
+  height: auto;
+  color: #262626;
+  font-weight: 500;
+}
 
 .log-filter :deep(.ant-form-item-control),
 .log-filter :deep(.ant-input),
 .log-filter :deep(.ant-select),
 .log-filter :deep(.ant-picker) { width: 100%; }
 
-.filter-actions { justify-self: end; }
+.filter-actions {
+  grid-column: 1 / -1;
+  justify-self: center;
+  min-width: 0;
+}
 
 .log-time { color: #8c8c8c; font-size: 13px; font-variant-numeric: tabular-nums; }
 
 .log-biz-type { color: #595959; font-size: 13px; }
 
+.log-business-id {
+  display: block;
+  color: #262626;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
 .log-content {
-  display: -webkit-box;
-  overflow: hidden;
+  display: block;
   color: #434343;
   font-size: 13px;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  line-height: 1.7;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.log-list-card :deep(.ant-table) {
+  width: 100%;
+}
+
+.log-list-card :deep(.ant-table-thead > tr > th),
+.log-list-card :deep(.ant-table-tbody > tr > td) {
+  padding: 18px 16px;
 }
 
 @media (max-width: 1440px) {
