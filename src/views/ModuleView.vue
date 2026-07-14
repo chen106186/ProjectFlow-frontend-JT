@@ -298,7 +298,7 @@
 
         <a-card class="prototype-card list-card bug-list-card" :bordered="false">
           <div class="list-toolbar">
-            <a-button type="primary" @click="handleOpenBugModal('create')">
+            <a-button type="primary" @click="handleCreateBug">
               <template #icon><PlusOutlined /></template>
               新增Bug
             </a-button>
@@ -326,7 +326,7 @@
                 <a-space :size="2" wrap>
                   <a-button type="link" size="small" @click="handleBugDetail(record)">详情</a-button>
                   <template v-if="record.creatorId === currentUserId && record.statusCode !== 'CLOSED'">
-                    <a-button type="link" size="small" @click="handleOpenBugModal('edit', record)">编辑</a-button>
+                    <a-button type="link" size="small" @click="handleOpenBugEditModal(record)">编辑</a-button>
                     <a-popconfirm title="确认删除该Bug?" ok-text="删除" cancel-text="取消" @confirm="handleDeleteBug(record)">
                       <a-button type="link" size="small" danger>删除</a-button>
                     </a-popconfirm>
@@ -530,7 +530,7 @@
       </a-form>
     </a-modal>
 
-    <a-modal v-model:open="bugEditOpen" width="640px" :title="bugFormMode === 'edit' ? '编辑Bug' : '新增Bug'" centered>
+    <a-modal v-model:open="bugEditOpen" width="640px" title="编辑Bug" centered>
       <template #footer>
         <a-space>
           <a-button @click="bugEditOpen = false">取消</a-button>
@@ -639,7 +639,7 @@ import dayjs from 'dayjs'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { createDailyReport, fetchDailyReports } from '@/api/dailyReports'
-import { closeBug, createBug, createTask, deleteBug, deleteTask, fixBug, getDicts, getMyStatistics, getProjectBugs, getProjectList, getProjectTasks, getSystemUsers, getTaskById, updateBug, updateTask } from '@/api/managementProject'
+import { closeBug, createTask, deleteBug, deleteTask, fixBug, getDicts, getMyStatistics, getProjectBugs, getProjectList, getProjectTasks, getSystemUsers, getTaskById, updateBug, updateTask } from '@/api/managementProject'
 import { formatDateTime } from '@/utils/dateTime'
 import { OPERATION_ACTIONS, OPERATION_MODULES, recordOperationLog } from '@/utils/operationLog'
 
@@ -649,7 +649,6 @@ const personalMode = ref('task-list')
 const taskEditOpen = ref(false)
 const taskModalMode = ref('edit')
 const bugEditOpen = ref(false)
-const bugFormMode = ref('create')
 const bugForm = ref({ projectId: undefined, title: '', priority: undefined, assigneeId: undefined, description: '', reproduceSteps: '' })
 const bugEditingId = ref(null)
 const bugSubmitLoading = ref(false)
@@ -1420,21 +1419,19 @@ const handleBackToBugList = () => {
   updateDetailQuery()
 }
 
-const handleOpenBugModal = (mode, record) => {
-  bugFormMode.value = mode
-  if (mode === 'edit' && record) {
-    bugEditingId.value = record.id
-    bugForm.value = {
-      projectId: record.projectId,
-      title: record.title,
-      priority: record.priorityCode || undefined,
-      assigneeId: record.assigneeId || undefined,
-      description: record.description || '',
-      reproduceSteps: record.reproduceSteps || '',
-    }
-  } else {
-    bugEditingId.value = null
-    bugForm.value = { projectId: undefined, title: '', priority: undefined, assigneeId: undefined, description: '', reproduceSteps: '' }
+const handleCreateBug = () => {
+  router.push({ name: 'BugCreate' })
+}
+
+const handleOpenBugEditModal = record => {
+  bugEditingId.value = record.id
+  bugForm.value = {
+    projectId: record.projectId,
+    title: record.title,
+    priority: record.priorityCode || undefined,
+    assigneeId: record.assigneeId || undefined,
+    description: record.description || '',
+    reproduceSteps: record.reproduceSteps || '',
   }
   bugEditOpen.value = true
 }
@@ -1452,17 +1449,12 @@ const handleBugSubmit = async () => {
       description: f.description || undefined,
       reproduceSteps: f.reproduceSteps || undefined,
     }
-    if (bugEditingId.value) {
-      await updateBug(bugEditingId.value, body)
-      message.success('Bug更新成功')
-    } else {
-      await createBug(body)
-      message.success('Bug提交成功')
-    }
+    await updateBug(bugEditingId.value, body)
+    message.success('Bug更新成功')
     bugEditOpen.value = false
     await loadMyBugs()
   } catch (error) {
-    message.error(error.message || (bugEditingId.value ? 'Bug更新失败' : 'Bug提交失败'))
+    message.error(error.message || 'Bug更新失败')
   } finally {
     bugSubmitLoading.value = false
   }
@@ -1936,7 +1928,12 @@ const trendPoints = [
 }
 
 .bug-filter {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: minmax(150px, 1.2fr) minmax(150px, 1fr) minmax(120px, 0.8fr) minmax(120px, 0.8fr) max-content;
+  gap: 18px 24px;
+}
+
+.bug-filter .filter-buttons {
+  grid-column: auto;
 }
 
 .list-card {

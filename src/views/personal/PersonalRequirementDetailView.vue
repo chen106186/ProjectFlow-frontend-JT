@@ -60,7 +60,7 @@
           </table>
 
           <section class="description-section">
-            <h3>需求描述</h3>
+            <h3 class="desciption-sub-title">需求描述</h3>
             <p class="description-section-detail">{{ requirement.description || '-' }}</p>
           </section>
         </template>
@@ -397,8 +397,13 @@ onMounted(initPage)
 }
 
 .description-section {
-  margin-top: 32px;
+  margin-top: 16px;
   color: #333;
+}
+
+.description-section .desciption-sub-title{
+  font-size: 16px;
+  font-weight: 600;
 }
 
 .description-section .description-section-detail{
