@@ -44,6 +44,7 @@
 import { LockOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { reactive, ref } from 'vue'
+import { changePassword } from '@/api/auth'
 
 const formRef = ref()
 const formState = reactive({
@@ -97,7 +98,13 @@ const handleReset = () => {
 
 const handleSubmit = async () => {
   await formRef.value?.validate()
-  message.info('当前项目未提供当前用户修改密码接口，页面已完成前端校验。')
+  try {
+    await changePassword({ oldPassword: formState.oldPassword, newPassword: formState.newPassword })
+    message.success('密码修改成功，请重新登录')
+    handleReset()
+  } catch (e) {
+    message.error(e?.message || '密码修改失败')
+  }
 }
 </script>
 

@@ -2,127 +2,202 @@
   <section class="notification-center">
     <a-card class="notification-card" :bordered="false">
       <div class="notification-toolbar">
-        <a-tabs v-model:active-key="activeTab" class="notification-tabs">
-          <a-tab-pane key="all" tab="全部 (12)" />
-          <a-tab-pane key="unread" tab="未读 (5)" />
-          <a-tab-pane key="read" tab="已读 (7)" />
+        <a-tabs v-model:active-key="activeTab" class="notification-tabs" @change="onTabChange">
+          <a-tab-pane key="all" :tab="`全部 (${total})`" />
+          <a-tab-pane key="unread" :tab="`未读 (${unreadCount})`" />
+          <a-tab-pane key="read" :tab="`已读 (${readCount})`" />
         </a-tabs>
 
         <a-input v-model:value="keyword" class="notification-search" placeholder="搜索通知标题或内容" allow-clear>
           <template #suffix><SearchOutlined /></template>
         </a-input>
 
-        <a-button class="read-all-button">全部已读</a-button>
+        <a-button class="read-all-button" :loading="markingAll" @click="handleMarkAll">全部已读</a-button>
       </div>
 
-      <div class="notification-list">
-        <section v-for="group in filteredGroups" :key="group.title" class="notification-group">
-          <header class="notification-group__header">
-            <strong>{{ group.title }}</strong>
-            <span>{{ group.items.length }}条</span>
-          </header>
+      <a-spin :spinning="loading">
+        <div class="notification-list">
+          <template v-if="filteredGroups.length">
+            <section v-for="group in filteredGroups" :key="group.title" class="notification-group">
+              <header class="notification-group__header">
+                <strong>{{ group.title }}</strong>
+                <span>{{ group.items.length }}条</span>
+              </header>
 
-          <article v-for="item in group.items" :key="item.id" :class="['notification-item', { unread: item.unread }]">
-            <span :class="['notification-icon', item.type]">
-              <WarningOutlined v-if="item.type === 'warning'" />
-              <ProfileOutlined v-else-if="item.type === 'task'" />
-              <BugOutlined v-else-if="item.type === 'bug'" />
-              <SoundOutlined v-else />
-            </span>
+              <article
+                v-for="item in group.items"
+                :key="item.id"
+                :class="['notification-item', { unread: !item.read }]"
+                @click="handleRead(item)"
+              >
+                <span :class="['notification-icon', noticeIconType(item.noticeType)]">
+                  <WarningOutlined v-if="noticeIconType(item.noticeType) === 'warning'" />
+                  <ProfileOutlined v-else-if="noticeIconType(item.noticeType) === 'task'" />
+                  <BugOutlined v-else-if="noticeIconType(item.noticeType) === 'bug'" />
+                  <SoundOutlined v-else />
+                </span>
 
-            <div class="notification-item__content">
-              <div class="notification-item__title">
-                <a-tag :class="['notification-tag', item.type]">{{ item.tag }}</a-tag>
-                <strong>{{ item.title }}</strong>
-              </div>
-              <p>{{ item.meta }}</p>
-            </div>
+                <div class="notification-item__content">
+                  <div class="notification-item__title">
+                    <a-tag :class="['notification-tag', noticeIconType(item.noticeType)]">
+                      {{ noticeTagLabel(item.noticeType) }}
+                    </a-tag>
+                    <strong>{{ item.title }}</strong>
+                  </div>
+                  <p>{{ item.content }}</p>
+                </div>
 
-            <div class="notification-item__extra">
-              <span>{{ item.time }}</span>
-              <a-button type="link">查看详情</a-button>
-            </div>
-            <i v-if="item.unread" class="unread-dot" />
-          </article>
-        </section>
-      </div>
+                <div class="notification-item__extra">
+                  <span>{{ formatTime(item.createdAt) }}</span>
+                </div>
+                <i v-if="!item.read" class="unread-dot" />
+              </article>
+            </section>
+          </template>
+          <a-empty v-else description="暂无通知" style="padding: 48px 0" />
+        </div>
+      </a-spin>
     </a-card>
   </section>
 </template>
 
 <script setup>
 import { BugOutlined, ProfileOutlined, SearchOutlined, SoundOutlined, WarningOutlined } from '@ant-design/icons-vue'
-import { computed, ref } from 'vue'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { getNotices, markAllNoticesRead, markNoticeRead } from '@/api/notices'
+
+const router = useRouter()
 
 const activeTab = ref('all')
 const keyword = ref('')
+const loading = ref(false)
+const markingAll = ref(false)
+const notices = ref([])
+const total = ref(0)
+const unreadCount = ref(0)
+const readCount = ref(0)
 
-const notificationGroups = [
-  {
-    title: '今天',
-    items: [
-      {
-        id: 'notice-1',
-        type: 'warning',
-        tag: '预警通知',
-        title: '任务「API接口开发」已逾期2天，请及时处理',
-        meta: '项目：XX管理平台　｜　任务负责人：张三',
-        time: '10分钟前',
-        unread: true,
-      },
-      {
-        id: 'notice-2',
-        type: 'task',
-        tag: '任务通知',
-        title: '张三 将任务「门店管理页面开发」分配给您',
-        meta: '项目：XX管理平台　｜　任务优先级：中',
-        time: '1小时前',
-        unread: true,
-      },
-    ],
-  },
-  {
-    title: '昨天',
-    items: [
-      {
-        id: 'notice-3',
-        type: 'bug',
-        tag: 'BUG通知',
-        title: '您有一条BUG待处理：「保存按钮无响应」',
-        meta: '项目：XX管理平台　｜　提交人：李四',
-        time: '昨天 16:20',
-        unread: false,
-      },
-      {
-        id: 'notice-4',
-        type: 'system',
-        tag: '系统通知',
-        title: '项目「XX管理平台」已进入测试阶段',
-        meta: '系统自动推送',
-        time: '昨天 16:30',
-        unread: false,
-      },
-    ],
-  },
-]
+const NOTICE_TYPE_MAP = {
+  TASK_ASSIGNED: { icon: 'task', label: '任务通知' },
+  TASK_OVERDUE: { icon: 'warning', label: '预警通知' },
+  PROJECT_WARNING: { icon: 'warning', label: '预警通知' },
+  BUG_ASSIGNED: { icon: 'bug', label: 'BUG通知' },
+  BUG_COMMENT: { icon: 'bug', label: '评论通知' },
+  REQUIREMENT_STATUS_CHANGED: { icon: 'task', label: '需求通知' },
+  SYSTEM: { icon: 'system', label: '系统通知' },
+}
+
+const noticeIconType = type => NOTICE_TYPE_MAP[type]?.icon || 'system'
+const noticeTagLabel = type => NOTICE_TYPE_MAP[type]?.label || '通知'
+
+const formatTime = (isoStr) => {
+  if (!isoStr) return ''
+  const d = new Date(isoStr)
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const yesterday = new Date(today - 86400000)
+  const target = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+  const pad = n => String(n).padStart(2, '0')
+  const hhmm = `${pad(d.getHours())}:${pad(d.getMinutes())}`
+  if (target >= today) return `今天 ${hhmm}`
+  if (target >= yesterday) return `昨天 ${hhmm}`
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${hhmm}`
+}
+
+const groupDate = (isoStr) => {
+  if (!isoStr) return '更早'
+  const d = new Date(isoStr)
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const yesterday = new Date(today - 86400000)
+  const target = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+  if (target >= today) return '今天'
+  if (target >= yesterday) return '昨天'
+  return '更早'
+}
+
+const filteredNotices = computed(() => {
+  const text = keyword.value.trim().toLowerCase()
+  return notices.value.filter(n => {
+    const matchTab =
+      activeTab.value === 'all' ||
+      (activeTab.value === 'unread' && !n.read) ||
+      (activeTab.value === 'read' && n.read)
+    const matchKeyword = !text || `${n.title}${n.content || ''}`.toLowerCase().includes(text)
+    return matchTab && matchKeyword
+  })
+})
 
 const filteredGroups = computed(() => {
-  const text = keyword.value.trim().toLowerCase()
-
-  return notificationGroups
-    .map(group => ({
-      ...group,
-      items: group.items.filter(item => {
-        const matchedTab =
-          activeTab.value === 'all' ||
-          (activeTab.value === 'unread' && item.unread) ||
-          (activeTab.value === 'read' && !item.unread)
-        const matchedKeyword = !text || `${item.title}${item.meta}${item.tag}`.toLowerCase().includes(text)
-        return matchedTab && matchedKeyword
-      }),
-    }))
-    .filter(group => group.items.length)
+  const ORDER = ['今天', '昨天', '更早']
+  const map = {}
+  for (const n of filteredNotices.value) {
+    const g = groupDate(n.createdAt)
+    if (!map[g]) map[g] = []
+    map[g].push(n)
+  }
+  return ORDER.filter(g => map[g]).map(g => ({ title: g, items: map[g] }))
 })
+
+const loadNotices = async () => {
+  loading.value = true
+  try {
+    const res = await getNotices({ page: 1, pageSize: 200 })
+    notices.value = res?.data?.records || res?.data || []
+    total.value = notices.value.length
+    unreadCount.value = notices.value.filter(n => !n.read).length
+    readCount.value = notices.value.filter(n => n.read).length
+  } catch {
+    message.error('加载通知失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleRead = async (item) => {
+  if (!item.read) {
+    try {
+      await markNoticeRead(item.id)
+      item.read = true
+      unreadCount.value = Math.max(0, unreadCount.value - 1)
+      readCount.value++
+    } catch {
+      // silent
+    }
+  }
+  navigateTo(item)
+}
+
+const navigateTo = (item) => {
+  if (!item.businessId) return
+  const type = item.businessType
+  if (type === 'Task') {
+    router.push({ name: 'PersonalTaskDetail', params: { id: String(item.businessId) } })
+  } else if (type === 'Bug') {
+    router.push({ name: 'BugDetail', params: { id: String(item.businessId) } })
+  }
+}
+
+const handleMarkAll = async () => {
+  markingAll.value = true
+  try {
+    await markAllNoticesRead()
+    notices.value.forEach(n => { n.read = true })
+    unreadCount.value = 0
+    readCount.value = total.value
+    message.success('已全部标为已读')
+  } catch {
+    message.error('操作失败')
+  } finally {
+    markingAll.value = false
+  }
+}
+
+const onTabChange = () => {}
+
+onMounted(loadNotices)
 </script>
 
 <style scoped>
@@ -204,6 +279,12 @@ const filteredGroups = computed(() => {
   background: #fff;
   border-left: 4px solid transparent;
   border-bottom: 1px solid #edf0f3;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.notification-item:hover {
+  background: #f9fafb;
 }
 
 .notification-item:last-child {
@@ -277,13 +358,6 @@ const filteredGroups = computed(() => {
   justify-items: end;
   gap: 8px;
   color: #8c8c8c;
-}
-
-.notification-item__extra :deep(.ant-btn) {
-  min-width: 96px;
-  height: 36px;
-  border: 1px solid #e6edf5;
-  border-radius: 5px;
 }
 
 .unread-dot {
