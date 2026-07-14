@@ -6,15 +6,23 @@
     </div>
 
     <section class="execution-summary">
-      <dl>
-        <template v-for="item in summaryItems" :key="item.label">
-          <dt>{{ item.label }}：</dt>
-          <dd>
-            <a-tag v-if="item.tag" :color="item.color">{{ item.value }}</a-tag>
-            <template v-else>{{ item.value }}</template>
-          </dd>
-        </template>
-      </dl>
+      <table class="execution-summary-table">
+        <tbody>
+          <tr v-for="(row, rowIndex) in summaryRows" :key="rowIndex">
+            <template v-for="item in row" :key="item.label">
+              <th>{{ item.label }}</th>
+              <td>
+                <a-tag v-if="item.tag" :color="item.color">{{ item.value }}</a-tag>
+                <template v-else>{{ item.value }}</template>
+              </td>
+            </template>
+            <template v-for="index in 4 - row.length" :key="`empty-${rowIndex}-${index}`">
+              <th></th>
+              <td></td>
+            </template>
+          </tr>
+        </tbody>
+      </table>
       <div class="execution-summary__progress">
         <div class="execution-summary__title">
           <h3><ProjectOutlined />项目进度</h3>
@@ -678,6 +686,13 @@ const summaryItems = computed(() => [
   { label: '计划结束', value: currentProject.value?.plannedEndDate || '-' },
   { label: '项目描述', value: currentProject.value?.description || '-' },
 ])
+const summaryRows = computed(() => {
+  const rows = []
+  for (let i = 0; i < summaryItems.value.length; i += 4) {
+    rows.push(summaryItems.value.slice(i, i + 4))
+  }
+  return rows
+})
 const getDictLabel = (type, value) => dictLabels[type]?.[value] || value || '-'
 const getUserName = id => managerOptions.value.find(item => item.value === id)?.label || (id ? `用户 ${id}` : '-')
 const resolveFileCategory = value => {
@@ -1174,10 +1189,11 @@ onMounted(async () => {
 .execution-detail__heading { display: flex; align-items: center; gap: 16px; margin-bottom: 8px; }
 .execution-detail__heading :deep(.ant-tag) { padding: 6px 14px; font-size: 16px; }
 .execution-summary { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; margin: 0 0 14px; padding: 16px 18px; background: #fff; border-radius: 8px; }
-.execution-summary dl { display: grid; grid-template-columns: repeat(4, max-content minmax(90px, 1fr)); gap: 14px 10px; align-content: center; margin: 0; }
-.execution-summary dt, .execution-summary dd { margin: 0; }
-.execution-summary dt { color: #595959; }
-.execution-summary dd { overflow-wrap: anywhere; }
+.execution-summary-table { width: 100%; table-layout: fixed; border-collapse: collapse; }
+.execution-summary-table th,
+.execution-summary-table td { min-height: 42px; padding: 10px 12px; text-align: left; border: 1px solid #e5e6eb; }
+.execution-summary-table th { width: 100px; color: #1f1f1f; font-weight: 600; background: #fafafa; }
+.execution-summary-table td { color: #262626; overflow-wrap: anywhere; }
 .execution-summary__progress { padding-left: 20px; border-left: 1px solid #edf0f3; }
 .execution-summary__title { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .execution-summary__title h3 { display: flex; gap: 7px; align-items: center; margin: 0; }
@@ -1327,6 +1343,5 @@ onMounted(async () => {
   .execution-tabs { gap: 20px; }
   .execution-summary { grid-template-columns: 1fr; }
   .execution-summary__progress { padding: 16px 0 0; border-top: 1px solid #edf0f3; border-left: 0; }
-  .execution-summary dl { grid-template-columns: repeat(2, max-content minmax(120px, 1fr)); }
 }
 </style>

@@ -74,7 +74,20 @@
       <div class="project-detail">
         <div class="project-detail__heading"><a-button @click="handleBack"><ArrowLeftOutlined />返回</a-button><a-tag color="processing">{{ currentProject?.status || '-' }}</a-tag></div>
         <section class="project-summary">
-          <dl><template v-for="item in summaryItems" :key="item.label"><dt>{{ item.label }}：</dt><dd><a-tag v-if="item.tag" :color="item.color">{{ item.value }}</a-tag><template v-else>{{ item.value }}</template></dd></template></dl>
+          <table class="project-summary-table">
+            <tbody>
+              <tr v-for="(row, rowIndex) in summaryRows" :key="rowIndex">
+                <template v-for="item in row" :key="item.label">
+                  <th>{{ item.label }}</th>
+                  <td><a-tag v-if="item.tag" :color="item.color">{{ item.value }}</a-tag><template v-else>{{ item.value }}</template></td>
+                </template>
+                <template v-for="index in 4 - row.length" :key="`empty-${rowIndex}-${index}`">
+                  <th></th>
+                  <td></td>
+                </template>
+              </tr>
+            </tbody>
+          </table>
           <div class="project-summary__progress">
             <div class="project-summary__title"><h3><ProjectOutlined />项目进度</h3><span>根据项目进度权重计算</span></div>
             <div class="project-summary__bar"><a-progress :percent="ganttSummaryData.overallProgress" :show-info="false" stroke-color="#52c41a" /><strong>{{ ganttSummaryData.overallProgress }}%</strong></div>
@@ -750,6 +763,13 @@ const summaryItems = computed(() => [
   { label: '计划开始', value: currentProject.value?.plannedStartDate || '-' },
   { label: '计划结束', value: currentProject.value?.plannedEndDate || '-' },
 ])
+const summaryRows = computed(() => {
+  const rows = []
+  for (let i = 0; i < summaryItems.value.length; i += 4) {
+    rows.push(summaryItems.value.slice(i, i + 4))
+  }
+  return rows
+})
 
 const getDictLabel = (type, value) => dictLabels[type]?.[value] || value || '-'
 const getUserName = id => managerOptions.value.find(item => item.value === id)?.label || (id ? `用户 ${id}` : '-')
@@ -1664,7 +1684,11 @@ const handleSubmit = async () => {
 .project-summary__bar strong { color: #52c41a; font-size: 20px; text-align: right; }
 .summary-metrics { display: grid; grid-template-columns: repeat(2, 80px); margin-top: 10px; text-align: center; }
 .summary-metrics strong, .summary-metrics span { display: block; }.summary-metrics strong { color: #1677ff; font-size: 20px; }.summary-metrics span { color: #8c8c8c; font-size: 12px; }.danger { color: #ff4d4f !important; }.warning { color: #fa8c16 !important; }.success { color: #52c41a !important; }
-.project-summary dl { display: grid; grid-template-columns: repeat(4, max-content minmax(90px, 1fr)); gap: 14px 10px; align-content: center; margin: 0; }.project-summary dt, .project-summary dd { margin: 0; }.project-summary dt { color: #595959; }.project-summary dd { overflow-wrap: anywhere; }
+.project-summary-table { width: 100%; table-layout: fixed; border-collapse: collapse; }
+.project-summary-table th,
+.project-summary-table td { min-height: 42px; padding: 10px 12px; text-align: left; border: 1px solid #e5e6eb; }
+.project-summary-table th { width: 100px; color: #1f1f1f; font-weight: 600; background: #fafafa; }
+.project-summary-table td { color: #262626; overflow-wrap: anywhere; }
 .document-upload-modal :deep(.ant-modal-body) { padding-top: 8px; }
 .document-upload-modal :deep(.ant-upload-drag) { padding: 18px; border: 2px dashed #91caff; background: #fbfdff; }
 .upload-drag-icon { margin: 0 !important; color: #1677ff; font-size: 48px; }
@@ -1705,5 +1729,5 @@ const handleSubmit = async () => {
 .report-detail-logs p { margin: 6px 0 0; color: #1f1f1f; }
 .report-detail-view :deep(.ant-table-cell) { white-space: nowrap; }
 .report-modal :deep(.ant-modal-body) { padding-top: 12px; }.report-modal :deep(.ant-form-item) { margin-bottom: 20px; }.report-modal :deep(.ant-picker), .report-modal :deep(.ant-select) { width: 100%; }.report-modal__actions { display: flex; justify-content: flex-end; gap: 10px; }.report-modal__actions .ant-btn { min-width: 80px; }
-@media (max-width: 1280px) { .project-filter__form { grid-template-columns: repeat(2, minmax(0, 1fr)); }.project-tabs { gap: 20px; }.project-summary { grid-template-columns: 1fr; }.project-summary__progress { padding: 16px 0 0; border-top: 1px solid #edf0f3; border-left: 0; }.project-summary dl { grid-template-columns: repeat(2, max-content minmax(120px, 1fr)); } }
+@media (max-width: 1280px) { .project-filter__form { grid-template-columns: repeat(2, minmax(0, 1fr)); }.project-tabs { gap: 20px; }.project-summary { grid-template-columns: 1fr; }.project-summary__progress { padding: 16px 0 0; border-top: 1px solid #edf0f3; border-left: 0; } }
 </style>
