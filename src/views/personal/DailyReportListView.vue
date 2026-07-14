@@ -93,7 +93,7 @@ import { formatDateTime } from '@/utils/dateTime'
 
 const router = useRouter()
 const today = dayjs()
-const editableDate = today.subtract(1, 'day')
+const editableDate = today
 
 const loading = ref(false)
 const reports = ref([])
@@ -166,7 +166,7 @@ const filteredReports = computed(() => {
 
   return reports.value.filter(report => {
     const matchesMonth = !month || String(report.reportDate).slice(0, 7) === month
-    const content = String(report.content || '').toLowerCase()
+    const content = getReportContent(report).toLowerCase()
     const matchesKeyword = !keyword || content.includes(keyword)
     return matchesMonth && matchesKeyword
   })
@@ -208,7 +208,8 @@ async function loadWeeklyStatus() {
 }
 
 function getReportContent(report) {
-  return String(report?.content || '').trim() || '-'
+  const text = String(report?.content || '').replace(/<[^>]+>/g, '').trim()
+  return text || '-'
 }
 
 function hasReport(userId, date) {

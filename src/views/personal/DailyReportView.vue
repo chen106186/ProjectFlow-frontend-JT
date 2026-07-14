@@ -1,8 +1,16 @@
 <template>
   <div class="dr-page">
+    <header class="dr-detail-header">
+      <a-button class="dr-back-button" @click="handleBack">
+        <template #icon><LeftOutlined /></template>
+        返回
+      </a-button>
+    </header>
+
     <div class="dr-page__body">
       <div class="dr-left">
         <section class="dr-editor">
+          <h2 class="dr-form-title">{{ pageTitle }}</h2>
           <a-spin :spinning="allLoading || submitLoading">
             <a-form
               layout="horizontal"
@@ -19,12 +27,10 @@
                 />
               </a-form-item>
               <a-form-item label="日报内容">
-                <a-textarea
-                  v-model:value="form.content"
-                  :rows="6"
-                  :disabled="!isEditableDate"
-                  placeholder="请输入日报内容"
-                />
+                <div class="dr-rich-editor">
+                  <Toolbar v-if="editorRef && isEditableDate" :editor="editorRef" :default-config="toolbarConfig" mode="default" />
+                  <Editor v-model="form.content" :default-config="editorConfig" mode="default" @on-created="handleEditorCreated" />
+                </div>
               </a-form-item>
               <a-form-item label="附件上传">
                 <a-upload-dragger
@@ -56,9 +62,9 @@
           </a-spin>
         </section>
 
-        <div class="dr-actions">
-          <a-button :disabled="!isEditableDate" @click="resetForm">重置</a-button>
-          <a-button type="primary" :disabled="!isEditableDate" :loading="submitLoading" @click="handleSave">保存</a-button>
+        <div v-if="isEditableDate" class="dr-actions">
+          <a-button @click="resetForm">重置</a-button>
+          <a-button type="primary" :loading="submitLoading" @click="handleSave">保存</a-button>
         </div>
       </div>
 
@@ -97,8 +103,10 @@
 import { FileOutlined, LeftOutlined, RightOutlined, UploadOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
+import '@wangeditor/editor/dist/css/style.css'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 import {
   createDailyReport,
@@ -109,8 +117,10 @@ import {
 } from '@/api/dailyReports'
 
 const route = useRoute()
+const router = useRouter()
 const today = dayjs()
-const editableDate = today.subtract(1, 'day')
+const editableDate = today
+const yesterday = today.subtract(1, 'day')
 const initialDate = getRouteDate()
 const calendarValue = ref(initialDate)
 const selectedDate = ref(initialDate)
@@ -122,6 +132,57 @@ const submitLoading = ref(false)
 const form = ref({ reportDate: editableDate, content: '' })
 const pendingFiles = ref([])
 const existingFiles = ref([])
+const editorRef = shallowRef()
+
+const richTextImageUploadConf = {
+  MENU_CONF: {
+    uploadImage: {
+      async customUpload(file, insertFn) {
+        const fd = new FormData()
+        fd.append('file', file)
+        const res = await fetch('/api/files/upload-image', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
+          body: fd,
+        }).catch(() => null)
+        if (!res || !res.ok) {
+          message.error('图片上传失败')
+          return
+        }
+        const json = await res.json()
+        if (json.errno === 0) {
+          insertFn(json.data.url, json.data.alt || '', json.data.href || '')
+        } else {
+          message.error('图片上传失败')
+        }
+      },
+    },
+  },
+}
+
+const toolbarConfig = {
+  toolbarKeys: [
+    'headerSelect',
+    'fontSize',
+    '|',
+    'bold',
+    'italic',
+    'underline',
+    'through',
+    'color',
+    'bgColor',
+    '|',
+    'bulletedList',
+    'numberedList',
+    'justifyLeft',
+    'justifyCenter',
+    'justifyRight',
+    '|',
+    'uploadImage',
+    'insertImage',
+  ],
+}
+const editorConfig = { placeholder: '请输入日报内容', scroll: true, ...richTextImageUploadConf }
 
 const reportMap = computed(() => {
   const map = {}
@@ -135,11 +196,22 @@ const reportMap = computed(() => {
 })
 
 const currentReport = computed(() => reportMap.value[selectedDate.value.format('YYYY-MM-DD')] || null)
-const isEditableDate = computed(() => selectedDate.value.isSame(editableDate, 'day'))
+const isEditableDate = computed(() => selectedDate.value.isSame(today, 'day') || selectedDate.value.isSame(yesterday, 'day'))
+const pageTitle = computed(() => {
+  if (!isEditableDate.value) {
+    return '日报详情'
+  }
+
+  return currentReport.value ? '编辑日报' : '填写日报'
+})
 
 onMounted(async () => {
   await loadAll()
   syncForm()
+})
+
+onBeforeUnmount(() => {
+  editorRef.value?.destroy()
 })
 
 watch(
@@ -181,6 +253,19 @@ watch(
   { immediate: true }
 )
 
+watch(
+  isEditableDate,
+  editable => {
+    if (!editorRef.value) return
+    if (editable) {
+      editorRef.value.enable()
+    } else {
+      editorRef.value.disable()
+    }
+  },
+  { immediate: true }
+)
+
 async function loadAll() {
   allLoading.value = true
   try {
@@ -209,9 +294,7 @@ function syncForm() {
 }
 
 const handleDateSelect = date => {
-  const dateKey = date.format('YYYY-MM-DD')
-
-  if (date.isAfter(today, 'day') || (!date.isSame(editableDate, 'day') && !reportMap.value[dateKey])) {
+  if (date.isAfter(today, 'day')) {
     calendarValue.value = selectedDate.value
     return
   }
@@ -223,7 +306,7 @@ const shiftMonth = (value, onChange, offset) => {
   onChange(value.clone().add(offset, 'month'))
 }
 
-const disabledDailyDate = date => date && !date.isSame(editableDate, 'day')
+const disabledDailyDate = date => date && !date.isSame(today, 'day') && !date.isSame(yesterday, 'day')
 const disabledCalendarDate = date => date && date.isAfter(today, 'day')
 
 function getRouteDate() {
@@ -232,6 +315,25 @@ function getRouteDate() {
     return editableDate
   }
   return date
+}
+
+const handleBack = () => {
+  router.push('/personal/daily')
+}
+
+const handleEditorCreated = editor => {
+  editorRef.value = editor
+  if (!isEditableDate.value) {
+    editor.disable()
+  }
+}
+
+const isContentEmpty = () => {
+  if (editorRef.value) {
+    return editorRef.value.isEmpty()
+  }
+
+  return !String(form.value.content || '').replace(/<[^>]+>/g, '').trim()
 }
 
 const handleBeforeUpload = file => {
@@ -252,11 +354,11 @@ const resetForm = () => {
 }
 
 const handleSave = async () => {
-  if (!form.value.reportDate?.isSame(editableDate, 'day')) {
-    message.warning('只能填写前一天的日报')
+  if (!form.value.reportDate || disabledDailyDate(form.value.reportDate)) {
+    message.warning('只能填写当天和前一天的日报')
     return
   }
-  if (!form.value.content?.trim()) {
+  if (isContentEmpty()) {
     message.warning('请输入日报内容')
     return
   }
@@ -304,6 +406,17 @@ const handleSave = async () => {
   background: #f5f6fa;
 }
 
+.dr-detail-header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  padding: 16px 16px 0;
+}
+
+.dr-back-button {
+  flex-shrink: 0;
+}
+
 .dr-page__body {
   display: grid;
   grid-template-columns: minmax(0, 7fr) minmax(260px, 3fr);
@@ -335,6 +448,14 @@ const handleSave = async () => {
   overflow: hidden;
 }
 
+.dr-form-title {
+  margin: 18px 0 0;
+  color: #111827;
+  font-size: 20px;
+  font-weight: 600;
+  text-align: center;
+}
+
 .dr-editor :deep(.ant-spin-nested-loading),
 .dr-editor :deep(.ant-spin-container) {
   min-height: 0;
@@ -355,6 +476,25 @@ const handleSave = async () => {
 
 .dr-date-picker {
   width: 220px;
+}
+
+.dr-rich-editor {
+  overflow: hidden;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+}
+
+.dr-rich-editor :deep(.w-e-toolbar) {
+  border-bottom: 1px solid #d9d9d9;
+}
+
+.dr-rich-editor :deep(.w-e-text-container) {
+  min-height: 180px;
+}
+
+.dr-rich-editor :deep(.w-e-text-container img) {
+  max-width: 100%;
+  height: auto;
 }
 
 .dr-upload :deep(.ant-upload-drag) {
@@ -478,6 +618,18 @@ const handleSave = async () => {
 
 .dr-calendar-panel :deep(.ant-picker-cell-selected .ant-picker-cell-inner) {
   background: #e6f4ff;
+}
+
+.dr-calendar-panel :deep(.ant-picker-cell-disabled .ant-picker-cell-inner) {
+  width: 100%;
+  height: 42px;
+  color: #bfbfbf;
+  background: #f5f5f5;
+  cursor: not-allowed;
+}
+
+.dr-calendar-panel :deep(.ant-picker-cell-disabled::before) {
+  display: none;
 }
 
 .dr-cal-header {
