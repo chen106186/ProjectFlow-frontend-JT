@@ -74,7 +74,7 @@
 <script setup>
 import { BugOutlined, ProfileOutlined, SearchOutlined, SoundOutlined, WarningOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getNotices, markAllNoticesRead, markNoticeRead } from '@/api/notices'
 
@@ -131,16 +131,10 @@ const groupDate = (isoStr) => {
   return '更早'
 }
 
-const filteredNotices = computed(() => {
-  const text = keyword.value.trim().toLowerCase()
-  if (!text) return notices.value
-  return notices.value.filter(n => `${n.title}${n.content || ''}`.toLowerCase().includes(text))
-})
-
 const filteredGroups = computed(() => {
   const ORDER = ['今天', '昨天', '更早']
   const map = {}
-  for (const n of filteredNotices.value) {
+  for (const n of notices.value) {
     const g = groupDate(n.createdAt)
     if (!map[g]) map[g] = []
     map[g].push(n)
@@ -165,6 +159,7 @@ const loadNotices = async () => {
     const params = { pageNo: currentPage.value, pageSize: PAGE_SIZE }
     if (activeTab.value === 'unread') params.read = false
     if (activeTab.value === 'read') params.read = true
+    if (keyword.value.trim()) params.keyword = keyword.value.trim()
     const res = await getNotices(params)
     notices.value = res?.records || []
     pagedTotal.value = Number(res?.total ?? 0)
@@ -221,6 +216,15 @@ const handleMarkAll = async () => {
     markingAll.value = false
   }
 }
+
+let keywordTimer = null
+watch(keyword, () => {
+  clearTimeout(keywordTimer)
+  keywordTimer = setTimeout(() => {
+    currentPage.value = 1
+    loadNotices()
+  }, 300)
+})
 
 const onTabChange = () => {
   currentPage.value = 1
