@@ -149,7 +149,9 @@ const fetchReferenceData = async () => {
     statusOptions.value = projectStatus
     Object.assign(statusLabels, Object.fromEntries(projectStatus.map(item => [item.value, item.label])))
     managerOptions.value = users.records.map(user => ({ label: user.realName, value: user.id }))
-    managementProjectOptions.value = managementProjects.records.map(project => ({ label: project.name, value: project.id, managerId: project.managerId, projectBusinessType: project.projectBusinessType }))
+    managementProjectOptions.value = managementProjects.records
+      .filter(project => project.projectBusinessType !== 'RESEARCH')
+      .map(project => ({ label: project.name, value: project.id, managerId: project.managerId, projectBusinessType: project.projectBusinessType }))
   } catch (error) {
     message.error(error.message)
   }

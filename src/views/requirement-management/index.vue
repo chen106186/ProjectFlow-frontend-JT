@@ -208,7 +208,6 @@ const statusOptions = computed(() => dictStore.getDictItems('requirementStatus')
 const projectOptions = computed(() =>
   Object.entries(projectMap.value).map(([value, label]) => ({ value, label }))
 )
-
 const dictLabel = (type, value) => dictStore.getDictLabel(type, value) || value || '-'
 const priorityColor = v => ({ URGENT: 'red', HIGH: 'orange', MEDIUM: 'gold', LOW: 'default' }[v] || 'default')
 const statusColor = v => ({ PENDING_REVIEW: 'blue', ACCEPTED: 'green', REJECTED: 'red' }[v] || 'default')
@@ -230,7 +229,6 @@ const columns = [
   { title: '优先级', dataIndex: 'priority', width: 90 },
   { title: '状态', dataIndex: 'status', width: 100 },
   { title: '负责人', dataIndex: 'creatorName', width: 100 },
-  { title: '审核人', dataIndex: 'reviewerName', width: 100 },
   {
     title: '创建时间',
     dataIndex: 'createdAt',

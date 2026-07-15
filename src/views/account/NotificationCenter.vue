@@ -74,7 +74,7 @@
 <script setup>
 import { BugOutlined, ProfileOutlined, SoundOutlined, WarningOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getNotices, markAllNoticesRead, markNoticeRead } from '@/api/notices'
 
@@ -161,6 +161,7 @@ const loadNotices = async () => {
     if (keyword.value.trim()) params.keyword = keyword.value.trim()
     if (activeTab.value === 'unread') params.read = false
     if (activeTab.value === 'read') params.read = true
+    if (keyword.value.trim()) params.keyword = keyword.value.trim()
     const res = await getNotices(params)
     notices.value = res?.records || []
     pagedTotal.value = Number(res?.total ?? 0)
@@ -217,6 +218,15 @@ const handleMarkAll = async () => {
     markingAll.value = false
   }
 }
+
+let keywordTimer = null
+watch(keyword, () => {
+  clearTimeout(keywordTimer)
+  keywordTimer = setTimeout(() => {
+    currentPage.value = 1
+    loadNotices()
+  }, 300)
+})
 
 const onTabChange = () => {
   currentPage.value = 1
