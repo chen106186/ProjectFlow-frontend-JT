@@ -8,17 +8,15 @@
           <a-tab-pane key="read" :tab="`已读 (${totalRead})`" />
         </a-tabs>
 
-        <a-input v-model:value="keyword" class="notification-search" placeholder="搜索通知标题或内容" allow-clear>
-          <template #suffix><SearchOutlined /></template>
-        </a-input>
+        <a-input-search v-model:value="keyword" class="notification-search" placeholder="搜索通知标题" allow-clear @search="handleSearch" @change="handleKeywordChange" />
 
         <a-button class="read-all-button" :loading="markingAll" @click="handleMarkAll">全部已读</a-button>
       </div>
 
-      <a-spin :spinning="loading">
+      <a-spin wrapper-class-name="notification-list-spin" :spinning="loading">
         <div class="notification-list">
-          <template v-if="filteredGroups.length">
-            <section v-for="group in filteredGroups" :key="group.title" class="notification-group">
+          <template v-if="noticeGroups.length">
+            <section v-for="group in noticeGroups" :key="group.title" class="notification-group">
               <header class="notification-group__header">
                 <strong>{{ group.title }}</strong>
                 <span>{{ group.items.length }}条</span>
@@ -56,23 +54,25 @@
           </template>
           <a-empty v-else description="暂无通知" style="padding: 48px 0" />
         </div>
-        <div v-if="pagedTotal > PAGE_SIZE" class="notification-pagination">
-          <a-pagination
-            v-model:current="currentPage"
-            :total="pagedTotal"
-            :page-size="PAGE_SIZE"
-            :show-total="t => `共 ${t} 条`"
-            show-less-items
-            @change="onPageChange"
-          />
-        </div>
       </a-spin>
+      <div class="notification-pagination">
+        <a-pagination
+          v-model:current="currentPage"
+          v-model:page-size="pageSize"
+          :total="pagedTotal"
+          :page-size-options="pageSizeOptions"
+          :show-total="t => `共 ${t} 条`"
+          show-size-changer
+          show-less-items
+          @change="onPageChange"
+        />
+      </div>
     </a-card>
   </section>
 </template>
 
 <script setup>
-import { BugOutlined, ProfileOutlined, SearchOutlined, SoundOutlined, WarningOutlined } from '@ant-design/icons-vue'
+import { BugOutlined, ProfileOutlined, SoundOutlined, WarningOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -80,13 +80,14 @@ import { getNotices, markAllNoticesRead, markNoticeRead } from '@/api/notices'
 
 const router = useRouter()
 
-const PAGE_SIZE = 20
 const activeTab = ref('all')
 const keyword = ref('')
 const loading = ref(false)
 const markingAll = ref(false)
 const notices = ref([])
 const currentPage = ref(1)
+const pageSize = ref(10)
+const pageSizeOptions = ['10', '50', '100']
 const pagedTotal = ref(0)
 const totalAll = ref(0)
 const totalUnread = ref(0)
@@ -131,16 +132,10 @@ const groupDate = (isoStr) => {
   return '更早'
 }
 
-const filteredNotices = computed(() => {
-  const text = keyword.value.trim().toLowerCase()
-  if (!text) return notices.value
-  return notices.value.filter(n => `${n.title}${n.content || ''}`.toLowerCase().includes(text))
-})
-
-const filteredGroups = computed(() => {
+const noticeGroups = computed(() => {
   const ORDER = ['今天', '昨天', '更早']
   const map = {}
-  for (const n of filteredNotices.value) {
+  for (const n of notices.value) {
     const g = groupDate(n.createdAt)
     if (!map[g]) map[g] = []
     map[g].push(n)
@@ -162,7 +157,8 @@ const loadCounts = async () => {
 const loadNotices = async () => {
   loading.value = true
   try {
-    const params = { pageNo: currentPage.value, pageSize: PAGE_SIZE }
+    const params = { pageNo: currentPage.value, pageSize: pageSize.value }
+    if (keyword.value.trim()) params.keyword = keyword.value.trim()
     if (activeTab.value === 'unread') params.read = false
     if (activeTab.value === 'read') params.read = true
     const res = await getNotices(params)
@@ -227,9 +223,20 @@ const onTabChange = () => {
   loadNotices()
 }
 
-const onPageChange = (page) => {
+const onPageChange = (page, size) => {
   currentPage.value = page
+  pageSize.value = size
   loadNotices()
+}
+
+const handleSearch = () => {
+  currentPage.value = 1
+  loadNotices()
+}
+
+const handleKeywordChange = event => {
+  if (event?.target?.value) return
+  handleSearch()
 }
 
 onMounted(async () => {
@@ -239,21 +246,33 @@ onMounted(async () => {
 
 <style scoped>
 .notification-center {
-  min-height: 100%;
+  width: min(1600px, 100%);
+  height: calc(100vh - 68px - 52px - 40px);
+  margin: 0 auto;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .notification-card {
-  min-height: calc(100vh - 160px);
+  height: 100%;
+  min-height: 0;
   border: 1px solid var(--app-border);
   border-radius: 2px;
   box-shadow: none;
 }
 
 .notification-card :deep(.ant-card-body) {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
   padding: 12px 18px 18px;
+  overflow: hidden;
 }
 
 .notification-toolbar {
+  flex: none;
   display: grid;
   grid-template-columns: auto 360px 120px;
   gap: 28px;
@@ -271,8 +290,13 @@ onMounted(async () => {
 
 .notification-tabs :deep(.ant-tabs-tab) {
   padding: 10px 0;
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.notification-tabs :deep(.ant-tabs-tab-btn) {
+  font-size: 14px;
+  font-weight: 400;
 }
 
 .notification-search {
@@ -284,8 +308,23 @@ onMounted(async () => {
   color: #1677ff;
 }
 
-.notification-list {
+.notification-list-spin {
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
+}
+
+.notification-list-spin :deep(.ant-spin-container) {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.notification-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   border: 1px solid #e8edf3;
   border-radius: 6px;
 }
@@ -357,7 +396,7 @@ onMounted(async () => {
 
 .notification-item__title strong {
   color: #1f2937;
-  font-size: 16px;
+  font-size: 14px;
 }
 
 .notification-tag {
@@ -408,8 +447,12 @@ onMounted(async () => {
 }
 
 .notification-pagination {
+  flex: none;
   display: flex;
-  justify-content: center;
-  padding: 20px 0 8px;
+  align-items: center;
+  justify-content: flex-end;
+  height: 40px;
+  padding-top: 12px;
+  background: #fff;
 }
 </style>
