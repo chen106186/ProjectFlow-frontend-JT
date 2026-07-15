@@ -17,8 +17,8 @@
 
       <a-spin :spinning="loading">
         <div class="notification-list">
-          <template v-if="filteredGroups.length">
-            <section v-for="group in filteredGroups" :key="group.title" class="notification-group">
+          <template v-if="pagedGroups.length">
+            <section v-for="group in pagedGroups" :key="group.title" class="notification-group">
               <header class="notification-group__header">
                 <strong>{{ group.title }}</strong>
                 <span>{{ group.items.length }}条</span>
@@ -57,6 +57,18 @@
           <a-empty v-else description="暂无通知" style="padding: 48px 0" />
         </div>
       </a-spin>
+      <div v-if="filteredNotices.length" class="notification-pagination">
+        <a-pagination
+          :current="currentPage"
+          :page-size="pageSize"
+          :total="filteredNotices.length"
+          :page-size-options="['10', '20', '50']"
+          show-size-changer
+          :show-total="totalCount => `共 ${totalCount} 条`"
+          @change="handlePageChange"
+          @show-size-change="handlePageChange"
+        />
+      </div>
     </a-card>
   </section>
 </template>
@@ -64,7 +76,7 @@
 <script setup>
 import { BugOutlined, ProfileOutlined, SearchOutlined, SoundOutlined, WarningOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getNotices, markAllNoticesRead, markNoticeRead } from '@/api/notices'
 
@@ -78,6 +90,8 @@ const notices = ref([])
 const total = ref(0)
 const unreadCount = ref(0)
 const readCount = ref(0)
+const currentPage = ref(1)
+const pageSize = ref(10)
 
 const NOTICE_TYPE_MAP = {
   TASK_ASSIGNED: { icon: 'task', label: '任务通知' },
@@ -130,16 +144,22 @@ const filteredNotices = computed(() => {
   })
 })
 
-const filteredGroups = computed(() => {
+const pagedGroups = computed(() => {
   const ORDER = ['今天', '昨天', '更早']
+  const start = (currentPage.value - 1) * pageSize.value
   const map = {}
-  for (const n of filteredNotices.value) {
+  for (const n of filteredNotices.value.slice(start, start + pageSize.value)) {
     const g = groupDate(n.createdAt)
     if (!map[g]) map[g] = []
     map[g].push(n)
   }
   return ORDER.filter(g => map[g]).map(g => ({ title: g, items: map[g] }))
 })
+
+const handlePageChange = (page, size) => {
+  currentPage.value = page
+  pageSize.value = size
+}
 
 const loadNotices = async () => {
   loading.value = true
@@ -199,7 +219,21 @@ const handleMarkAll = async () => {
   }
 }
 
-const onTabChange = () => {}
+const onTabChange = () => {
+  currentPage.value = 1
+}
+
+watch(keyword, () => {
+  currentPage.value = 1
+})
+
+watch(
+  () => filteredNotices.value.length,
+  length => {
+    const maxPage = Math.max(1, Math.ceil(length / pageSize.value))
+    if (currentPage.value > maxPage) currentPage.value = maxPage
+  }
+)
 
 onMounted(loadNotices)
 </script>
@@ -255,6 +289,12 @@ onMounted(loadNotices)
   overflow: hidden;
   border: 1px solid #e8edf3;
   border-radius: 6px;
+}
+
+.notification-pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
 }
 
 .notification-group + .notification-group {
