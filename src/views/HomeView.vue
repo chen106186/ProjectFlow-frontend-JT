@@ -58,6 +58,12 @@
         <template #title>
           <span class="panel-title"><CalendarOutlined />任务日历</span>
         </template>
+        <template #extra>
+          <a-button type="link" @click="handleCalendarClick">
+            <CalendarOutlined />
+            完整任务日历
+          </a-button>
+        </template>
         <a-calendar v-model:value="calendarValue" :fullscreen="false">
           <template #headerRender="{ value, onChange }">
             <div class="calendar-panel__header">
@@ -71,10 +77,6 @@
             </div>
           </template>
         </a-calendar>
-        <a-button type="link" block @click="handleCalendarClick">
-          <CalendarOutlined />
-          查看完整日历
-        </a-button>
       </a-card>
     </section>
 
@@ -559,7 +561,9 @@ const handleTodoClick = item => {
 
 .todo-list {
   display: grid;
+  grid-auto-rows: 64px;
   gap: 8px;
+  align-content: start;
   height: 100%;
   padding-right: 4px;
   overflow-y: auto;
@@ -570,7 +574,8 @@ const handleTodoClick = item => {
   grid-template-columns: 36px 54px minmax(0, 1fr) 62px 72px;
   gap: 8px;
   align-items: center;
-  min-height: 54px;
+  height: 64px;
+  min-height: 64px;
   padding: 6px 12px;
   text-align: left;
   background: #fff;
