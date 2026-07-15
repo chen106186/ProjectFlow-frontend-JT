@@ -1074,8 +1074,10 @@ const syncRoute = async () => {
     detailLoading.value = true
     try {
       const [project, ganttNodes] = await Promise.all([getProjectDetail(projectId), getGanttNodes(projectId)])
-      const existingNodeNames = Array.isArray(ganttNodes) ? ganttNodes.map(n => n.nodeName).filter(Boolean) : []
-      Object.assign(formState, createDefaultForm(), mapProjectToForm(project), { nodes: existingNodeNames })
+      const existingNodeCodes = Array.isArray(ganttNodes)
+        ? ganttNodes.map(n => n.nodeCode || getProjectNodeCode(n.nodeName)).filter(Boolean)
+        : []
+      Object.assign(formState, createDefaultForm(), mapProjectToForm(project), { nodes: existingNodeCodes })
       editingId.value = project.id
     } catch (error) {
       message.error(error.message)

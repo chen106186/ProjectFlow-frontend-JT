@@ -150,7 +150,10 @@
         <a-form-item v-if="modalMode === 'create'" label="初始密码" name="password">
           <a-input-password v-model:value="formState.password" placeholder="请输入初始密码" />
         </a-form-item>
-        <a-form-item label="账号状态" name="enabled">
+        <a-form-item v-if="modalMode === 'create'" label="入职日期" name="hireDate">
+          <a-date-picker v-model:value="formState.hireDate" value-format="YYYY-MM-DD" placeholder="请选择入职日期" style="width:100%" />
+        </a-form-item>
+        <a-form-item v-if="modalMode === 'create'" label="账号状态" name="enabled">
           <a-switch v-model:checked="formState.enabled" checked-children="启用" un-checked-children="停用" />
         </a-form-item>
       </a-form>
@@ -195,6 +198,7 @@
 <script setup>
 import { PlusOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
+import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
   assignSystemUserRoles,
@@ -234,6 +238,7 @@ const createDefaultFormState = () => ({
   email: '',
   password: '',
   enabled: true,
+  hireDate: dayjs().format('YYYY-MM-DD'),
 })
 
 const createDefaultDepartmentForm = () => ({
@@ -566,6 +571,7 @@ const handleSubmit = async () => {
         email: formState.email,
         password: formState.password,
         enabled: formState.enabled,
+        hireDate: formState.hireDate || undefined,
         roleIds: formState.roleId ? [formState.roleId] : [],
       })
       message.success('新增成功')
