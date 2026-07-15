@@ -43,14 +43,15 @@
       </div>
     </a-card>
 
-    <a-modal v-model:open="formVisible" class="execution-form-modal" :title="editingId ? '编辑项目' : '新建项目'" :footer="null" :width="584" destroy-on-close>
-      <a-form ref="formRef" class="execution-form" :model="formState" :rules="formRules" :label-col="{ flex: '138px' }" :wrapper-col="{ flex: '356px' }">
-        <a-form-item label="项目名称" name="name"><a-select v-model:value="formState.name" show-search :filter-option="filterOption" :options="managementProjectNameOptions" placeholder="请选择项目名称" @change="handleProjectNameChange" /></a-form-item>
-        <a-form-item label="业务部门"><a-input v-model:value="formState.department" placeholder="请输入业务部门" /></a-form-item>
-        <a-form-item label="项目经理" name="managerId"><a-select v-model:value="formState.managerId" :options="managerOptions" placeholder="请选择项目经理" /></a-form-item>
-        <a-form-item label="参与人员"><a-select v-model:value="formState.participantIds" mode="multiple" :options="managerOptions" placeholder="请选择参与人员" /></a-form-item>
-        <a-form-item label="关联管理类项目"><a-select v-model:value="formState.managementProjectId" show-search :filter-option="filterOption" :options="managementProjectOptions" placeholder="请搜索或选择" /></a-form-item>
-        <a-form-item label="项目描述" name="description"><a-textarea v-model:value="formState.description" :rows="4" placeholder="请输入项目描述" /></a-form-item>
+    <a-modal v-model:open="formVisible" class="execution-form-modal" :title="editingId ? '编辑项目' : '新建项目'" :footer="null" :width="700" destroy-on-close>
+      <a-form ref="formRef" class="execution-form" :model="formState" :rules="formRules" :label-col="{ flex: '138px' }" :wrapper-col="{ flex: '368px' }">
+        <a-form-item label="项目名称" name="name">
+          <a-select v-model:value="formState.name" class="execution-project-name-select" show-search :filter-option="filterOption" :options="managementProjectNameOptions" placeholder="请搜索或选择" @change="handleProjectNameChange">
+            <template #suffixIcon><SearchOutlined /></template>
+          </a-select>
+        </a-form-item>
+        <a-form-item label="项目负责人" name="managerId"><a-select v-model:value="formState.managerId" :options="managerOptions" placeholder="根据项目名称带出" disabled /></a-form-item>
+        <a-form-item label="项目类型" name="projectBusinessType"><a-select v-model:value="formState.projectBusinessType" :options="projectBusinessTypeOptions" placeholder="根据项目名称带出" disabled /></a-form-item>
       </a-form>
       <div class="form-actions"><a-button @click="formVisible = false">取消</a-button><a-button type="primary" :loading="submitLoading" @click="handleSubmit">确认</a-button></div>
     </a-modal>
@@ -59,7 +60,7 @@
 </template>
 
 <script setup>
-import { DeleteOutlined, DownOutlined, EditOutlined, PlusOutlined, RightOutlined } from '@ant-design/icons-vue'
+import { DeleteOutlined, DownOutlined, EditOutlined, PlusOutlined, RightOutlined, SearchOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -76,6 +77,7 @@ const router = useRouter()
 const projects = ref([])
 const managerOptions = ref([])
 const managementProjectOptions = ref([])
+const projectBusinessTypeOptions = ref([])
 const statusOptions = ref([])
 const statusLabels = reactive({})
 const displayMode = ref('list')
@@ -103,12 +105,12 @@ const columns = [
   { title: '操作', dataIndex: 'operation', width: 190, fixed: 'right' },
 ]
 
-const createDefaultForm = () => ({ name: '', department: '', managerId: undefined, participantIds: [], managementProjectId: undefined, stage: 'REQUIREMENT_ANALYSIS', status: 'NOT_STARTED', description: '' })
+const createDefaultForm = () => ({ name: '', department: '', managerId: undefined, participantIds: [], managementProjectId: undefined, projectBusinessType: undefined, stage: 'REQUIREMENT_ANALYSIS', status: 'NOT_STARTED', description: '' })
 const formState = reactive(createDefaultForm())
 const formRules = {
   name: [{ required: true, message: '请选择项目名称', trigger: 'change' }],
-  managerId: [{ required: true, message: '请选择项目经理', trigger: 'change' }],
-  description: [{ required: true, message: '请输入项目描述', trigger: 'blur' }],
+  managerId: [{ required: true, message: '所选项目未设置项目负责人', trigger: 'change' }],
+  projectBusinessType: [{ required: true, message: '所选项目未设置项目类型', trigger: 'change' }],
 }
 
 const visibleProjects = computed(() => projects.value)
@@ -125,12 +127,13 @@ const groupedProjects = computed(() => {
 
 const getManagerName = id => managerOptions.value.find(item => item.value === id)?.label || (id ? `用户 ${id}` : '-')
 const filterOption = (input, option) => option.label.toLowerCase().includes(input.toLowerCase())
-const managementProjectNameOptions = computed(() => managementProjectOptions.value.map(item => ({ label: item.label, value: item.label, projectId: item.value, managerId: item.managerId })))
+const managementProjectNameOptions = computed(() => managementProjectOptions.value.map(item => ({ label: item.label, value: item.label, projectId: item.value, managerId: item.managerId, projectBusinessType: item.projectBusinessType })))
 const handleProjectNameChange = value => {
   const selectedProject = managementProjectNameOptions.value.find(item => item.value === value)
   if (selectedProject) {
     formState.managementProjectId = selectedProject.projectId
-    if (selectedProject.managerId != null) formState.managerId = selectedProject.managerId
+    formState.managerId = selectedProject.managerId
+    formState.projectBusinessType = selectedProject.projectBusinessType
   }
 }
 const fetchReferenceData = async () => {
@@ -141,11 +144,12 @@ const fetchReferenceData = async () => {
       getProjectList({ projectType: 'MANAGEMENT', pageNo: 1, pageSize: 200 }),
     ])
     stageOptions.value = dicts.find(item => item.type === 'projectStage')?.items || []
+    projectBusinessTypeOptions.value = dicts.find(item => item.type === 'projectBusinessType')?.items || []
     const projectStatus = dicts.find(item => item.type === 'projectStatus')?.items || []
     statusOptions.value = projectStatus
     Object.assign(statusLabels, Object.fromEntries(projectStatus.map(item => [item.value, item.label])))
     managerOptions.value = users.records.map(user => ({ label: user.realName, value: user.id }))
-    managementProjectOptions.value = managementProjects.records.map(project => ({ label: project.name, value: project.id, managerId: project.managerId }))
+    managementProjectOptions.value = managementProjects.records.map(project => ({ label: project.name, value: project.id, managerId: project.managerId, projectBusinessType: project.projectBusinessType }))
   } catch (error) {
     message.error(error.message)
   }
@@ -217,6 +221,7 @@ const handleEdit = async record => {
       managerId: detail.managerId,
       participantIds: detail.participantIds || [],
       managementProjectId: detail.managementProjectId || undefined,
+      projectBusinessType: detail.projectBusinessType || undefined,
       stage: detail.stage,
       status: detail.status,
       description: detail.description,
@@ -261,7 +266,7 @@ const handleSubmit = async () => {
   try {
     const data = {
       projectType: 'EXECUTION',
-      projectBusinessType: 'EXTERNAL',
+      projectBusinessType: formState.projectBusinessType,
       name: formState.name,
       businessDepartment: formState.department,
       managerId: formState.managerId,
@@ -329,8 +334,12 @@ onMounted(async () => { await fetchReferenceData(); await fetchProjects() })
 .execution-form :deep(.ant-input),
 .execution-form :deep(.ant-select-selector) { min-height: 34px; border-radius: 6px; }
 .execution-form :deep(.ant-select-selection-placeholder) { color: #c8c8c8; font-size: 16px; }
+.execution-project-name-select :deep(.ant-select-arrow) { right: auto; left: 12px; color: #a8a8a8; font-size: 18px; }
+.execution-project-name-select :deep(.ant-select-selection-search) { inset-inline-start: 44px; inset-inline-end: 11px; }
+.execution-project-name-select :deep(.ant-select-selection-placeholder),
+.execution-project-name-select :deep(.ant-select-selection-item) { padding-left: 36px; }
 .execution-form :deep(textarea.ant-input) { height: 100px; resize: none; }
-.form-actions { display: flex; justify-content: flex-end; gap: 12px; padding: 54px 40px 0 0; }
+.form-actions { display: flex; justify-content: flex-end; gap: 24px; padding: 2px 54px 0 0; }
 .form-actions .ant-btn { min-width: 94px; height: 44px; font-size: 16px; border-radius: 7px; }
 @media (max-width: 960px) { .execution-filter__form.app-filter-form { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }.execution-filter__actions { grid-column: 2 !important; } }
 </style>
