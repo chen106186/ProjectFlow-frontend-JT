@@ -655,14 +655,11 @@ const handleUserMenuClick = ({ key }) => {
   height: 100%;
   min-height: 0;
   min-width: 0;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
   overscroll-behavior: contain;
 }
 
 .app-content__header {
-  position: sticky;
-  top: 0;
   z-index: 5;
   flex: 0 0 52px;
   display: flex;
@@ -673,31 +670,37 @@ const handleUserMenuClick = ({ key }) => {
 }
 
 .app-content__spin {
-  flex: none;
+  flex: 1;
   min-height: 0;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .app-content__spin :deep(.ant-spin-container) {
-  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .app-content__body {
-  flex: none;
+  flex: 1;
   min-height: 0;
   padding: 18px 18px 22px;
-  overflow: visible;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .app-content__spin--fixed {
-  overflow: visible;
+  overflow: hidden;
 }
 
 .app-content__spin--fixed :deep(.ant-spin-container) {
-  overflow: visible;
+  overflow: hidden;
 }
 
 .app-content__body--fixed {
-  overflow: visible;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 </style>
