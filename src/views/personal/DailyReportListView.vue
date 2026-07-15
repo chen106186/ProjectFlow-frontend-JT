@@ -1,5 +1,5 @@
 <template>
-  <div :class="['daily-list-page', { 'daily-list-page--full': !canViewWeeklyStatus }]">
+  <div class="daily-list-page">
     <section class="daily-list-main">
       <div class="daily-list-toolbar">
         <a-space :size="12" wrap>
@@ -24,12 +24,13 @@
       </div>
 
       <a-table
+        class="daily-report-table"
         :columns="columns"
-        :data-source="filteredReports"
+        :data-source="pagedReports"
         :loading="loading"
-        :pagination="pagination"
+        :pagination="false"
+        :scroll="{ y: '100%' }"
         row-key="id"
-        @change="handleTableChange"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.dataIndex === 'content'">
@@ -47,53 +48,42 @@
           </template>
         </template>
       </a-table>
+
+      <div class="daily-list-pagination">
+        <a-pagination
+          :current="paginationState.current"
+          :page-size="paginationState.pageSize"
+          :total="filteredReports.length"
+          :page-size-options="['10', '50', '100']"
+          show-size-changer
+          :show-total="total => `共 ${total} 条`"
+          @change="handlePageChange"
+        />
+      </div>
     </section>
 
-    <aside v-if="canViewWeeklyStatus" class="weekly-submit-card">
-      <header class="weekly-submit-card__header">
-        <strong>本周提交情况</strong>
-        <div class="weekly-switch">
-          <a-button type="text" size="small" @click="shiftWeek(-1)"><LeftOutlined /></a-button>
-          <span>{{ weekRangeText }}</span>
-          <a-button type="text" size="small" @click="shiftWeek(1)"><RightOutlined /></a-button>
-        </div>
-      </header>
-
-      <a-spin :spinning="weeklyLoading">
-        <div class="weekly-grid">
-          <span class="weekly-grid__corner" />
-          <span v-for="day in weekDays" :key="day.key" class="weekly-grid__weekday">{{ day.label }}</span>
-
-          <template v-for="user in weeklyUsers" :key="user.id">
-            <span class="weekly-grid__name">{{ user.realName || user.username }}</span>
-            <span
-              v-for="day in weekDays"
-              :key="`${user.id}-${day.key}`"
-              :class="['weekly-grid__cell', { 'weekly-grid__cell--done': hasReport(user.id, day.key) }]"
-              :title="day.key"
-            >
-              {{ day.dateText }}
-            </span>
-          </template>
-        </div>
-      </a-spin>
-    </aside>
+    <DailyReportCalendarPanel
+      v-model="calendarValue"
+      :reports="reports"
+      :loading="loading"
+      readonly
+    />
   </div>
 </template>
 
 <script setup>
-import { LeftOutlined, RightOutlined } from '@ant-design/icons-vue'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
-import { fetchDailyReports, listMyDailyReports } from '@/api/dailyReports'
-import { getUserList } from '@/api/system'
+import { listMyDailyReports } from '@/api/dailyReports'
 import { formatDateTime } from '@/utils/dateTime'
+import DailyReportCalendarPanel from './DailyReportCalendarPanel.vue'
 
 const router = useRouter()
 const today = dayjs()
 const editableDate = today
+const calendarValue = ref(today)
 
 const loading = ref(false)
 const reports = ref([])
@@ -110,56 +100,12 @@ const paginationState = reactive({
   pageSize: 10,
 })
 
-const weeklyLoading = ref(false)
-const weeklyUsers = ref([])
-const weeklyReports = ref([])
-const weeklyBaseDate = ref(today)
-
 const columns = [
   { title: '日期', dataIndex: 'reportDate', width: 140 },
   { title: '内容', dataIndex: 'content', ellipsis: true },
-  { title: '提交时间', dataIndex: 'updatedAt', width: 180 },
+  { title: '提交时间', dataIndex: 'updatedAt', width: 220 },
   { title: '操作', dataIndex: 'operation', width: 90 },
 ]
-
-const pagination = computed(() => ({
-  current: paginationState.current,
-  pageSize: paginationState.pageSize,
-  showSizeChanger: true,
-  pageSizeOptions: ['10', '50', '100'],
-  showTotal: total => `共 ${total} 条`,
-}))
-
-const currentProfile = computed(() => {
-  try {
-    return JSON.parse(localStorage.getItem('authProfile') || '{}')
-  } catch {
-    return {}
-  }
-})
-
-const canViewWeeklyStatus = computed(() => {
-  const roles = currentProfile.value.roles || []
-  return roles.some(role => {
-    const name = role?.name || ''
-    const code = String(role?.code || '').toLowerCase()
-    return name === '超级管理员' || name === '开发经理' || ['super_admin', 'super-admin', 'admin', 'development-manager', 'dev-manager'].includes(code)
-  })
-})
-
-const weekStart = computed(() => weeklyBaseDate.value.subtract((weeklyBaseDate.value.day() + 6) % 7, 'day'))
-const weekDays = computed(() => {
-  const labels = ['一', '二', '三', '四', '五', '六', '日']
-  return Array.from({ length: 7 }, (_, index) => {
-    const date = weekStart.value.add(index, 'day')
-    return {
-      key: date.format('YYYY-MM-DD'),
-      label: labels[index],
-      dateText: date.format('DD'),
-    }
-  })
-})
-const weekRangeText = computed(() => `${weekDays.value[0].key} ~ ${weekDays.value[6].key}`)
 
 const filteredReports = computed(() => {
   const keyword = query.keyword.trim().toLowerCase()
@@ -173,11 +119,13 @@ const filteredReports = computed(() => {
   })
 })
 
+const pagedReports = computed(() => {
+  const start = (paginationState.current - 1) * paginationState.pageSize
+  return filteredReports.value.slice(start, start + paginationState.pageSize)
+})
+
 onMounted(async () => {
   await loadReports()
-  if (canViewWeeklyStatus.value) {
-    await loadWeeklyStatus()
-  }
 })
 
 async function loadReports() {
@@ -189,32 +137,9 @@ async function loadReports() {
   }
 }
 
-async function loadWeeklyStatus() {
-  weeklyLoading.value = true
-  try {
-    const [usersResult, reportsResult] = await Promise.all([
-      getUserList({ pageNo: 1, pageSize: 200, enabled: true }),
-      fetchDailyReports({
-        pageNo: 1,
-        pageSize: 200,
-        dateFrom: weekDays.value[0].key,
-        dateTo: weekDays.value[6].key,
-      }),
-    ])
-    weeklyUsers.value = usersResult?.records || []
-    weeklyReports.value = reportsResult?.records || []
-  } finally {
-    weeklyLoading.value = false
-  }
-}
-
 function getReportContent(report) {
   const text = String(report?.content || '').replace(/<[^>]+>/g, '').trim()
   return text || '-'
-}
-
-function hasReport(userId, date) {
-  return weeklyReports.value.some(report => String(report.reporterId) === String(userId) && String(report.reportDate).slice(0, 10) === date)
 }
 
 function handleSearch() {
@@ -231,14 +156,9 @@ function handleReset() {
   paginationState.current = 1
 }
 
-function handleTableChange(page) {
-  paginationState.current = page.current
-  paginationState.pageSize = page.pageSize
-}
-
-async function shiftWeek(amount) {
-  weeklyBaseDate.value = weeklyBaseDate.value.add(amount, 'week')
-  await loadWeeklyStatus()
+function handlePageChange(page, pageSize) {
+  paginationState.current = pageSize === paginationState.pageSize ? page : 1
+  paginationState.pageSize = pageSize
 }
 
 function goDetail(date) {
@@ -249,6 +169,8 @@ function goDetail(date) {
 
 <style scoped>
 .daily-list-page {
+  height: calc(100vh - 180px);
+  min-height: 0;
   width: min(1600px, 100%);
   margin: 0 auto;
   display: grid;
@@ -256,12 +178,11 @@ function goDetail(date) {
   gap: 16px;
 }
 
-.daily-list-page--full {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.daily-list-main,
-.weekly-submit-card {
+.daily-list-main {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
   background: #fff;
   border: 1px solid #eef1f4;
   border-radius: 8px;
@@ -270,7 +191,7 @@ function goDetail(date) {
 
 .daily-list-main {
   min-width: 0;
-  padding: 16px;
+  padding: 16px 16px 20px;
 }
 
 .daily-list-toolbar {
@@ -303,69 +224,38 @@ function goDetail(date) {
   text-align: left;
 }
 
-.weekly-submit-card {
-  padding: 14px;
-}
-
-.weekly-submit-card__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-
-.weekly-submit-card__header strong {
-  color: #1f2a44;
-  font-size: 16px;
-}
-
-.weekly-switch {
-  display: inline-flex;
-  gap: 4px;
-  align-items: center;
-  color: #596579;
-  font-size: 12px;
-}
-
-.weekly-grid {
-  display: grid;
-  grid-template-columns: 80px repeat(7, 1fr);
-  gap: 5px;
-  align-items: center;
-}
-
-.weekly-grid__corner,
-.weekly-grid__weekday,
-.weekly-grid__name {
-  color: #596579;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.weekly-grid__weekday {
-  text-align: center;
-}
-
-.weekly-grid__name {
+.daily-report-table {
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.weekly-grid__cell {
+.daily-report-table :deep(.ant-spin-nested-loading),
+.daily-report-table :deep(.ant-spin-container),
+.daily-report-table :deep(.ant-table),
+.daily-report-table :deep(.ant-table-container) {
+  height: 100%;
+  min-height: 0;
+}
+
+.daily-report-table :deep(.ant-spin-container),
+.daily-report-table :deep(.ant-table-container) {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 22px;
-  color: #8c9bb0;
-  font-size: 11px;
-  background: #eef5ff;
-  border-radius: 2px;
+  flex-direction: column;
 }
 
-.weekly-grid__cell--done {
-  color: #fff;
-  background: #3d8bff;
+.daily-report-table :deep(.ant-table-body) {
+  flex: 1;
+  min-height: 0;
+  max-height: none !important;
+  overflow-y: auto !important;
+}
+
+.daily-list-pagination {
+  display: flex;
+  flex-shrink: 0;
+  justify-content: flex-end;
+  margin-top: 16px;
 }
 
 @media (max-width: 1100px) {

@@ -5,9 +5,13 @@
         <template #icon><LeftOutlined /></template>
         返回
       </a-button>
+      <a-space v-if="isEditableDate">
+        <a-button @click="resetForm">重置</a-button>
+        <a-button type="primary" :loading="submitLoading" @click="handleSave">保存</a-button>
+      </a-space>
     </header>
 
-    <div class="dr-page__body">
+    <div :class="['dr-page__body', { 'dr-page__body--single': isEditableDate }]">
       <div class="dr-left">
         <section class="dr-editor">
           <h2 class="dr-form-title">{{ pageTitle }}</h2>
@@ -61,46 +65,21 @@
             </a-form>
           </a-spin>
         </section>
-
-        <div v-if="isEditableDate" class="dr-actions">
-          <a-button @click="resetForm">重置</a-button>
-          <a-button type="primary" :loading="submitLoading" @click="handleSave">保存</a-button>
-        </div>
       </div>
 
-      <aside class="dr-calendar-panel">
-        <a-spin :spinning="allLoading">
-          <a-calendar
-            v-model:value="calendarValue"
-            :fullscreen="false"
-            :disabled-date="disabledCalendarDate"
-            @select="handleDateSelect"
-          >
-            <template #headerRender="{ value, onChange }">
-              <div class="dr-cal-header">
-                <a-button type="text" size="small" aria-label="上个月" @click="shiftMonth(value, onChange, -1)">
-                  <LeftOutlined />
-                </a-button>
-                <strong>{{ value.format('YYYY年M月') }}</strong>
-                <a-button type="text" size="small" aria-label="下个月" @click="shiftMonth(value, onChange, 1)">
-                  <RightOutlined />
-                </a-button>
-              </div>
-            </template>
-
-            <template #dateCellRender="{ current }">
-              <div v-if="reportMap[current.format('YYYY-MM-DD')]" class="dr-cal-dot dr-cal-dot--done" />
-              <div v-else-if="current.isBefore(today, 'day')" class="dr-cal-dot dr-cal-dot--missing" />
-            </template>
-          </a-calendar>
-        </a-spin>
-      </aside>
+      <DailyReportCalendarPanel
+        v-if="!isEditableDate"
+        v-model="calendarValue"
+        :reports="allReports"
+        :loading="allLoading"
+        @select="handleDateSelect"
+      />
     </div>
   </div>
 </template>
 
 <script setup>
-import { FileOutlined, LeftOutlined, RightOutlined, UploadOutlined } from '@ant-design/icons-vue'
+import { FileOutlined, LeftOutlined, UploadOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
@@ -115,6 +94,7 @@ import {
   updateDailyReport,
   uploadDailyReportFile,
 } from '@/api/dailyReports'
+import DailyReportCalendarPanel from './DailyReportCalendarPanel.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -302,12 +282,7 @@ const handleDateSelect = date => {
   selectedDate.value = date
 }
 
-const shiftMonth = (value, onChange, offset) => {
-  onChange(value.clone().add(offset, 'month'))
-}
-
 const disabledDailyDate = date => date && !date.isSame(today, 'day') && !date.isSame(yesterday, 'day')
-const disabledCalendarDate = date => date && date.isAfter(today, 'day')
 
 function getRouteDate() {
   const date = route.query.date ? dayjs(String(route.query.date)) : editableDate
@@ -411,6 +386,7 @@ const handleSave = async () => {
   display: flex;
   flex-shrink: 0;
   align-items: center;
+  justify-content: space-between;
   padding: 16px 16px 0;
 }
 
@@ -428,14 +404,17 @@ const handleSave = async () => {
   padding: 16px;
 }
 
+.dr-page__body--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .dr-left {
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
 
-.dr-editor,
-.dr-calendar-panel {
+.dr-editor {
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -443,10 +422,6 @@ const handleSave = async () => {
   border: 1px solid #eef1f4;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgb(0 0 0 / 4%);
-}
-
-.dr-editor {
-  overflow: hidden;
 }
 
 .dr-form-title {
@@ -480,13 +455,20 @@ const handleSave = async () => {
 }
 
 .dr-rich-editor {
-  overflow: hidden;
+  position: relative;
+  overflow: visible;
   border: 1px solid #d9d9d9;
   border-radius: 6px;
 }
 
 .dr-rich-editor :deep(.w-e-toolbar) {
+  z-index: 10;
   border-bottom: 1px solid #d9d9d9;
+}
+
+.dr-rich-editor :deep(.w-e-drop-panel),
+.dr-rich-editor :deep(.w-e-select-list) {
+  z-index: 1000;
 }
 
 .dr-rich-editor :deep(.w-e-text-container) {
@@ -547,129 +529,9 @@ const handleSave = async () => {
   margin: 12px 0 0;
 }
 
-.dr-actions {
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-  padding-top: 14px;
-}
-
-.dr-calendar-panel {
-  align-items: stretch;
-  justify-content: flex-start;
-  height: 400px;
-  padding: 10px;
-}
-
-.dr-calendar-panel :deep(.ant-spin-nested-loading),
-.dr-calendar-panel :deep(.ant-spin-container),
-.dr-calendar-panel :deep(.ant-picker-calendar) {
-  width: 100%;
-  height: 100%;
-}
-
-.dr-calendar-panel :deep(.ant-picker-calendar) {
-  border: 0;
-}
-
-.dr-calendar-panel :deep(.ant-picker-calendar-header) {
-  padding: 0;
-}
-
-.dr-calendar-panel :deep(.ant-picker-panel) {
-  border-top: 0;
-}
-
-.dr-calendar-panel :deep(.ant-picker-body) {
-  height: calc(100% - 28px);
-  padding: 4px 0 0;
-}
-
-.dr-calendar-panel :deep(.ant-picker-content) {
-  height: 100%;
-}
-
-.dr-calendar-panel :deep(.ant-picker-content th) {
-  height: 18px;
-  color: #8c8c8c;
-  font-size: 11px;
-  font-weight: 400;
-}
-
-.dr-calendar-panel :deep(.ant-picker-cell) {
-  padding: 1px 0;
-}
-
-.dr-calendar-panel :deep(.ant-picker-cell-inner) {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  width: 100%;
-  height: 42px;
-  min-width: 0;
-  padding: 1px 0;
-  line-height: 14px;
-}
-
-.dr-calendar-panel :deep(.ant-picker-calendar-date-value) {
-  font-size: 11px;
-  line-height: 14px;
-}
-
-.dr-calendar-panel :deep(.ant-picker-cell-selected .ant-picker-cell-inner) {
-  background: #e6f4ff;
-}
-
-.dr-calendar-panel :deep(.ant-picker-cell-disabled .ant-picker-cell-inner) {
-  width: 100%;
-  height: 42px;
-  color: #bfbfbf;
-  background: #f5f5f5;
-  cursor: not-allowed;
-}
-
-.dr-calendar-panel :deep(.ant-picker-cell-disabled::before) {
-  display: none;
-}
-
-.dr-cal-header {
-  display: grid;
-  grid-template-columns: 28px 1fr 28px;
-  align-items: center;
-  width: 100%;
-  height: 28px;
-}
-
-.dr-cal-header strong {
-  color: #262626;
-  font-size: 13px;
-  font-weight: 600;
-  text-align: center;
-}
-
-.dr-cal-dot {
-  width: 5px;
-  height: 5px;
-  margin: 1px auto 0;
-  border-radius: 50%;
-}
-
-.dr-cal-dot--done {
-  background: #52c41a;
-}
-
-.dr-cal-dot--missing {
-  background: #f5222d;
-}
-
 @media (max-width: 900px) {
   .dr-page__body {
     grid-template-columns: 1fr;
-  }
-
-  .dr-calendar-panel {
-    width: 100%;
   }
 }
 </style>
