@@ -89,24 +89,29 @@
       </div>
       <div class="stats-kpi">
         <div class="kpi-card kpi-card--blue">
-          <span class="kpi-label">我的任务</span>
+          <span class="kpi-label">总任务</span>
           <strong class="kpi-value">{{ statsLoading ? '--' : myStats.myTaskTotal }}</strong>
-          <small class="kpi-sub">完成 {{ myStats.myTaskCompleted }} · 逾期 {{ myStats.myTaskOverdue }}</small>
+          <small class="kpi-sub">已完成 {{ myStats.myTaskCompleted }} 个</small>
+        </div>
+        <div class="kpi-card kpi-card--cyan">
+          <span class="kpi-label">已完成</span>
+          <strong class="kpi-value">{{ statsLoading ? '--' : myStats.myTaskCompleted }}</strong>
+          <small class="kpi-sub">个任务</small>
         </div>
         <div class="kpi-card kpi-card--red">
-          <span class="kpi-label">我的Bug</span>
-          <strong class="kpi-value">{{ statsLoading ? '--' : myStats.myBugTotal }}</strong>
-          <small class="kpi-sub">待关闭 {{ myStats.myBugOpen }}</small>
-        </div>
-        <div class="kpi-card kpi-card--green">
-          <span class="kpi-label">我的需求</span>
-          <strong class="kpi-value">{{ statsLoading ? '--' : myStats.myRequirementTotal }}</strong>
-          <small class="kpi-sub">已采纳 {{ myStats.myRequirementAccepted }}</small>
+          <span class="kpi-label">逾期</span>
+          <strong class="kpi-value">{{ statsLoading ? '--' : myStats.myTaskOverdue }}</strong>
+          <small class="kpi-sub">个任务</small>
         </div>
         <div class="kpi-card kpi-card--orange">
-          <span class="kpi-label">未读通知</span>
-          <strong class="kpi-value">{{ statsLoading ? '--' : myStats.unreadNoticeCount }}</strong>
-          <small class="kpi-sub">条未读消息</small>
+          <span class="kpi-label">我的 Bug</span>
+          <strong class="kpi-value">{{ statsLoading ? '--' : myStats.myBugTotal }}</strong>
+          <small class="kpi-sub">未关闭 {{ myStats.myBugOpen }}</small>
+        </div>
+        <div class="kpi-card kpi-card--purple">
+          <span class="kpi-label">未关闭 Bug</span>
+          <strong class="kpi-value">{{ statsLoading ? '--' : myStats.myBugOpen }}</strong>
+          <small class="kpi-sub">个 Bug</small>
         </div>
       </div>
       <div class="stats-charts">
@@ -117,9 +122,30 @@
           </a-spin>
         </a-card>
         <a-card class="chart-card" :bordered="false" :body-style="{ padding: '12px 16px' }">
-          <template #title><span class="chart-title">项目任务分布</span></template>
+          <template #title><span class="chart-title">工作分布</span></template>
           <a-spin :spinning="statsLoading">
-            <div ref="distChartRef" class="chart-container"></div>
+            <div class="dist-panels">
+              <div class="dist-panel">
+                <h4 class="dist-panel__title">项目分布</h4>
+                <div ref="projectChartRef" class="chart-container donut-chart"></div>
+                <ul class="chart-legend">
+                  <li v-if="!projectLegendItems.length" class="legend-empty">暂无数据</li>
+                  <li v-for="item in projectLegendItems" :key="item.name">
+                    <span class="legend-dot" :style="{ background: item.color }"></span>{{ item.name }} <strong>{{ item.pct }}</strong>
+                  </li>
+                </ul>
+              </div>
+              <div class="dist-panel">
+                <h4 class="dist-panel__title">任务状态分布</h4>
+                <div ref="statusChartRef" class="chart-container donut-chart"></div>
+                <ul class="chart-legend">
+                  <li v-if="!statusLegendItems.length" class="legend-empty">暂无数据</li>
+                  <li v-for="item in statusLegendItems" :key="item.name">
+                    <span class="legend-dot" :style="{ background: item.color }"></span>{{ item.name }} <strong>{{ item.pct }}</strong>
+                  </li>
+                </ul>
+              </div>
+            </div>
           </a-spin>
         </a-card>
       </div>
@@ -143,7 +169,7 @@ import {
   RightOutlined,
 } from '@ant-design/icons-vue'
 import * as echarts from 'echarts/core'
-import { BarChart, LineChart } from 'echarts/charts'
+import { BarChart, LineChart, PieChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 import dayjs from 'dayjs'
@@ -153,7 +179,7 @@ import { useRouter } from 'vue-router'
 import { getDashboardSummary, getDashboardTodos, getMyStatistics } from '@/api/dashboard'
 import TaskCalendarModal from '@/components/TaskCalendarModal.vue'
 
-echarts.use([BarChart, LineChart, GridComponent, TooltipComponent, LegendComponent, CanvasRenderer])
+echarts.use([BarChart, LineChart, PieChart, GridComponent, TooltipComponent, LegendComponent, CanvasRenderer])
 
 const router = useRouter()
 const activeTodoTab = ref('all')
@@ -229,20 +255,57 @@ const periods = [
 ]
 const statsPeriod = ref('week')
 const statsLoading = ref(false)
-const myStats = reactive({ myTaskTotal: 0, myTaskCompleted: 0, myTaskOverdue: 0, myBugTotal: 0, myBugOpen: 0, myRequirementTotal: 0, myRequirementAccepted: 0, unreadNoticeCount: 0, completionTrend: [], projectDistribution: {} })
+const myStats = reactive({ myTaskTotal: 0, myTaskCompleted: 0, myTaskOverdue: 0, myBugTotal: 0, myBugOpen: 0, myRequirementTotal: 0, myRequirementAccepted: 0, unreadNoticeCount: 0, completionTrend: [], projectDistribution: {}, taskStatusDistribution: {} })
+
+const CHART_COLORS = ['#1677ff', '#69b1ff', '#27c27a', '#ff7a45', '#9254de', '#c8cfd9']
+const STATUS_LABEL_MAP = { COMPLETED: '已完成', IN_PROGRESS: '进行中', DUE_SOON: '即将到期', OVERDUE: '逾期', NOT_STARTED: '待开始', PAUSED: '暂停' }
+const STATUS_COLOR_MAP = { COMPLETED: '#27c27a', IN_PROGRESS: '#1677ff', DUE_SOON: '#ff7a45', OVERDUE: '#ff4d4f', NOT_STARTED: '#c8cfd9', PAUSED: '#9254de' }
+
+const projectLegendItems = computed(() => {
+  const dist = myStats.projectDistribution || {}
+  const total = Object.values(dist).reduce((a, b) => a + b, 0)
+  return Object.entries(dist).map(([name, value], i) => ({
+    name,
+    color: CHART_COLORS[i % CHART_COLORS.length],
+    pct: total ? Math.round(value / total * 100) + '%' : '0%',
+  }))
+})
+
+const statusLegendItems = computed(() => {
+  const dist = myStats.taskStatusDistribution || {}
+  const total = Object.values(dist).reduce((a, b) => a + b, 0)
+  return Object.entries(dist).map(([code, value]) => ({
+    name: STATUS_LABEL_MAP[code] || code,
+    color: STATUS_COLOR_MAP[code] || '#c8cfd9',
+    pct: total ? Math.round(value / total * 100) + '%' : '0%',
+  }))
+})
 const trendChartRef = ref()
-const distChartRef = ref()
+const projectChartRef = ref()
+const statusChartRef = ref()
 let trendChart = null
-let distChart = null
+let projectChart = null
+let statusChart = null
 
 const initCharts = () => {
-  if (trendChartRef.value && !trendChart) {
-    trendChart = echarts.init(trendChartRef.value)
-  }
-  if (distChartRef.value && !distChart) {
-    distChart = echarts.init(distChartRef.value)
-  }
+  if (trendChartRef.value && !trendChart) trendChart = echarts.init(trendChartRef.value)
+  if (projectChartRef.value && !projectChart) projectChart = echarts.init(projectChartRef.value)
+  if (statusChartRef.value && !statusChart) statusChart = echarts.init(statusChartRef.value)
 }
+
+const createDonutOption = (data, colors) => ({
+  color: colors,
+  tooltip: { show: false },
+  series: [{
+    type: 'pie',
+    radius: ['68%', '82%'],
+    center: ['50%', '50%'],
+    avoidLabelOverlap: true,
+    label: { show: true, position: 'center', formatter: '{d}%', color: '#111827', fontSize: 22, fontWeight: 700 },
+    labelLine: { show: false },
+    data,
+  }],
+})
 
 const renderTrendChart = () => {
   if (!trendChart) return
@@ -254,26 +317,29 @@ const renderTrendChart = () => {
     grid: { left: 40, right: 16, top: 16, bottom: 40 },
     xAxis: { type: 'category', data: dates, axisLabel: { fontSize: 11, rotate: dates.length > 14 ? 30 : 0, formatter: v => v.slice(5) } },
     yAxis: { type: 'value', minInterval: 1, axisLabel: { fontSize: 11 } },
-    series: [{ name: '完成任务', type: 'line', data: values, smooth: true, symbol: 'circle', symbolSize: 5, itemStyle: { color: '#1677ff' }, areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(22,119,255,0.22)' }, { offset: 1, color: 'rgba(22,119,255,0)' }] } } }],
+    series: [{ name: '完成任务', type: 'line', data: values, smooth: false, symbol: 'circle', symbolSize: 8, itemStyle: { color: '#fff', borderColor: '#2f80ed', borderWidth: 3 }, lineStyle: { width: 3, color: '#2f80ed' }, areaStyle: { color: 'rgba(47,128,237,0.12)' }, label: { show: true, formatter: ({ value }) => value || '', color: '#2f80ed', fontWeight: 700 } }],
   }, true)
 }
 
-const renderDistChart = () => {
-  if (!distChart) return
-  const dist = myStats.projectDistribution || {}
-  const names = Object.keys(dist)
-  const values = Object.values(dist)
-  if (!names.length) {
-    distChart.setOption({ title: { text: '暂无数据', left: 'center', top: 'middle', textStyle: { color: '#bfbfbf', fontSize: 14, fontWeight: 'normal' } } }, true)
-    return
-  }
-  distChart.setOption({
-    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-    grid: { left: 16, right: 16, top: 16, bottom: 60, containLabel: true },
-    xAxis: { type: 'category', data: names, axisLabel: { fontSize: 11, rotate: names.length > 4 ? 30 : 0, overflow: 'truncate', width: 80 } },
-    yAxis: { type: 'value', minInterval: 1, axisLabel: { fontSize: 11 } },
-    series: [{ name: '完成任务', type: 'bar', data: values, barMaxWidth: 40, itemStyle: { color: '#52c41a', borderRadius: [4, 4, 0, 0] } }],
-  }, true)
+const renderDistCharts = () => {
+  if (!projectChart || !statusChart) return
+  const projectDist = myStats.projectDistribution || {}
+  const projectData = Object.entries(projectDist).map(([name, value], i) => ({
+    value, name, itemStyle: { color: CHART_COLORS[i % CHART_COLORS.length] },
+  }))
+  projectChart.setOption(createDonutOption(
+    projectData.length ? projectData : [{ value: 1, name: '暂无数据', itemStyle: { color: '#c8cfd9' } }],
+    CHART_COLORS,
+  ), true)
+
+  const statusDist = myStats.taskStatusDistribution || {}
+  const statusData = Object.entries(statusDist).map(([code, value]) => ({
+    value, name: STATUS_LABEL_MAP[code] || code, itemStyle: { color: STATUS_COLOR_MAP[code] || '#c8cfd9' },
+  }))
+  statusChart.setOption(createDonutOption(
+    statusData.length ? statusData : [{ value: 1, name: '暂无数据', itemStyle: { color: '#c8cfd9' } }],
+    Object.values(STATUS_COLOR_MAP),
+  ), true)
 }
 
 const fetchMyStats = async () => {
@@ -284,7 +350,7 @@ const fetchMyStats = async () => {
     await nextTick()
     initCharts()
     renderTrendChart()
-    renderDistChart()
+    renderDistCharts()
   } catch {
     // silent
   } finally {
@@ -320,7 +386,8 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   trendChart?.dispose()
-  distChart?.dispose()
+  projectChart?.dispose()
+  statusChart?.dispose()
 })
 
 const handleMetricClick = path => {
@@ -705,7 +772,7 @@ const handleTodoClick = item => {
 
 .stats-kpi {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 14px;
   margin-bottom: 16px;
 }
@@ -722,10 +789,11 @@ const handleTodoClick = item => {
   box-shadow: 0 2px 8px rgb(0 0 0 / 3%);
 }
 
-.kpi-card--blue { border-left-color: #1677ff; }
-.kpi-card--red  { border-left-color: #f5222d; }
-.kpi-card--green { border-left-color: #52c41a; }
+.kpi-card--blue   { border-left-color: #1677ff; }
+.kpi-card--cyan   { border-left-color: #27c27a; }
+.kpi-card--red    { border-left-color: #ff4d4f; }
 .kpi-card--orange { border-left-color: #fa8c16; }
+.kpi-card--purple { border-left-color: #9254de; }
 
 .kpi-label {
   color: #8c8c8c;
@@ -764,6 +832,60 @@ const handleTodoClick = item => {
   height: 220px;
 }
 
+.donut-chart {
+  height: 140px;
+}
+
+.dist-panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.dist-panel__title {
+  margin: 0 0 6px;
+  color: #595959;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.chart-legend {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chart-legend li {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 2px 0;
+  color: #595959;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chart-legend li strong {
+  margin-left: auto;
+  color: #262626;
+  font-size: 12px;
+}
+
+.legend-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.legend-empty {
+  color: #bfbfbf;
+  font-size: 12px;
+}
+
 @media (max-width: 1200px) {
   .home-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -778,7 +900,7 @@ const handleTodoClick = item => {
   }
 
   .stats-kpi {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .stats-charts {

@@ -3,9 +3,9 @@
     <a-card class="notification-card" :bordered="false">
       <div class="notification-toolbar">
         <a-tabs v-model:active-key="activeTab" class="notification-tabs" @change="onTabChange">
-          <a-tab-pane key="all" :tab="`全部 (${total})`" />
-          <a-tab-pane key="unread" :tab="`未读 (${unreadCount})`" />
-          <a-tab-pane key="read" :tab="`已读 (${readCount})`" />
+          <a-tab-pane key="all" :tab="`全部 (${totalAll})`" />
+          <a-tab-pane key="unread" :tab="`未读 (${totalUnread})`" />
+          <a-tab-pane key="read" :tab="`已读 (${totalRead})`" />
         </a-tabs>
 
         <a-input v-model:value="keyword" class="notification-search" placeholder="搜索通知标题或内容" allow-clear>
@@ -17,8 +17,8 @@
 
       <a-spin :spinning="loading">
         <div class="notification-list">
-          <template v-if="pagedGroups.length">
-            <section v-for="group in pagedGroups" :key="group.title" class="notification-group">
+          <template v-if="filteredGroups.length">
+            <section v-for="group in filteredGroups" :key="group.title" class="notification-group">
               <header class="notification-group__header">
                 <strong>{{ group.title }}</strong>
                 <span>{{ group.items.length }}条</span>
@@ -56,19 +56,17 @@
           </template>
           <a-empty v-else description="暂无通知" style="padding: 48px 0" />
         </div>
+        <div v-if="pagedTotal > PAGE_SIZE" class="notification-pagination">
+          <a-pagination
+            v-model:current="currentPage"
+            :total="pagedTotal"
+            :page-size="PAGE_SIZE"
+            :show-total="t => `共 ${t} 条`"
+            show-less-items
+            @change="onPageChange"
+          />
+        </div>
       </a-spin>
-      <div v-if="filteredNotices.length" class="notification-pagination">
-        <a-pagination
-          :current="currentPage"
-          :page-size="pageSize"
-          :total="filteredNotices.length"
-          :page-size-options="['10', '20', '50']"
-          show-size-changer
-          :show-total="totalCount => `共 ${totalCount} 条`"
-          @change="handlePageChange"
-          @show-size-change="handlePageChange"
-        />
-      </div>
     </a-card>
   </section>
 </template>
@@ -76,22 +74,23 @@
 <script setup>
 import { BugOutlined, ProfileOutlined, SearchOutlined, SoundOutlined, WarningOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { getNotices, markAllNoticesRead, markNoticeRead } from '@/api/notices'
 
 const router = useRouter()
 
+const PAGE_SIZE = 20
 const activeTab = ref('all')
 const keyword = ref('')
 const loading = ref(false)
 const markingAll = ref(false)
 const notices = ref([])
-const total = ref(0)
-const unreadCount = ref(0)
-const readCount = ref(0)
 const currentPage = ref(1)
-const pageSize = ref(10)
+const pagedTotal = ref(0)
+const totalAll = ref(0)
+const totalUnread = ref(0)
+const totalRead = computed(() => Math.max(0, totalAll.value - totalUnread.value))
 
 const NOTICE_TYPE_MAP = {
   TASK_ASSIGNED: { icon: 'task', label: '任务通知' },
@@ -134,21 +133,14 @@ const groupDate = (isoStr) => {
 
 const filteredNotices = computed(() => {
   const text = keyword.value.trim().toLowerCase()
-  return notices.value.filter(n => {
-    const matchTab =
-      activeTab.value === 'all' ||
-      (activeTab.value === 'unread' && !n.read) ||
-      (activeTab.value === 'read' && n.read)
-    const matchKeyword = !text || `${n.title}${n.content || ''}`.toLowerCase().includes(text)
-    return matchTab && matchKeyword
-  })
+  if (!text) return notices.value
+  return notices.value.filter(n => `${n.title}${n.content || ''}`.toLowerCase().includes(text))
 })
 
-const pagedGroups = computed(() => {
+const filteredGroups = computed(() => {
   const ORDER = ['今天', '昨天', '更早']
-  const start = (currentPage.value - 1) * pageSize.value
   const map = {}
-  for (const n of filteredNotices.value.slice(start, start + pageSize.value)) {
+  for (const n of filteredNotices.value) {
     const g = groupDate(n.createdAt)
     if (!map[g]) map[g] = []
     map[g].push(n)
@@ -156,19 +148,26 @@ const pagedGroups = computed(() => {
   return ORDER.filter(g => map[g]).map(g => ({ title: g, items: map[g] }))
 })
 
-const handlePageChange = (page, size) => {
-  currentPage.value = page
-  pageSize.value = size
+const loadCounts = async () => {
+  try {
+    const [allRes, unreadRes] = await Promise.all([
+      getNotices({ pageNo: 1, pageSize: 1 }),
+      getNotices({ pageNo: 1, pageSize: 1, read: false }),
+    ])
+    totalAll.value = Number(allRes?.total ?? 0)
+    totalUnread.value = Number(unreadRes?.total ?? 0)
+  } catch { /* silent */ }
 }
 
 const loadNotices = async () => {
   loading.value = true
   try {
-    const res = await getNotices({ pageNo: 1, pageSize: 200 })
+    const params = { pageNo: currentPage.value, pageSize: PAGE_SIZE }
+    if (activeTab.value === 'unread') params.read = false
+    if (activeTab.value === 'read') params.read = true
+    const res = await getNotices(params)
     notices.value = res?.records || []
-    total.value = Number(res?.total ?? notices.value.length) || 0
-    unreadCount.value = notices.value.filter(n => !n.read).length
-    readCount.value = notices.value.filter(n => n.read).length
+    pagedTotal.value = Number(res?.total ?? 0)
   } catch {
     message.error('加载通知失败')
   } finally {
@@ -181,11 +180,12 @@ const handleRead = async (item) => {
     try {
       await markNoticeRead(item.id)
       item.read = true
-      unreadCount.value = Math.max(0, unreadCount.value - 1)
-      readCount.value++
-    } catch {
-      // silent
-    }
+      totalUnread.value = Math.max(0, totalUnread.value - 1)
+      if (activeTab.value === 'unread') {
+        pagedTotal.value = Math.max(0, pagedTotal.value - 1)
+        notices.value = notices.value.filter(n => n.id !== item.id)
+      }
+    } catch { /* silent */ }
   }
   navigateTo(item)
 }
@@ -208,9 +208,12 @@ const handleMarkAll = async () => {
   markingAll.value = true
   try {
     await markAllNoticesRead()
+    totalUnread.value = 0
     notices.value.forEach(n => { n.read = true })
-    unreadCount.value = 0
-    readCount.value = total.value
+    if (activeTab.value === 'unread') {
+      notices.value = []
+      pagedTotal.value = 0
+    }
     message.success('已全部标为已读')
   } catch {
     message.error('操作失败')
@@ -221,21 +224,17 @@ const handleMarkAll = async () => {
 
 const onTabChange = () => {
   currentPage.value = 1
+  loadNotices()
 }
 
-watch(keyword, () => {
-  currentPage.value = 1
+const onPageChange = (page) => {
+  currentPage.value = page
+  loadNotices()
+}
+
+onMounted(async () => {
+  await Promise.all([loadCounts(), loadNotices()])
 })
-
-watch(
-  () => filteredNotices.value.length,
-  length => {
-    const maxPage = Math.max(1, Math.ceil(length / pageSize.value))
-    if (currentPage.value > maxPage) currentPage.value = maxPage
-  }
-)
-
-onMounted(loadNotices)
 </script>
 
 <style scoped>
@@ -289,12 +288,6 @@ onMounted(loadNotices)
   overflow: hidden;
   border: 1px solid #e8edf3;
   border-radius: 6px;
-}
-
-.notification-pagination {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 16px;
 }
 
 .notification-group + .notification-group {
@@ -412,5 +405,11 @@ onMounted(loadNotices)
   height: 9px;
   background: #ff1f2d;
   border-radius: 50%;
+}
+
+.notification-pagination {
+  display: flex;
+  justify-content: center;
+  padding: 20px 0 8px;
 }
 </style>
