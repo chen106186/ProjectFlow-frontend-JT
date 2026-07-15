@@ -33,8 +33,8 @@
           <strong>{{ ganttSummaryData.overallProgress }}%</strong>
         </div>
         <div class="summary-metrics">
-          <div><strong>{{ taskRows.length }}</strong><span>关联任务</span></div>
-          <div><strong class="danger">{{ bugRows.length }}</strong><span>关联Bug</span></div>
+          <div><strong>{{ taskPagination.total }}</strong><span>关联任务</span></div>
+          <div><strong class="danger">{{ bugPagination.total }}</strong><span>关联Bug</span></div>
         </div>
       </div>
     </section>
@@ -85,13 +85,13 @@
           <h3>任务列表</h3>
           <a-space><a-select value="全部状态" :options="taskStatusFilters" /><a-select value="全部负责人" :options="personFilterOptions" /></a-space>
         </div>
-        <a-table row-key="id" class="project-task-table" :columns="taskColumns" :data-source="pagedTaskRows" :loading="taskLoading" :pagination="false" size="small" :scroll="{ x: 950, y: 500 }">
+        <a-table row-key="id" class="project-task-table" :columns="taskColumns" :data-source="taskRows" :loading="taskLoading" :pagination="false" size="small" :scroll="{ x: 1390, y: 500 }">
           <template #bodyCell="{ column, text }">
             <a-tag v-if="column.dataIndex === 'priority'" color="red">{{ text }}</a-tag>
-            <a-tag v-else-if="column.dataIndex === 'status'" color="processing">{{ text }}</a-tag>
+            <a-tag v-else-if="column.dataIndex === 'riskLevel'" :color="getTaskRiskColor(text)">{{ text }}</a-tag>
           </template>
         </a-table>
-        <a-pagination class="detail-list-pagination" :current="taskPagination.current" :page-size="taskPagination.pageSize" :total="taskRows.length" :page-size-options="taskPagination.pageSizeOptions" :show-total="taskPagination.showTotal" show-size-changer @change="(page, pageSize) => handleTablePaginationChange(taskPagination, page, pageSize)" />
+        <a-pagination class="detail-list-pagination" :current="taskPagination.current" :page-size="taskPagination.pageSize" :total="taskPagination.total" :page-size-options="taskPagination.pageSizeOptions" :show-total="taskPagination.showTotal" show-size-changer @change="(page, pageSize) => handleTablePaginationChange(taskPagination, page, pageSize, fetchTaskPage)" />
       </div>
 
       <div v-show="activeTab === 'bugs'" class="execution-tab-panel">
@@ -106,18 +106,18 @@
           <h3>Bug 列表</h3>
           <a-space><a-select value="全部状态" :options="bugStatusFilters" /><a-select value="全部指定人" :options="personFilterOptions" /></a-space>
         </div>
-        <a-table row-key="id" class="project-bug-table" :columns="bugColumns" :data-source="pagedBugRows" :loading="bugLoading" :pagination="false" size="small" :scroll="{ x: 840, y: 500 }">
+        <a-table row-key="id" class="project-bug-table" :columns="bugColumns" :data-source="bugRows" :loading="bugLoading" :pagination="false" size="small" :scroll="{ x: 840, y: 500 }">
           <template #bodyCell="{ column, text }">
             <a-tag v-if="column.dataIndex === 'severity'" color="red">{{ text }}</a-tag>
             <a-tag v-else-if="column.dataIndex === 'status'" color="orange">{{ text }}</a-tag>
           </template>
         </a-table>
-        <a-pagination class="detail-list-pagination" :current="bugPagination.current" :page-size="bugPagination.pageSize" :total="bugRows.length" :page-size-options="bugPagination.pageSizeOptions" :show-total="bugPagination.showTotal" show-size-changer @change="(page, pageSize) => handleTablePaginationChange(bugPagination, page, pageSize)" />
+        <a-pagination class="detail-list-pagination" :current="bugPagination.current" :page-size="bugPagination.pageSize" :total="bugPagination.total" :page-size-options="bugPagination.pageSizeOptions" :show-total="bugPagination.showTotal" show-size-changer @change="(page, pageSize) => handleTablePaginationChange(bugPagination, page, pageSize, fetchBugPage)" />
       </div>
 
       <div v-show="activeTab === 'reports'" class="execution-tab-panel">
         <div class="section-heading">
-          <h2>汇报管理 <small>（共 {{ filteredReportRows.length }} 条）</small></h2>
+          <h2>汇报管理 <small>（共 {{ reportPagination.total }} 条）</small></h2>
           <a-button type="primary" @click="handleCreateReport"><PlusOutlined />新建汇报</a-button>
         </div>
         <a-form class="report-filter app-filter-form" layout="inline">
@@ -126,7 +126,7 @@
           <a-form-item><a-range-picker v-model:value="reportFilter.dateRange" value-format="YYYY-MM-DD" /></a-form-item>
           <a-button @click="handleResetReportFilter">重置</a-button>
         </a-form>
-        <a-table row-key="id" class="project-report-table" :columns="reportColumns" :data-source="pagedReportRows" :loading="reportLoading" :pagination="false" :scroll="{ x: 1040, y: 500 }" :custom-row="getReportCustomRow">
+        <a-table row-key="id" class="project-report-table" :columns="reportColumns" :data-source="filteredReportRows" :loading="reportLoading" :pagination="false" :scroll="{ x: 1040, y: 500 }" :custom-row="getReportCustomRow">
           <template #bodyCell="{ column, record, text }">
             <a-button v-if="column.dataIndex === 'title'" type="link" @click.stop="handleViewReport(record)">{{ text }}</a-button>
             <a-tag v-else-if="column.dataIndex === 'status'" color="green">{{ text }}</a-tag>
@@ -138,7 +138,7 @@
             </a-space>
           </template>
         </a-table>
-        <a-pagination class="detail-list-pagination" :current="reportPagination.current" :page-size="reportPagination.pageSize" :total="filteredReportRows.length" :page-size-options="reportPagination.pageSizeOptions" :show-total="reportPagination.showTotal" show-size-changer @change="(page, pageSize) => handleTablePaginationChange(reportPagination, page, pageSize)" />
+        <a-pagination class="detail-list-pagination" :current="reportPagination.current" :page-size="reportPagination.pageSize" :total="reportPagination.total" :page-size-options="reportPagination.pageSizeOptions" :show-total="reportPagination.showTotal" show-size-changer @change="(page, pageSize) => handleTablePaginationChange(reportPagination, page, pageSize, fetchReportPage)" />
       </div>
 
       <div v-show="activeTab === 'documents'" class="execution-tab-panel">
@@ -162,7 +162,7 @@
             <strong>{{ item.count }}</strong>
           </button>
         </div>
-        <a-table row-key="id" :row-selection="documentRowSelection" :columns="documentColumns" :data-source="filteredDocsBySearch" :loading="documentLoading" :pagination="false">
+        <a-table row-key="id" class="project-document-table" :row-selection="documentRowSelection" :columns="documentColumns" :data-source="pagedDocumentRows" :loading="documentLoading" :pagination="false" :scroll="{ x: 1040, y: 200 }">
           <template #bodyCell="{ column, record }">
             <template v-if="column.dataIndex === 'name'">
               <button type="button" class="document-name" :class="{ 'document-name--folder': record.isFolder, 'document-name--child': record.isChildFile }" @click="record.isFolder ? handleToggleFolder(record) : handleDownloadDocument(record)">
@@ -183,6 +183,7 @@
             </template>
           </template>
         </a-table>
+        <a-pagination class="detail-list-pagination" :current="documentPagination.current" :page-size="documentPagination.pageSize" :total="filteredDocsBySearch.length" :page-size-options="documentPagination.pageSizeOptions" :show-total="documentPagination.showTotal" show-size-changer @change="(page, pageSize) => handleTablePaginationChange(documentPagination, page, pageSize)" />
       </div>
     </section>
 
@@ -347,7 +348,6 @@ import {
   FileProtectOutlined,
   FileTextOutlined,
   FireOutlined,
-  FlagOutlined,
   FolderAddOutlined,
   FolderOpenOutlined,
   InboxOutlined,
@@ -436,7 +436,6 @@ const detailTabs = [
   { key: 'gantt', label: '项目甘特图', icon: ProjectOutlined },
   { key: 'tasks', label: '任务列表', icon: ProfileOutlined },
   { key: 'bugs', label: 'Bug列表', icon: BugOutlined },
-  { key: 'reports', label: '项目汇报', icon: FlagOutlined },
   { key: 'documents', label: '文档中心', icon: FolderOpenOutlined },
 ]
 const ganttSummaryData = reactive({ total: 0, completed: 0, overdue: 0, dueSoon: 0, overallProgress: 0 })
@@ -519,16 +518,28 @@ const risks = computed(() => [
 const createTablePagination = () => reactive({
   current: 1,
   pageSize: 10,
+  total: 0,
   pageSizeOptions: ['10', '50', '100'],
-  showSizeChanger: true,
-  hideOnSinglePage: false,
   showTotal: total => `共 ${total} 条`,
 })
-const handleTablePaginationChange = (target, page, pageSize) => {
+const handleTablePaginationChange = async (target, page, pageSize, loadPage) => {
   target.current = page
   target.pageSize = pageSize
+  if (loadPage) await loadPage()
 }
-const taskColumns = [{ title: '序号', dataIndex: 'id', width: 60 }, { title: '任务名称', dataIndex: 'name', width: 180 }, { title: '负责人', dataIndex: 'owner', width: 90 }, { title: '优先级', dataIndex: 'priority', width: 80 }, { title: '状态', dataIndex: 'status', width: 90 }, { title: '计划开始', dataIndex: 'planStart', width: 110 }, { title: '计划结束', dataIndex: 'planEnd', width: 110 }, { title: '实际开始', dataIndex: 'actualStart', width: 110 }, { title: '实际结束', dataIndex: 'actualEnd', width: 110 }]
+const taskColumns = [
+  { title: '序号', dataIndex: 'index', width: 70 },
+  { title: '任务名称', dataIndex: 'name', width: 190 },
+  { title: '风险等级', dataIndex: 'riskLevel', width: 100 },
+  { title: '角色', dataIndex: 'role', width: 100 },
+  { title: '标签', dataIndex: 'tag', width: 120 },
+  { title: '负责人', dataIndex: 'owner', width: 100 },
+  { title: '优先级', dataIndex: 'priority', width: 90 },
+  { title: '计划开始日期', dataIndex: 'planStart', width: 130 },
+  { title: '计划结束日期', dataIndex: 'planEnd', width: 130 },
+  { title: '实际开始日期', dataIndex: 'actualStart', width: 130 },
+  { title: '实际完成日期', dataIndex: 'actualEnd', width: 130 },
+]
 const taskPagination = createTablePagination()
 const taskRows = ref([])
 const taskStatusFilters = toOptions(['全部状态', '未开始', '进行中', '已完成'])
@@ -575,15 +586,9 @@ const filteredReportRows = computed(() => reportRows.value.filter(record => {
   }
   return true
 }))
-const paginateRows = (rows, pagination) => {
-  const start = (pagination.current - 1) * pagination.pageSize
-  return rows.slice(start, start + pagination.pageSize)
-}
-const pagedTaskRows = computed(() => paginateRows(taskRows.value, taskPagination))
-const pagedBugRows = computed(() => paginateRows(bugRows.value, bugPagination))
-const pagedReportRows = computed(() => paginateRows(filteredReportRows.value, reportPagination))
-watch(reportFilter, () => {
+watch(reportFilter, async () => {
   reportPagination.current = 1
+  await fetchReportPage()
 })
 const documentCategoryMeta = computed(() => {
   const fallback = [
@@ -600,6 +605,7 @@ const documentCategories = computed(() => {
   return [{ label: '全部', value: '全部', count: files.length, class: 'category-all', icon: FolderOpenOutlined }, ...documentCategoryMeta.value.map((item, index) => ({ label: item.label, value: item.value, count: files.filter(file => file.categoryCode === item.value || file.category === item.label).length, class: ['category-contract', 'category-requirement', 'category-design', 'category-development', 'category-acceptance'][index], icon: [FileProtectOutlined, FileTextOutlined, SnippetsOutlined, CodeOutlined, FileDoneOutlined][index] }))].map(item => ({ ...item, active: item.value === selectedDocumentCategory.value }))
 })
 const documentColumns = [{ title: '文件名', dataIndex: 'name' }, { title: '类型', dataIndex: 'type', width: 90 }, { title: '大小', dataIndex: 'size', width: 90 }, { title: '版本', dataIndex: 'version', width: 80 }, { title: '上传人', dataIndex: 'uploader', width: 80 }, { title: '分类', dataIndex: 'category', width: 90 }, { title: '上传时间', dataIndex: 'uploadTime', width: 170 }, { title: '操作', dataIndex: 'operation', width: 120 }]
+const documentPagination = createTablePagination()
 const documentRows = ref([])
 const folderOptions = computed(() => folderRows.value.map(folder => ({ label: folder.name, value: folder.id })))
 const isFolderExpanded = folderId => expandedFolderIds.value.map(String).includes(String(folderId))
@@ -690,13 +696,19 @@ const documentRowSelection = computed(() => ({
   onSelect: handleDocumentSelect,
   onSelectAll: handleDocumentSelectAll,
 }))
-const pagination = { pageSize: 5, showSizeChanger: false }
 const filteredDocsBySearch = computed(() => {
   const q = documentSearch.value.trim().toLowerCase()
   if (!q) return filteredDocumentRows.value
   return filteredDocumentRows.value.filter(row =>
     [row.name, row.uploader, row.category].some(v => v && v.toLowerCase().includes(q))
   )
+})
+const pagedDocumentRows = computed(() => {
+  const start = (documentPagination.current - 1) * documentPagination.pageSize
+  return filteredDocsBySearch.value.slice(start, start + documentPagination.pageSize)
+})
+watch([documentSearch, selectedDocumentCategory], () => {
+  documentPagination.current = 1
 })
 const uploadForm = reactive({ location: '项目文档库', folderId: undefined, category: 'REQUIREMENT', description: '' })
 const storageOptions = toOptions(['项目文档库', '公共文档库'])
@@ -800,6 +812,88 @@ const fetchReferenceData = async () => {
   }
 }
 
+const getTaskRiskLevel = task => {
+  if (task.status === 'OVERDUE') {
+    const overdueDays = task.plannedEndDate ? dayjs().diff(dayjs(task.plannedEndDate), 'day') : 0
+    return overdueDays >= 3 ? '高风险' : '中风险'
+  }
+  return task.status === 'DUE_SOON' ? '中风险' : '低风险'
+}
+const getTaskRiskColor = riskLevel => ({ 高风险: 'red', 中风险: 'orange', 低风险: 'green' }[riskLevel] || 'default')
+const mapTaskRow = (task, index) => ({
+  id: task.id,
+  index: (taskPagination.current - 1) * taskPagination.pageSize + index + 1,
+  name: task.name,
+  riskLevel: getTaskRiskLevel(task),
+  role: task.roleName || '-',
+  tag: task.tags || '-',
+  owner: getUserName(task.assigneeId),
+  priority: getDictLabel('taskPriority', task.priority),
+  priorityCode: task.priority,
+  status: getDictLabel('taskStatus', task.status),
+  statusCode: task.status,
+  planStart: task.plannedStartDate || '-',
+  planEnd: task.plannedEndDate || '-',
+  actualStart: task.actualStartDate || '-',
+  actualEnd: task.actualEndDate || '-',
+})
+const mapBugRow = bug => ({ id: bug.id, code: `BUG-${bug.id}`, title: bug.title, severity: getDictLabel('bugPriority', bug.priority), priorityCode: bug.priority, status: getDictLabel('bugStatus', bug.status), statusCode: bug.status, assignee: getUserName(bug.assigneeId), creator: getUserName(bug.creatorId) })
+const mapReportRow = report => ({ id: report.id, title: report.title, type: getDictLabel('reportType', report.reportType), status: getDictLabel('reportStatus', report.status), planTime: report.plannedDate, actualTime: report.actualDate || '-', target: report.targetAudience, place: report.locationMethod })
+const applyTaskResult = result => {
+  taskRows.value = result.records.map(mapTaskRow)
+  taskPagination.total = result.total ?? result.records.length
+}
+const applyBugResult = result => {
+  bugRows.value = result.records.map(mapBugRow)
+  bugPagination.total = result.total ?? result.records.length
+}
+const applyReportResult = result => {
+  reportRows.value = result.records.map(mapReportRow)
+  reportPagination.total = result.total ?? result.records.length
+}
+const getReportQueryParams = projectId => {
+  const status = reportStatusOptions.value.find(item => item.label === reportFilter.status || item.value === reportFilter.status)?.value
+  return {
+    projectId,
+    pageNo: reportPagination.current,
+    pageSize: reportPagination.pageSize,
+    keyword: reportFilter.keyword.trim() || undefined,
+    status: reportFilter.status === '全部' ? undefined : status,
+    plannedDateFrom: reportFilter.dateRange?.[0],
+    plannedDateTo: reportFilter.dateRange?.[1],
+  }
+}
+const fetchTaskPage = async () => {
+  taskLoading.value = true
+  try {
+    applyTaskResult(await getProjectTasks({ projectId: route.params.id, pageNo: taskPagination.current, pageSize: taskPagination.pageSize }))
+  } catch (error) {
+    message.error(error.message)
+  } finally {
+    taskLoading.value = false
+  }
+}
+const fetchBugPage = async () => {
+  bugLoading.value = true
+  try {
+    applyBugResult(await getProjectBugs({ projectId: route.params.id, pageNo: bugPagination.current, pageSize: bugPagination.pageSize }))
+  } catch (error) {
+    message.error(error.message)
+  } finally {
+    bugLoading.value = false
+  }
+}
+const fetchReportPage = async () => {
+  reportLoading.value = true
+  try {
+    applyReportResult(await getProjectReports(getReportQueryParams(route.params.id)))
+  } catch (error) {
+    message.error(error.message)
+  } finally {
+    reportLoading.value = false
+  }
+}
+
 const fetchProjectRelatedData = async projectId => {
   detailLoading.value = true
   taskLoading.value = true
@@ -812,9 +906,9 @@ const fetchProjectRelatedData = async projectId => {
       getProjectDetail(projectId),
       getGanttNodes(projectId),
       getGanttSummary(projectId),
-      getProjectTasks({ projectId, pageNo: 1, pageSize: 200 }),
-      getProjectBugs({ projectId, pageNo: 1, pageSize: 200 }),
-      getProjectReports({ projectId, pageNo: 1, pageSize: 200 }),
+      getProjectTasks({ projectId, pageNo: taskPagination.current, pageSize: taskPagination.pageSize }),
+      getProjectBugs({ projectId, pageNo: bugPagination.current, pageSize: bugPagination.pageSize }),
+      getProjectReports(getReportQueryParams(projectId)),
       getProjectFiles({ businessType: 'PROJECT', businessId: projectId }),
       getProjectFolders({ businessType: 'PROJECT', businessId: projectId }),
     ])
@@ -836,10 +930,9 @@ const fetchProjectRelatedData = async projectId => {
       const actualEnd = node.actualEndDate?.replaceAll('-', '/') || '-'
       return { id: node.id, name: node.label || node.nodeName, planStart, planEnd, planTime: formatDateRange(planStart, planEnd), actualStart, actualEnd, actualTime: formatDateRange(actualStart, actualEnd), status: getDictLabel('taskStatus', node.status), statusCode: node.status, progress: node.progressPercent || 0, isOverdue: node.status === 'OVERDUE' }
     })
-    taskRows.value = taskResult.records.map(task => ({ id: task.id, name: task.name, owner: getUserName(task.assigneeId), priority: getDictLabel('taskPriority', task.priority), priorityCode: task.priority, status: getDictLabel('taskStatus', task.status), planStart: task.plannedStartDate || '-', planEnd: task.plannedEndDate || '-', actualStart: task.actualStartDate || '-', actualEnd: task.actualEndDate || '-' }))
-    bugRows.value = bugResult.records.map(bug => ({ id: bug.id, code: `BUG-${bug.id}`, title: bug.title, severity: getDictLabel('bugPriority', bug.priority), priorityCode: bug.priority, status: getDictLabel('bugStatus', bug.status), statusCode: bug.status, assignee: getUserName(bug.assigneeId), creator: getUserName(bug.creatorId) }))
-
-    reportRows.value = reportResult.records.map(report => ({ id: report.id, title: report.title, type: getDictLabel('reportType', report.reportType), status: getDictLabel('reportStatus', report.status), planTime: report.plannedDate, actualTime: report.actualDate || '-', target: report.targetAudience, place: report.locationMethod }))
+    applyTaskResult(taskResult)
+    applyBugResult(bugResult)
+    applyReportResult(reportResult)
     folderRows.value = folders || []
     expandedFolderIds.value = folderRows.value.map(folder => folder.id)
     documentRows.value = files.map(file => {
@@ -1251,7 +1344,8 @@ onMounted(async () => {
 .execution-stat-row { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 16px; }
 .project-bug-table :deep(.ant-table-body),
 .project-task-table :deep(.ant-table-body),
-.project-report-table :deep(.ant-table-body) {
+.project-report-table :deep(.ant-table-body),
+.project-document-table :deep(.ant-table-body) {
   height: 200px;
   overflow-y: auto !important;
 }
