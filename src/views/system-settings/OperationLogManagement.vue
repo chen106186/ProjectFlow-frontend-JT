@@ -30,38 +30,50 @@
     </a-card>
 
     <a-card class="log-list-card" :bordered="false">
-      <a-table
-        row-key="id"
-        :columns="columns"
-        :data-source="logs"
-        :loading="loading"
-        :pagination="pagination"
-        :scroll="{ x: 1500 }"
-        size="middle"
-        @change="handleTableChange"
-      >
-        <template #bodyCell="{ column, record, text }">
-          <template v-if="column.dataIndex === 'createdAt'">
-            <span class="log-time">{{ formatDateTime(text) }}</span>
+      <div class="log-table-wrap">
+        <a-table
+          row-key="id"
+          :columns="columns"
+          :data-source="logs"
+          :loading="loading"
+          :pagination="false"
+          :scroll="{ x: 1500 }"
+          size="middle"
+        >
+          <template #bodyCell="{ column, record, text }">
+            <template v-if="column.dataIndex === 'createdAt'">
+              <span class="log-time">{{ formatDateTime(text) }}</span>
+            </template>
+            <template v-else-if="column.dataIndex === 'module'">
+              <a-tag :color="moduleColor(text)">{{ moduleLabel(text) }}</a-tag>
+            </template>
+            <template v-else-if="column.dataIndex === 'operationType'">
+              <a-tag :color="actionColor(text)">{{ actionLabel(text) }}</a-tag>
+            </template>
+            <template v-else-if="column.dataIndex === 'businessType'">
+              <span class="log-biz-type">{{ bizTypeLabel(text) }}</span>
+            </template>
+            <template v-else-if="column.dataIndex === 'businessId'">
+              <span class="log-business-id">{{ text || '-' }}</span>
+            </template>
+            <template v-else-if="column.dataIndex === 'content'">
+              <span class="log-content" :title="text">{{ text || '-' }}</span>
+            </template>
+            <template v-else>{{ text || '-' }}</template>
           </template>
-          <template v-else-if="column.dataIndex === 'module'">
-            <a-tag :color="moduleColor(text)">{{ moduleLabel(text) }}</a-tag>
-          </template>
-          <template v-else-if="column.dataIndex === 'operationType'">
-            <a-tag :color="actionColor(text)">{{ actionLabel(text) }}</a-tag>
-          </template>
-          <template v-else-if="column.dataIndex === 'businessType'">
-            <span class="log-biz-type">{{ bizTypeLabel(text) }}</span>
-          </template>
-          <template v-else-if="column.dataIndex === 'businessId'">
-            <span class="log-business-id">{{ text || '-' }}</span>
-          </template>
-          <template v-else-if="column.dataIndex === 'content'">
-            <span class="log-content" :title="text">{{ text || '-' }}</span>
-          </template>
-          <template v-else>{{ text || '-' }}</template>
-        </template>
-      </a-table>
+        </a-table>
+      </div>
+      <div class="log-pagination">
+        <a-pagination
+          v-model:current="pagination.current"
+          v-model:page-size="pagination.pageSize"
+          :total="pagination.total"
+          :show-size-changer="pagination.showSizeChanger"
+          :page-size-options="pagination.pageSizeOptions"
+          :show-total="pagination.showTotal"
+          @change="handlePageChange"
+        />
+      </div>
     </a-card>
   </section>
 </template>
@@ -185,7 +197,7 @@ const fetchLogs = async () => {
 
 const handleSearch = () => { pagination.current = 1; fetchLogs() }
 const handleReset = () => { Object.assign(query, createDefaultQuery()); pagination.current = 1; fetchLogs() }
-const handleTableChange = ({ current, pageSize }) => { pagination.current = current; pagination.pageSize = pageSize; fetchLogs() }
+const handlePageChange = (current, pageSize) => { pagination.current = current; pagination.pageSize = pageSize; fetchLogs() }
 
 onMounted(fetchLogs)
 </script>
@@ -193,6 +205,8 @@ onMounted(fetchLogs)
 <style scoped>
 .operation-log-page {
   width: min(1600px, 100%);
+  height: calc(100vh - 68px - 52px - 40px);
+  min-height: 0;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -205,9 +219,26 @@ onMounted(fetchLogs)
   box-shadow: 0 2px 8px rgb(0 0 0 / 3%);
 }
 
+.log-filter-card {
+  flex: none;
+}
+
+.log-list-card {
+  flex: 1;
+  min-height: 0;
+}
+
 .log-filter-card :deep(.ant-card-body),
 .log-list-card :deep(.ant-card-body) {
   padding: 24px 28px;
+}
+
+.log-list-card :deep(.ant-card-body) {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .log-filter {
@@ -267,6 +298,12 @@ onMounted(fetchLogs)
   overflow-wrap: anywhere;
 }
 
+.log-table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
 .log-list-card :deep(.ant-table) {
   width: 100%;
 }
@@ -274,6 +311,16 @@ onMounted(fetchLogs)
 .log-list-card :deep(.ant-table-thead > tr > th),
 .log-list-card :deep(.ant-table-tbody > tr > td) {
   padding: 18px 16px;
+}
+
+.log-pagination {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 40px;
+  padding-top: 12px;
+  background: #fff;
 }
 
 @media (max-width: 1440px) {

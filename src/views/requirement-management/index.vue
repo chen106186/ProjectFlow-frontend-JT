@@ -137,15 +137,6 @@
         <a-form-item label="优先级" name="priority">
           <a-select v-model:value="modalForm.priority" :options="priorityOptions" placeholder="请选择优先级" />
         </a-form-item>
-        <a-form-item label="审核人" name="reviewerId">
-          <a-select
-            v-model:value="modalForm.reviewerId"
-            show-search
-            :options="reviewerOptions"
-            option-filter-prop="label"
-            placeholder="请选择审核人"
-          />
-        </a-form-item>
         <a-form-item label="需求描述">
           <a-textarea v-model:value="modalForm.description" :rows="5" placeholder="请描述需求详情" />
         </a-form-item>
@@ -161,7 +152,7 @@ import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
-import { getProjectList, getSystemUsers } from '@/api/managementProject'
+import { getProjectList } from '@/api/managementProject'
 import { createRequirement, listRequirements, updateRequirement, updateRequirementStatus } from '@/api/requirements'
 import { useDictStore } from '@/store/dictStore'
 import { formatDateTime } from '@/utils/dateTime'
@@ -172,7 +163,6 @@ const dictStore = useDictStore()
 const loading = ref(false)
 const rows = ref([])
 const projectMap = ref({})
-const userRows = ref([])
 const opRecord = ref('')
 const modalVisible = ref(false)
 const modalLoading = ref(false)
@@ -182,7 +172,6 @@ const modalFormRef = ref()
 const query = reactive({
   keyword: '',
   projectId: undefined,
-  reviewerId: undefined,
   requirementType: undefined,
   priority: undefined,
   status: undefined,
@@ -200,7 +189,6 @@ const modalForm = reactive({
 const modalRules = {
   title: [{ required: true, message: '请输入需求标题', trigger: 'blur' }],
   projectId: [{ required: true, message: '请选择所属项目', trigger: 'change' }],
-  reviewerId: [{ required: true, message: '请选择审核人', trigger: 'change' }],
   requirementType: [{ required: true, message: '请选择需求类型', trigger: 'change' }],
   priority: [{ required: true, message: '请选择优先级', trigger: 'change' }],
 }
@@ -220,7 +208,6 @@ const statusOptions = computed(() => dictStore.getDictItems('requirementStatus')
 const projectOptions = computed(() =>
   Object.entries(projectMap.value).map(([value, label]) => ({ value, label }))
 )
-const reviewerOptions = computed(() => userRows.value.map(user => ({ label: user.realName || user.username, value: user.id })))
 
 const dictLabel = (type, value) => dictStore.getDictLabel(type, value) || value || '-'
 const priorityColor = v => ({ URGENT: 'red', HIGH: 'orange', MEDIUM: 'gold', LOW: 'default' }[v] || 'default')
@@ -295,7 +282,7 @@ const handleDetail = record =>
 
 const openCreateModal = () => {
   editId.value = null
-  Object.assign(modalForm, { title: '', projectId: undefined, reviewerId: undefined, requirementType: undefined, status: undefined, priority: undefined, description: '' })
+  Object.assign(modalForm, { title: '', projectId: undefined, requirementType: undefined, status: undefined, priority: undefined, description: '' })
   modalVisible.value = true
 }
 
@@ -304,7 +291,6 @@ const openEditModal = record => {
   Object.assign(modalForm, {
     title: record.title || '',
     projectId: record.projectId,
-    reviewerId: record.reviewerId,
     requirementType: record.requirementType,
     status: record.status,
     priority: record.priority,
@@ -324,7 +310,6 @@ const handleModalSubmit = async () => {
       const updated = await updateRequirement(editId.value, {
         title: modalForm.title,
         projectId: modalForm.projectId,
-        reviewerId: modalForm.reviewerId,
         requirementType: modalForm.requirementType,
         status: modalForm.status || undefined,
         priority: modalForm.priority,
@@ -337,7 +322,6 @@ const handleModalSubmit = async () => {
       await createRequirement({
         title: modalForm.title,
         projectId: modalForm.projectId,
-        reviewerId: modalForm.reviewerId,
         requirementType: modalForm.requirementType,
         priority: modalForm.priority,
         description: modalForm.description || undefined,
@@ -371,12 +355,8 @@ const handleStatusChange = async (record, status) => {
 
 const initPage = async () => {
   await dictStore.loadDicts()
-  const [projectResult, userResult] = await Promise.all([
-    getProjectList({ pageNo: 1, pageSize: 200, projectType: 'MANAGEMENT' }),
-    getSystemUsers({ pageNo: 1, pageSize: 200, enabled: true }),
-  ])
+  const projectResult = await getProjectList({ pageNo: 1, pageSize: 200, projectType: 'MANAGEMENT' })
   projectMap.value = Object.fromEntries((projectResult.records || []).map(item => [item.id, item.name]))
-  userRows.value = userResult.records || []
   await fetchData()
 }
 
