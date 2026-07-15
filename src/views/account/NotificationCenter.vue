@@ -219,15 +219,6 @@ const handleMarkAll = async () => {
   }
 }
 
-let keywordTimer = null
-watch(keyword, () => {
-  clearTimeout(keywordTimer)
-  keywordTimer = setTimeout(() => {
-    currentPage.value = 1
-    loadNotices()
-  }, 300)
-})
-
 const onTabChange = () => {
   currentPage.value = 1
   loadNotices()
