@@ -395,3 +395,7 @@ textarea.ant-input {
 .ant-popover-inner { padding: 12px; border-radius: 8px; }
 .ant-popconfirm-buttons { margin-top: $spacing-sm; }
 .ant-popconfirm-buttons .ant-btn + .ant-btn { margin-inline-start: $spacing-sm; }
+
+.ant-spin-nested-loading{
+  overflow: auto;
+}

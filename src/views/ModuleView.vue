@@ -119,7 +119,7 @@
             <a-form-item v-if="!isPersonalTasks" label="负责人"><a-select v-model:value="taskFilter.assigneeId" allow-clear placeholder="全部" :options="taskUserOptions" /></a-form-item>
             <a-form-item label="优先级"><a-select v-model:value="taskFilter.priority" allow-clear placeholder="全部" :options="taskPrioritySelectOptions" /></a-form-item>
             <a-form-item label="状态"><a-select v-model:value="taskFilter.status" allow-clear placeholder="全部" :options="taskStatusSelectOptions" /></a-form-item>
-            <a-form-item label="计划结束日期"><a-date-picker v-model:value="taskFilter.plannedEndDate" /></a-form-item>
+            <a-form-item class="task-end-date-filter" label="计划结束日期"><a-date-picker v-model:value="taskFilter.plannedEndDate" /></a-form-item>
             <a-form-item class="filter-buttons app-filter-actions">
               <a-space>
                 <a-button type="primary" @click="handleTaskSearch">查询</a-button>
@@ -158,8 +158,8 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="record in visibleTasks" :key="record.id">
-                  <td>{{ record.index }}</td>
+                <tr v-for="(record, index) in pagedVisibleTasks" :key="record.id">
+                  <td>{{ (taskCurrentPage - 1) * taskPageSize + index + 1 }}</td>
                   <td><button class="text-link" type="button" @click="handleTaskDetail(record)">{{ record.name }}</button></td>
                   <td><button class="text-link" type="button">{{ record.project }}</button></td>
                   <td>{{ record.role }}</td>
@@ -232,7 +232,18 @@
             </section>
           </div>
           <div class="prototype-pagination">
-            <span>共 {{ visibleTasks.length }} 条</span>
+            <a-pagination
+              v-if="isTaskModule && taskDisplayMode === 'list'"
+              v-model:current="taskCurrentPage"
+              v-model:page-size="taskPageSize"
+              :total="visibleTasks.length"
+              :page-size-options="['10', '50', '100']"
+              show-size-changer
+              show-less-items
+              :show-total="total => `共 ${total} 条`"
+              @change="handleTaskPageChange"
+            />
+            <span v-else>共 {{ visibleTasks.length }} 条</span>
           </div>
         </a-card>
       </section>
@@ -278,7 +289,7 @@
               <a-button>分组</a-button>
             </a-space>
           </div>
-          <a-table :columns="personalBugColumns" :data-source="visibleBugs" :pagination="{ pageSize: 20, showTotal: total => `共 ${total} 条` }" :scroll="{ x: 1320, y: 330 }" size="middle" row-key="id">
+          <a-table :columns="personalBugColumns" :data-source="visibleBugs" :pagination="{ pageSize: 10, pageSizeOptions: ['10', '50', '100'], showTotal: total => `共 ${total} 条` }" :scroll="{ x: 1320, y: 330 }" size="middle" row-key="id">
             <template #bodyCell="{ column, record, text }">
               <template v-if="column.dataIndex === 'title'">
                 <a-button type="link" class="cell-link bug-title" @click="handleBugDetail(record)">
@@ -481,13 +492,13 @@
       </template>
       <a-form class="prototype-modal-form" layout="horizontal" :label-col="{ span: 5 }">
         <template v-if="!isPersonalTasks">
-          <a-form-item label="所属项目"><a-select v-model:value="taskFormState.projectId" :options="taskFormProjectOptions" placeholder="请选择所属项目" /></a-form-item>
-          <a-form-item label="任务名称"><a-input v-model:value="taskFormState.name" placeholder="请输入任务名称" /></a-form-item>
-          <a-form-item label="负责人"><a-select v-model:value="taskFormState.assigneeId" :options="taskUserOptions" placeholder="请选择负责人" /></a-form-item>
+          <a-form-item label="所属项目" required><a-select v-model:value="taskFormState.projectId" :options="taskFormProjectOptions" placeholder="请选择所属项目" /></a-form-item>
+          <a-form-item label="任务名称" required><a-input v-model:value="taskFormState.name" placeholder="请输入任务名称" /></a-form-item>
+          <a-form-item label="负责人" required><a-select v-model:value="taskFormState.assigneeId" :options="taskUserOptions" placeholder="请选择负责人" /></a-form-item>
           <a-form-item label="角色"><a-select v-model:value="taskFormState.roleName" :options="roleOptions" allow-clear placeholder="请选择角色" /></a-form-item>
           <a-form-item label="标签"><a-input v-model:value="taskFormState.tags" placeholder="多个标签用逗号分隔" /></a-form-item>
           <a-form-item v-if="editingTaskId" label="状态"><a-select v-model:value="taskFormState.status" :options="taskStatusSelectOptions" placeholder="请选择状态" /></a-form-item>
-          <a-form-item label="优先级"><a-select v-model:value="taskFormState.priority" :options="taskPrioritySelectOptions" placeholder="请选择优先级" /></a-form-item>
+          <a-form-item label="优先级" required><a-select v-model:value="taskFormState.priority" :options="taskPrioritySelectOptions" placeholder="请选择优先级" /></a-form-item>
           <a-form-item label="计划开始时间"><a-date-picker v-model:value="taskFormState.plannedStartDate" style="width:100%" /></a-form-item>
           <a-form-item label="计划结束时间"><a-date-picker v-model:value="taskFormState.plannedEndDate" style="width:100%" /></a-form-item>
           <a-form-item label="任务描述"><a-textarea v-model:value="taskFormState.description" :rows="4" placeholder="请输入任务描述" /></a-form-item>
@@ -667,6 +678,8 @@ const editingTaskId = ref(null)
 const taskDisplayMode = ref('list')
 const taskGroupField = ref('project')
 const collapsedTaskGroups = ref([])
+const taskCurrentPage = ref(1)
+const taskPageSize = ref(10)
 const bugApiRows = ref([])
 const bugUsers = ref([])
 const bugProjects = ref([])
@@ -741,6 +754,11 @@ const visibleTasks = computed(() => {
     return taskApiRows.value.filter(task => task.role !== '测试')
   }
   return taskApiRows.value
+})
+const pagedVisibleTasks = computed(() => {
+  if (!isTaskModule.value) return visibleTasks.value
+  const start = (taskCurrentPage.value - 1) * taskPageSize.value
+  return visibleTasks.value.slice(start, start + taskPageSize.value)
 })
 const groupedTasks = computed(() => {
   const groups = new Map()
@@ -835,6 +853,7 @@ watch(
   () => route.name,
   name => {
     if (name === 'PersonalTasks' || taskModuleRouteNames.includes(name)) {
+      taskCurrentPage.value = 1
       fetchTaskModuleData()
     }
     if (name === 'PersonalBugs') {
@@ -932,6 +951,8 @@ async function loadTasks() {
       description: task.description || '',
       tags: task.tags || '',
     }))
+    const lastPage = Math.max(1, Math.ceil(visibleTasks.value.length / taskPageSize.value))
+    taskCurrentPage.value = Math.min(taskCurrentPage.value, lastPage)
   } catch (error) {
     taskApiRows.value = []
     message.error(error.message)
@@ -1329,6 +1350,7 @@ const openTaskModal = (mode, record) => {
 }
 
 const handleTaskSearch = () => {
+  taskCurrentPage.value = 1
   loadTasks()
   void recordOperationLog({
     module: OPERATION_MODULES.TASK,
@@ -1355,7 +1377,13 @@ const handleTaskReset = () => {
     status: undefined,
     plannedEndDate: undefined,
   }
+  taskCurrentPage.value = 1
   loadTasks()
+}
+
+const handleTaskPageChange = (current, pageSize) => {
+  taskCurrentPage.value = current
+  taskPageSize.value = pageSize
 }
 
 const isTaskGroupCollapsed = value => collapsedTaskGroups.value.includes(value)
@@ -1937,6 +1965,12 @@ const trendPoints = [
   font-size: 14px;
 }
 
+.prototype-filter .task-end-date-filter :deep(.ant-form-item-label) {
+  flex: 0 0 112px !important;
+  width: 112px !important;
+  min-width: 112px;
+}
+
 .prototype-filter :deep(.ant-form-item-control) {
   min-width: 0;
 }
@@ -2138,6 +2172,7 @@ const trendPoints = [
   align-items: center;
   justify-content: flex-end;
   height: 32px;
+  margin-top: 12px;
   padding-right: 10px;
   color: #333;
 }

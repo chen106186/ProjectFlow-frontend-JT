@@ -8,11 +8,22 @@ const state = reactive({
 })
 let loadingPromise = null
 
+const requirementStatusItems = [
+  { label: '待评审', value: 'PENDING_REVIEW', sortOrder: 1 },
+  { label: '已采纳', value: 'ACCEPTED', sortOrder: 2 },
+  { label: '未采纳', value: 'REJECTED', sortOrder: 3 },
+  { label: '已搁置', value: 'SHELVED', sortOrder: 4 },
+]
+
 const normalizeDictGroups = groups => {
   return groups.reduce((result, group) => {
+    const items = group.type === 'requirementStatus'
+      ? requirementStatusItems
+      : group.items
+
     result[group.type] = {
       name: group.name,
-      items: [...group.items].sort((prev, next) => prev.sortOrder - next.sortOrder),
+      items: [...items].sort((prev, next) => prev.sortOrder - next.sortOrder),
     }
 
     return result

@@ -24,7 +24,7 @@
                 <strong>{{ role.name }}</strong>
                 <span>{{ role.code }}</span>
               </div>
-              <a-space class="role-item__actions" :size="2">
+              <a-space v-if="!isAdminRole(role)" class="role-item__actions" :size="2">
                 <a-button type="text" size="small" @click.stop="handleEditRole(role)">
                   <template #icon><EditOutlined /></template>
                 </a-button>
@@ -42,7 +42,7 @@
       <a-card class="prototype-card permission-card" :bordered="false">
         <div class="permission-title">
           <span><DownOutlined /> 菜单权限</span>
-          <a-button type="primary" size="small" :loading="permissionSaving" :disabled="!currentRoleId" @click="handleSavePermissions">保存权限</a-button>
+          <a-button type="primary" size="small" :loading="permissionSaving" :disabled="!currentRoleId || isCurrentAdminRole" @click="handleSavePermissions">保存权限</a-button>
         </div>
         <a-spin :spinning="menuLoading || permissionLoading">
           <a-tree
@@ -51,6 +51,7 @@
             :tree-data="permissionTree"
             checkable
             default-expand-all
+            :disabled="isCurrentAdminRole"
           />
         </a-spin>
       </a-card>
@@ -122,6 +123,9 @@ const filteredRoles = computed(() => roles.value)
 
 const modalTitle = computed(() => (modalMode.value === 'create' ? '新增角色' : '编辑角色'))
 const permissionTree = computed(() => buildMenuTree(menus.value))
+const currentRole = computed(() => roles.value.find(role => role.id === currentRoleId.value))
+const isCurrentAdminRole = computed(() => isAdminRole(currentRole.value))
+const allMenuIds = computed(() => menus.value.map(item => item.id))
 
 onMounted(async () => {
   await Promise.all([fetchRoles(), fetchMenus()])
@@ -147,7 +151,7 @@ const buildMenuTree = items => {
   const roots = []
 
   items.forEach(item => {
-    nodeMap.set(item.id, { title: item.name, key: item.id, children: [] })
+    nodeMap.set(item.id, { title: item.name, key: item.id, disabled: isCurrentAdminRole.value, children: [] })
   })
 
   items.forEach(item => {
@@ -160,6 +164,12 @@ const buildMenuTree = items => {
   })
 
   return roots
+}
+
+const isAdminRole = role => {
+  const code = String(role?.code || '').toUpperCase()
+  const name = String(role?.name || '')
+  return code === 'ADMIN' || code === 'SUPER_ADMIN' || name === '超级管理员' || name === '管理员'
 }
 
 const fetchRoles = async () => {
@@ -188,6 +198,10 @@ const fetchRoleMenus = async roleId => {
   permissionLoading.value = true
 
   try {
+    if (isCurrentAdminRole.value) {
+      checkedPermissionKeys.value = [...allMenuIds.value]
+      return
+    }
     checkedPermissionKeys.value = await getSystemRoleMenus(roleId)
   } catch (error) {
     message.error(error.message || '权限加载失败')
@@ -210,6 +224,10 @@ const handleAddRole = () => {
 }
 
 const handleEditRole = role => {
+  if (isAdminRole(role)) {
+    return
+  }
+
   modalMode.value = 'edit'
   Object.assign(roleForm, role)
   formRef.value?.clearValidate()
@@ -254,6 +272,10 @@ const handleSaveRole = async () => {
 }
 
 const handleDeleteRole = async role => {
+  if (isAdminRole(role)) {
+    return
+  }
+
   try {
     const deletedCurrent = role.id === currentRoleId.value
     await deleteSystemRole(role.id)
@@ -275,7 +297,7 @@ const handleDeleteRole = async role => {
 }
 
 const handleSavePermissions = async () => {
-  if (!currentRoleId.value) {
+  if (!currentRoleId.value || isCurrentAdminRole.value) {
     return
   }
 

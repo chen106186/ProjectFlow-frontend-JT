@@ -34,62 +34,80 @@
         </a-button>
       </template>
 
-      <a-table
-        row-key="id"
-        :columns="columns"
-        :data-source="rows"
-        :loading="loading"
-        :pagination="pagination"
-        :scroll="{ x: 1440 }"
-        size="middle"
-        @change="handleTableChange"
-      >
-        <template #bodyCell="{ column, record, text, index }">
-          <template v-if="column.dataIndex === 'rowIndex'">
-            {{ (pagination.current - 1) * pagination.pageSize + index + 1 }}
+      <div class="req-table-wrap">
+        <a-table
+          row-key="id"
+          :columns="columns"
+          :data-source="rows"
+          :loading="loading"
+          :pagination="false"
+          :scroll="{ x: 1440 }"
+          size="middle"
+        >
+          <template #bodyCell="{ column, record, text, index }">
+            <template v-if="column.dataIndex === 'rowIndex'">
+              {{ (pagination.current - 1) * pagination.pageSize + index + 1 }}
+            </template>
+            <template v-else-if="column.dataIndex === 'requirementNo'">
+              <span class="req-no">{{ formatNo(record) }}</span>
+            </template>
+            <template v-else-if="column.dataIndex === 'title'">
+              <a-button type="link" class="req-title-link" @click="handleDetail(record)">{{ text }}</a-button>
+            </template>
+            <template v-else-if="column.dataIndex === 'projectId'">
+              {{ projectMap[text] || '-' }}
+            </template>
+            <template v-else-if="column.dataIndex === 'requirementType'">
+              <a-tag color="blue">{{ dictLabel('requirementType', text) }}</a-tag>
+            </template>
+            <template v-else-if="column.dataIndex === 'priority'">
+              <a-tag :color="priorityColor(text)">{{ dictLabel('requirementPriority', text) }}</a-tag>
+            </template>
+            <template v-else-if="column.dataIndex === 'status'">
+              <a-tag :color="statusColor(text)">{{ dictLabel('requirementStatus', text) }}</a-tag>
+            </template>
+            <template v-else-if="column.dataIndex === 'ops'">
+              <a-space :size="4">
+                <a-button type="link" size="small" @click="openEditModal(record)">编辑</a-button>
+                <template v-if="record.status === 'PENDING_REVIEW'">
+                  <a-divider type="vertical" style="margin: 0;" />
+                  <a-button
+                    type="link"
+                    size="small"
+                    :loading="opRecord === record.id + '_ACCEPTED'"
+                    @click="handleStatusChange(record, 'ACCEPTED')"
+                  >采纳</a-button>
+                  <a-button
+                    type="link"
+                    size="small"
+                    danger
+                    :loading="opRecord === record.id + '_REJECTED'"
+                    @click="handleStatusChange(record, 'REJECTED')"
+                  >未采纳</a-button>
+                  <a-button
+                    type="link"
+                    size="small"
+                    :loading="opRecord === record.id + '_SHELVED'"
+                    @click="handleStatusChange(record, 'SHELVED')"
+                  >搁置</a-button>
+                </template>
+              </a-space>
+            </template>
+            <template v-else>{{ text || '-' }}</template>
           </template>
-          <template v-else-if="column.dataIndex === 'requirementNo'">
-            <span class="req-no">{{ formatNo(record) }}</span>
-          </template>
-          <template v-else-if="column.dataIndex === 'title'">
-            <a-button type="link" class="req-title-link" @click="handleDetail(record)">{{ text }}</a-button>
-          </template>
-          <template v-else-if="column.dataIndex === 'projectId'">
-            {{ projectMap[text] || '-' }}
-          </template>
-          <template v-else-if="column.dataIndex === 'requirementType'">
-            <a-tag color="blue">{{ dictLabel('requirementType', text) }}</a-tag>
-          </template>
-          <template v-else-if="column.dataIndex === 'priority'">
-            <a-tag :color="priorityColor(text)">{{ dictLabel('requirementPriority', text) }}</a-tag>
-          </template>
-          <template v-else-if="column.dataIndex === 'status'">
-            <a-tag :color="statusColor(text)">{{ dictLabel('requirementStatus', text) }}</a-tag>
-          </template>
-          <template v-else-if="column.dataIndex === 'ops'">
-            <a-space :size="4">
-              <a-button type="link" size="small" @click="openEditModal(record)">编辑</a-button>
-              <template v-if="record.status === 'PENDING_REVIEW'">
-                <a-divider type="vertical" style="margin: 0;" />
-                <a-button
-                  type="link"
-                  size="small"
-                  :loading="opRecord === record.id + '_ACCEPTED'"
-                  @click="handleStatusChange(record, 'ACCEPTED')"
-                >采纳</a-button>
-                <a-button
-                  type="link"
-                  size="small"
-                  danger
-                  :loading="opRecord === record.id + '_REJECTED'"
-                  @click="handleStatusChange(record, 'REJECTED')"
-                >拒绝</a-button>
-              </template>
-            </a-space>
-          </template>
-          <template v-else>{{ text || '-' }}</template>
-        </template>
-      </a-table>
+        </a-table>
+      </div>
+      <div class="req-pagination">
+        <a-pagination
+          v-model:current="pagination.current"
+          v-model:page-size="pagination.pageSize"
+          :total="pagination.total"
+          :show-size-changer="pagination.showSizeChanger"
+          :page-size-options="pagination.pageSizeOptions"
+          :show-total="pagination.showTotal"
+          @change="handlePageChange"
+        />
+      </div>
     </a-card>
 
     <!-- 新增 / 编辑弹窗 -->
@@ -195,10 +213,10 @@ const modalRules = {
 
 const pagination = reactive({
   current: 1,
-  pageSize: 20,
+  pageSize: 10,
   total: 0,
   showSizeChanger: true,
-  pageSizeOptions: ['20', '50', '100'],
+  pageSizeOptions: ['10', '50', '100'],
   showTotal: total => `共 ${total} 条`,
 })
 
@@ -210,7 +228,8 @@ const projectOptions = computed(() =>
 )
 const dictLabel = (type, value) => dictStore.getDictLabel(type, value) || value || '-'
 const priorityColor = v => ({ URGENT: 'red', HIGH: 'orange', MEDIUM: 'gold', LOW: 'default' }[v] || 'default')
-const statusColor = v => ({ PENDING_REVIEW: 'blue', ACCEPTED: 'green', REJECTED: 'red' }[v] || 'default')
+const statusColor = v => ({ PENDING_REVIEW: 'blue', ACCEPTED: 'green', REJECTED: 'red', SHELVED: 'orange' }[v] || 'default')
+const statusSuccessText = status => ({ ACCEPTED: '已采纳', REJECTED: '未采纳', SHELVED: '已搁置' }[status] || '状态已更新')
 
 const formatNo = record => {
   if (record.requirementNo != null) {
@@ -269,7 +288,7 @@ const handleReset = () => {
   fetchData()
 }
 
-const handleTableChange = ({ current, pageSize }) => {
+const handlePageChange = (current, pageSize) => {
   pagination.current = current
   pagination.pageSize = pageSize
   fetchData()
@@ -343,7 +362,7 @@ const handleStatusChange = async (record, status) => {
     const updated = await updateRequirementStatus(record.id, status)
     const idx = rows.value.findIndex(r => r.id === record.id)
     if (idx !== -1) rows.value[idx] = updated
-    message.success(status === 'ACCEPTED' ? '已采纳' : '已拒绝')
+    message.success(statusSuccessText(status))
   } catch (error) {
     message.error(error.message || '操作失败')
   } finally {
@@ -364,6 +383,8 @@ onMounted(initPage)
 <style scoped>
 .req-mgmt-page {
   width: min(1600px, 100%);
+  height: calc(100vh - 68px - 52px - 40px);
+  min-height: 0;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -374,6 +395,45 @@ onMounted(initPage)
 .req-list-card {
   border: 1px solid #edf0f3;
   box-shadow: 0 2px 8px rgb(0 0 0 / 3%);
+}
+
+.req-filter-card {
+  flex: none;
+}
+
+.req-list-card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.req-list-card :deep(.ant-card-head) {
+  flex: none;
+}
+
+.req-list-card :deep(.ant-card-body) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.req-table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.req-pagination {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 40px;
+  padding-top: 12px;
+  background: #fff;
 }
 
 .req-filter {

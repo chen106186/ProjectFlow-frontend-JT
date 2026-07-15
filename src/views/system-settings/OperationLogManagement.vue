@@ -103,7 +103,7 @@ const pagination = reactive({
   total: 0,
   showSizeChanger: true,
   showTotal: total => `共 ${total} 条`,
-  pageSizeOptions: ['10', '20', '50', '100'],
+  pageSizeOptions: ['10', '50', '100'],
 })
 
 const MODULE_MAP = {

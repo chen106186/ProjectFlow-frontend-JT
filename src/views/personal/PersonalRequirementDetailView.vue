@@ -12,7 +12,8 @@
           <a-button v-if="canEdit" @click="openEditModal">编辑</a-button>
           <template v-if="requirement.status === 'PENDING_REVIEW'">
             <a-button type="primary" :loading="statusLoading === 'ACCEPTED'" @click="handleStatusChange('ACCEPTED')">采纳</a-button>
-            <a-button danger :loading="statusLoading === 'REJECTED'" @click="handleStatusChange('REJECTED')">拒绝</a-button>
+            <a-button danger :loading="statusLoading === 'REJECTED'" @click="handleStatusChange('REJECTED')">未采纳</a-button>
+            <a-button :loading="statusLoading === 'SHELVED'" @click="handleStatusChange('SHELVED')">搁置</a-button>
           </template>
         </div>
       </template>
@@ -195,7 +196,8 @@ const projectOptions = computed(() => Object.entries(projectMap.value).map(([val
 const reviewerOptions = computed(() => userRows.value.map(user => ({ label: user.realName || user.username, value: user.id })))
 
 const priorityColor = value => ({ URGENT: 'red', HIGH: 'orange', MEDIUM: 'gold', LOW: 'default' }[value] || 'default')
-const statusColor = value => ({ PENDING_REVIEW: 'blue', ACCEPTED: 'green', REJECTED: 'red' }[value] || 'default')
+const statusColor = value => ({ PENDING_REVIEW: 'blue', ACCEPTED: 'green', REJECTED: 'red', SHELVED: 'orange' }[value] || 'default')
+const statusSuccessText = status => ({ ACCEPTED: '需求已采纳', REJECTED: '需求未采纳', SHELVED: '需求已搁置' }[status] || '状态已更新')
 const formatLogTime = dt => formatDateTime(dt)
 const loadProjects = async () => {
   const result = await getProjectList({ pageNo: 1, pageSize: 200, projectType: 'EXECUTION' })
@@ -235,7 +237,7 @@ const handleStatusChange = async status => {
   try {
     requirement.value = await updateRequirementStatus(route.params.id, status)
     await loadLogs()
-    message.success(status === 'ACCEPTED' ? '需求已采纳' : '需求已拒绝')
+    message.success(statusSuccessText(status))
   } catch (error) {
     message.error(error.message || '状态更新失败')
   } finally {

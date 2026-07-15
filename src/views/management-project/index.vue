@@ -1,5 +1,5 @@
 <template>
-  <div class="project-page">
+  <div :class="['project-page', { 'project-page--list': viewMode === 'list' }]">
     <template v-if="viewMode === 'list'">
       <a-card class="project-filter app-filter-card" :bordered="false">
         <a-form class="project-filter__form app-filter-form" layout="inline">
@@ -21,9 +21,10 @@
             <a-radio-group v-model:value="displayMode" button-style="solid"><a-radio-button value="list">列表</a-radio-button><a-radio-button value="group">分组</a-radio-button></a-radio-group>
           </div>
         </div>
-        <a-table v-if="displayMode === 'list'" row-key="id" :columns="projectColumns" :data-source="filteredProjects" :loading="projectLoading" :pagination="projectPagination" :scroll="{ x: 1480 }" @change="handleProjectTableChange">
+        <div class="project-list__content">
+        <a-table v-if="displayMode === 'list'" row-key="id" :columns="projectColumns" :data-source="filteredProjects" :loading="projectLoading" :pagination="false" :scroll="{ x: 1480 }">
           <template #bodyCell="{ column, record, index, text }">
-            <template v-if="column.dataIndex === 'index'">{{ index + 1 }}</template>
+            <template v-if="column.dataIndex === 'index'">{{ (projectPagination.current - 1) * projectPagination.pageSize + index + 1 }}</template>
             <template v-else-if="column.dataIndex === 'name'"><a-button type="link" class="table-link" @click="handleDetail(record)">{{ text }}</a-button></template>
             <template v-else-if="column.dataIndex === 'status'"><a-tag color="green">{{ text }}</a-tag></template>
             <template v-else-if="column.dataIndex === 'contractStatus'"><a-tag color="green">{{ text }}</a-tag></template>
@@ -44,31 +45,19 @@
             </a-table>
           </section>
         </div>
+        </div>
+        <a-pagination
+          class="project-list__pagination"
+          :current="projectPagination.current"
+          :page-size="projectPagination.pageSize"
+          :total="projectPagination.total"
+          :page-size-options="projectPagination.pageSizeOptions"
+          :show-size-changer="projectPagination.showSizeChanger"
+          :show-total="projectPagination.showTotal"
+          @change="handleProjectPageChange"
+        />
       </a-card>
     </template>
-
-    <a-card v-else-if="viewMode === 'create' || viewMode === 'edit'" class="project-form-card" :bordered="false">
-      <h2 v-if="viewMode === 'edit'">编辑项目</h2>
-      <a-form ref="formRef" :model="formState" :rules="formRules" :label-col="{ span: 5 }" :wrapper-col="{ span: 19 }">
-        <a-form-item label="项目名称" name="name"><a-input v-model:value="formState.name" placeholder="请输入项目名称" /></a-form-item>
-        <a-form-item label="项目经理" name="managerId"><a-select v-model:value="formState.managerId" :options="managerOptions" placeholder="请选择项目经理" /></a-form-item>
-        <a-form-item label="项目类型" name="type"><a-select v-model:value="formState.type" :options="projectTypeFormOptions" /></a-form-item>
-        <template v-if="formState.type !== 'EXTERNAL'">
-          <a-form-item label="业务部门"><a-input v-model:value="formState.department" placeholder="请输入业务部门" /></a-form-item>
-          <a-form-item label="承建单位"><a-input v-model:value="formState.contractor" placeholder="请输入承建单位" /></a-form-item>
-          <a-form-item label="业务主管"><a-input v-model:value="formState.supervisor" placeholder="请输入业务主管" /></a-form-item>
-        </template>
-        <a-form-item label="项目节点"><a-checkbox-group v-model:value="formState.nodes" :options="nodeOptions" /></a-form-item>
-        <a-form-item label="项目阶段"><a-select v-model:value="formState.stage" :options="stageOptions" /></a-form-item>
-        <a-form-item label="项目状态"><a-select v-model:value="formState.status" :options="projectStatusOptions" /></a-form-item>
-        <a-form-item label="合同状态"><a-select v-model:value="formState.contractStatus" :options="contractOptions" /></a-form-item>
-        <a-form-item label="计划开始时间"><a-date-picker v-model:value="formState.plannedStartDate" value-format="YYYY-MM-DD" placeholder="请选择计划开始时间" /></a-form-item>
-        <a-form-item label="计划结束时间"><a-date-picker v-model:value="formState.plannedEndDate" value-format="YYYY-MM-DD" placeholder="请选择计划结束时间" /></a-form-item>
-        <a-form-item label="回款金额"><a-input-number v-model:value="formState.amount" :min="0" :precision="2" addon-after="万元" /></a-form-item>
-        <a-form-item label="项目描述" name="description"><a-textarea v-model:value="formState.description" :rows="5" placeholder="请输入项目描述" /></a-form-item>
-      </a-form>
-      <div class="form-actions"><a-button @click="handleBack">取消</a-button><a-button type="primary" :loading="submitLoading" @click="handleSubmit">确认</a-button></div>
-    </a-card>
 
     <template v-else>
       <div class="project-detail">
@@ -128,7 +117,6 @@
           :document-row-selection="documentRowSelection"
           :selected-document-ids="selectedDocumentIds"
           :expanded-document-folder-ids="expandedFolderIds"
-          :pagination="pagination"
           @create-report="handleCreateReport"
           @view-report="handleViewReport"
           @edit-report="handleEditReport"
@@ -158,8 +146,6 @@
           <FileOutlined class="upload-file-item__icon" />
           <span class="upload-file-item__name">{{ file.name }}</span>
           <span>{{ formatFileSize(file.size) }}</span>
-          <a-progress :percent="file.percent" size="small" :show-info="false" />
-          <span>{{ file.percent }}%</span>
           <a-button v-if="file.percent < 100" type="link" @click="handleRemoveUploadFile(file.uid)">取消</a-button>
           <CheckOutlined v-else class="upload-file-item__success" />
         </div>
@@ -333,7 +319,6 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } 
 import { useRoute, useRouter } from 'vue-router'
 import ProjectDetailTabs from './components/ProjectDetailTabs.vue'
 import {
-  createProject,
   createProjectFolder,
   createProjectReport,
   createReportItem,
@@ -356,7 +341,6 @@ import {
   getProjectTasks,
   getSystemUsers,
   updateGanttNode,
-  updateProject,
   updateProjectReport,
   updateReportItem,
   updateReportStatus,
@@ -371,8 +355,6 @@ const route = useRoute()
 const router = useRouter()
 const dictStore = useDictStore()
 const viewMode = computed(() => route.meta.projectView || 'list')
-const formRef = ref()
-const submitLoading = ref(false)
 const projectLoading = ref(false)
 const detailLoading = ref(false)
 const taskLoading = ref(false)
@@ -381,7 +363,6 @@ const reportLoading = ref(false)
 const documentLoading = ref(false)
 const selectedDocumentIds = ref([])
 const selectedDocumentCategory = ref('全部')
-const editingId = ref(null)
 const currentProject = ref(null)
 const activeTab = ref('gantt')
 const detailTabsRef = ref()
@@ -422,44 +403,6 @@ const managementProjectTypeOptions = [
   { label: '科技项目', value: 'RESEARCH' },
   { label: '外部项目', value: 'EXTERNAL' },
 ]
-const managementProjectNodeMap = {
-  DIGITALIZATION: [
-    { label: '可研批复', value: 'FEASIBILITY_APPROVAL' },
-    { label: '招标', value: 'BIDDING' },
-    { label: '合同签订', value: 'CONTRACT_SIGNING' },
-    { label: '概设批复', value: 'PRELIMINARY_APPROVAL' },
-    { label: '需求分析', value: 'REQUIREMENT_ANALYSIS' },
-    { label: 'UI设计', value: 'UI_DESIGN' },
-    { label: '开发', value: 'DEVELOPMENT' },
-    { label: '测试', value: 'TESTING' },
-    { label: '第三方测试', value: 'THIRD_PARTY_TESTING' },
-    { label: '实施部署', value: 'DEPLOYMENT' },
-    { label: '上线试运行', value: 'TRIAL_RUN' },
-    { label: '验收', value: 'ACCEPTANCE' },
-    { label: '完工', value: 'COMPLETION' },
-  ],
-  RESEARCH: [
-    { label: '可研批复', value: 'FEASIBILITY_APPROVAL' },
-    { label: '专利申请', value: 'PATENT_APPLICATION' },
-    { label: '论文录用(软著申请)', value: 'PAPER_ACCEPTANCE_SOFTWARE_COPYRIGHT' },
-    { label: '三方测评', value: 'THIRD_PARTY_EVALUATION' },
-    { label: '验收准备', value: 'ACCEPTANCE_PREPARATION' },
-    { label: '完工', value: 'COMPLETION' },
-  ],
-  EXTERNAL: [
-    { label: '商务阶段', value: 'BUSINESS_STAGE' },
-    { label: '用户调研', value: 'USER_RESEARCH' },
-    { label: '需求确认', value: 'REQUIREMENT_CONFIRMATION' },
-    { label: '合同签订', value: 'CONTRACT_SIGNING' },
-    { label: '开发', value: 'DEVELOPMENT' },
-    { label: '测试', value: 'TESTING' },
-    { label: '部署实施', value: 'DEPLOYMENT_IMPLEMENTATION' },
-    { label: '验收', value: 'ACCEPTANCE' },
-    { label: '完工', value: 'COMPLETION' },
-  ],
-}
-const getProjectNodeName = code => Object.values(managementProjectNodeMap).flat().find(item => item.value === code)?.label || code
-const getProjectNodeCode = name => Object.values(managementProjectNodeMap).flat().find(item => item.label === name || item.value === name)?.value || name
 const managerOptions = ref([])
 const projectTypeFormOptions = ref([...managementProjectTypeOptions])
 const stageOptions = ref([])
@@ -487,12 +430,9 @@ const typeFilterOptions = computed(() => withAll(projectTypeFormOptions.value))
 const stageFilterOptions = computed(() => withAll(stageOptions.value))
 const projectStatusFilterOptions = computed(() => withAll(projectStatusOptions.value))
 const contractFilterOptions = computed(() => withAll(contractOptions.value))
-const nodeOptions = computed(() => managementProjectNodeMap[formState.type] || [])
 const groupOptions = [{ label: '项目经理', value: 'manager' }, { label: '项目阶段', value: 'stage' }, { label: '项目状态', value: 'status' }, { label: '项目类型', value: 'type' }, { label: '合同状态', value: 'contractStatus' }]
 
 const projects = ref([])
-const createDefaultForm = () => ({ name: '', managerId: undefined, department: '', contractor: '', supervisor: '', type: 'DIGITALIZATION', nodes: [], stage: 'BUSINESS_OPPORTUNITY', status: 'NOT_STARTED', contractStatus: 'NOT_SIGNED', plannedStartDate: undefined, plannedEndDate: undefined, amount: 0, description: '' })
-const formState = reactive(createDefaultForm())
 const query = reactive({ keyword: '', managerId: '全部', type: '全部', contractStatus: '全部', stage: '全部', status: '全部' })
 const appliedQuery = reactive({ ...query })
 const displayMode = ref('list')
@@ -515,9 +455,6 @@ const projectColumns = [
   { title: '操作', dataIndex: 'operation', width: 110, fixed: 'right' },
 ]
 const projectPagination = reactive({ current: 1, pageSize: 10, total: 0, pageSizeOptions: ['10', '50', '100'], showSizeChanger: true, showTotal: total => `共 ${total} 条` })
-const pagination = { defaultPageSize: 10, pageSizeOptions: ['10', '50', '100'], showSizeChanger: true, showTotal: total => `共 ${total} 条` }
-const formRules = { name: [{ required: true, message: '请输入项目名称', trigger: 'blur' }], managerId: [{ required: true, message: '请选择项目经理', trigger: 'change' }], type: [{ required: true, message: '请选择项目类型', trigger: 'change' }], description: [{ required: true, message: '请输入项目描述', trigger: 'blur' }] }
-
 const filteredProjects = computed(() => projects.value)
 const groupedProjects = computed(() => {
   const labelMap = { manager: '项目经理', stage: '项目阶段', status: '项目状态', type: '项目类型', contractStatus: '合同状态' }
@@ -602,7 +539,7 @@ const taskRows = ref([])
 const taskStatusFilters = toOptions(['全部状态', '未开始', '进行中', '已完成'])
 const personFilterOptions = toOptions(['全部负责人', '全部指定人', '张三', '李四', '王五'])
 const bugSummary = computed(() => [{ label: '紧急', value: bugRows.value.filter(item => item.priorityCode === 'URGENT').length, class: 'bug-severe', icon: ExclamationCircleOutlined }, { label: '待修复', value: bugRows.value.filter(item => item.statusCode === 'PENDING_FIX').length, class: 'bug-submitted', icon: SendOutlined }, { label: '修复中', value: bugRows.value.filter(item => item.statusCode === 'FIXING').length, class: 'bug-confirmed', icon: ToolOutlined }, { label: '已关闭', value: bugRows.value.filter(item => item.statusCode === 'CLOSED').length, class: 'bug-closed', icon: CheckCircleOutlined }])
-const bugColumns = [{ title: '序号', dataIndex: 'id', width: 60 }, { title: 'BUG ID', dataIndex: 'code', width: 130 }, { title: '标题', dataIndex: 'title', width: 220 }, { title: '严重级别', dataIndex: 'severity', width: 100 }, { title: '状态', dataIndex: 'status', width: 100 }, { title: '指定人', dataIndex: 'assignee', width: 90 }, { title: '创建人', dataIndex: 'creator', width: 90 }]
+const bugColumns = [{ title: 'BUG ID', dataIndex: 'code', width: 130 }, { title: '标题', dataIndex: 'title', width: 220 }, { title: '严重级别', dataIndex: 'severity', width: 100 }, { title: '状态', dataIndex: 'status', width: 100 }, { title: '指定人', dataIndex: 'assignee', width: 90 }, { title: '创建人', dataIndex: 'creator', width: 90 }]
 const bugRows = ref([])
 const bugStatusFilters = toOptions(['全部状态', '待处理', '修复中', '已完成'])
 const reportStatusFilters = computed(() => [{ label: '全部', value: '全部' }, ...reportStatusOptions.value])
@@ -655,7 +592,7 @@ const documentCategories = computed(() => {
   const files = documentDisplayRows.value
   return [{ label: '全部', value: '全部', count: files.length, class: 'category-all', icon: FolderOpenOutlined }, ...documentCategoryMeta.value.map((item, index) => ({ label: item.label, value: item.value, count: files.filter(file => file.categoryCode === item.value || file.category === item.label).length, class: ['category-contract', 'category-requirement', 'category-design', 'category-development', 'category-acceptance'][index], icon: [FileProtectOutlined, FileTextOutlined, SnippetsOutlined, CodeOutlined, FileDoneOutlined][index] }))].map(item => ({ ...item, active: item.value === selectedDocumentCategory.value }))
 })
-const documentColumns = [{ title: '文件名', dataIndex: 'name' }, { title: '类型', dataIndex: 'type', width: 90 }, { title: '大小', dataIndex: 'size', width: 90 }, { title: '版本', dataIndex: 'version', width: 80 }, { title: '上传人', dataIndex: 'uploader', width: 80 }, { title: '分类', dataIndex: 'category', width: 90 }, { title: '上传时间', dataIndex: 'uploadTime', width: 170 }, { title: '操作', dataIndex: 'operation', width: 120 }]
+const documentColumns = [{ title: '文件名', dataIndex: 'name' }, { title: '类型', dataIndex: 'type', width: 90 }, { title: '大小', dataIndex: 'size', width: 90 }, { title: '版本', dataIndex: 'version', width: 90 }, { title: '上传人', dataIndex: 'uploader', width: 120 }, { title: '分类', dataIndex: 'category', width: 90 }, { title: '上传时间', dataIndex: 'uploadTime', width: 220 }, { title: '操作', dataIndex: 'operation', width: 120 }]
 const documentRows = ref([])
 const folderOptions = computed(() => folderRows.value.map(folder => ({ label: folder.name, value: folder.id })))
 const isFolderExpanded = folderId => expandedFolderIds.value.map(String).includes(String(folderId))
@@ -901,23 +838,6 @@ const mapProject = project => ({
   amount: project.amount ?? project.receivableAmount ?? 0,
 })
 
-const mapProjectToForm = project => ({
-  name: project.name || '',
-  managerId: project.managerId,
-  department: project.department || project.businessDepartment || '',
-  contractor: project.contractor || project.contractorUnit || '',
-  supervisor: project.supervisor || project.businessSupervisor || '',
-  type: project.projectBusinessType || 'DIGITALIZATION',
-  nodes: Array.isArray(project.nodes) ? project.nodes.map(getProjectNodeCode) : [],
-  stage: project.stage || 'BUSINESS_OPPORTUNITY',
-  status: project.statusCode || project.status || 'NOT_STARTED',
-  contractStatus: project.contractStatusCode || project.contractStatus || 'NOT_SIGNED',
-  plannedStartDate: project.plannedStartDate || undefined,
-  plannedEndDate: project.plannedEndDate || undefined,
-  amount: project.amount ?? project.receivableAmount ?? 0,
-  description: project.description || '',
-})
-
 const fetchReferenceData = async () => {
   try {
     const [userPage] = await Promise.all([
@@ -1067,38 +987,13 @@ const syncQueryFromRoute = () => {
 }
 
 const syncRoute = async () => {
-  if (viewMode.value === 'create') { Object.assign(formState, createDefaultForm()); editingId.value = null; return }
   if (viewMode.value === 'list') { syncQueryFromRoute(); await fetchProjects(); return }
   const projectId = route.params.id
-  if (viewMode.value === 'edit') {
-    detailLoading.value = true
-    try {
-      const [project, ganttNodes] = await Promise.all([getProjectDetail(projectId), getGanttNodes(projectId)])
-      const existingNodeCodes = Array.isArray(ganttNodes)
-        ? ganttNodes.map(n => n.nodeCode || getProjectNodeCode(n.nodeName)).filter(Boolean)
-        : []
-      Object.assign(formState, createDefaultForm(), mapProjectToForm(project), { nodes: existingNodeCodes })
-      editingId.value = project.id
-    } catch (error) {
-      message.error(error.message)
-    } finally {
-      detailLoading.value = false
-    }
-  }
   if (viewMode.value === 'detail') { activeTab.value = 'gantt'; await fetchProjectRelatedData(projectId) }
 }
 watch(() => [route.name, route.params.id, route.query.status], syncRoute)
 watch(activeTab, renderGantt)
 watch(groupField, () => { collapsedGroups.value = [] })
-watch(() => formState.type, type => {
-  const validNodeCodes = new Set((managementProjectNodeMap[type] || []).map(item => item.value))
-  formState.nodes = formState.nodes.filter(code => validNodeCodes.has(code))
-  if (type === 'EXTERNAL') {
-    formState.department = ''
-    formState.contractor = ''
-    formState.supervisor = ''
-  }
-})
 onBeforeUnmount(() => { ganttInstance = null })
 onMounted(async () => {
   await fetchReferenceData()
@@ -1126,7 +1021,7 @@ const handleSearch = async () => {
   })
 }
 const handleReset = async () => { Object.assign(query, { keyword: '', managerId: '全部', type: '全部', contractStatus: '全部', stage: '全部', status: '全部' }); Object.assign(appliedQuery, query); projectPagination.current = 1; await fetchProjects() }
-const handleProjectTableChange = async page => { projectPagination.current = page.current; projectPagination.pageSize = page.pageSize; await fetchProjects() }
+const handleProjectPageChange = async (page, pageSize) => { projectPagination.current = page; projectPagination.pageSize = pageSize; await fetchProjects() }
 const isGroupCollapsed = value => collapsedGroups.value.includes(value)
 const handleToggleGroup = value => {
   collapsedGroups.value = isGroupCollapsed(value) ? collapsedGroups.value.filter(item => item !== value) : [...collapsedGroups.value, value]
@@ -1541,56 +1436,13 @@ const handleDeleteReport = async record => {
     message.error(error.message)
   }
 }
-const handleSubmit = async () => {
-  if (submitLoading.value) return
-  await formRef.value?.validate()
-  submitLoading.value = true
-  try {
-    const projectData = {
-      projectType: 'MANAGEMENT',
-      projectBusinessType: formState.type,
-      name: formState.name,
-      stage: formState.stage,
-      status: formState.status,
-      contractStatus: formState.contractStatus,
-      plannedStartDate: formState.plannedStartDate || null,
-      plannedEndDate: formState.plannedEndDate || null,
-      managerId: formState.managerId,
-      businessDepartment: formState.department,
-      contractorUnit: formState.contractor,
-      businessSupervisor: formState.supervisor,
-      receivableAmount: formState.amount,
-      description: formState.description,
-    }
-    if (editingId.value) {
-      projectData.nodeNames = formState.nodes.map(getProjectNodeName)
-    } else {
-      projectData.nodes = formState.nodes.map(code => ({ nodeName: getProjectNodeName(code) }))
-    }
-    const savedProject = editingId.value
-      ? await updateProject(editingId.value, projectData)
-      : await createProject(projectData)
-    message.success(editingId.value ? '项目编辑成功' : '项目新建成功')
-    void recordOperationLog({
-      module: OPERATION_MODULES.MANAGEMENT_PROJECT,
-      action: editingId.value ? OPERATION_ACTIONS.UPDATE : OPERATION_ACTIONS.CREATE,
-      bizType: 'PROJECT',
-      bizId: savedProject?.id || editingId.value,
-      bizName: projectData.name,
-      detail: editingId.value ? `编辑管理类项目：${projectData.name}` : `新建管理类项目：${projectData.name}`,
-      routeName: 'ManagementProjectDetail',
-    })
-    router.push({ name: 'ManagementProjectDetail', params: { id: savedProject.id || editingId.value } })
-  } catch (error) {
-    message.error(error.message)
-  } finally { submitLoading.value = false }
-}
 </script>
 
 <style scoped>
-.project-page { min-height: 100%;  width: min(1600px, 100%);  margin: 0 auto; overflow: visible; color: #262626; }
-.project-filter, .project-list, .project-form-card { border: 1px solid #edf0f3; box-shadow: 0 2px 8px rgb(0 0 0 / 3%); }
-.project-filter { margin-bottom: 16px; }
+.project-page { min-height: 100%; width: min(1600px, 100%); margin: 0 auto; overflow: visible; color: #262626; }
+.project-page--list { display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: hidden; }
+.project-filter, .project-list { border: 1px solid #edf0f3; box-shadow: 0 2px 8px rgb(0 0 0 / 3%); }
+.project-filter { flex: 0 0 auto; margin-bottom: 16px; }
 .project-filter :deep(.ant-card-body) { padding: 16px 18px 2px; }
 .project-filter__form { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: 26px; }
 .project-filter__form :deep(.ant-form-item) { margin: 0 0 14px; }
@@ -1598,24 +1450,21 @@ const handleSubmit = async () => {
 .project-filter__form :deep(.ant-form-item-label) { flex: 0 0 80px; width: 80px; text-align: right; }
 .project-filter__form :deep(.ant-form-item-control), .project-filter__form :deep(.ant-input), .project-filter__form :deep(.ant-select) { width: 100%; }
 .project-filter__actions { justify-self: end; }
-.project-list :deep(.ant-card-body) { padding: 18px; }
+.project-list { flex: 1; min-height: 0; margin-bottom: 20px; }
+.project-list :deep(.ant-card-body) { display: flex; flex-direction: column; height: 100%; min-height: 0; padding: 18px 18px 10px; }
 .project-list__toolbar, .section-heading, .document-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+.project-list__toolbar { flex: 0 0 auto; }
+.project-list__content { flex: 1; min-height: 0; margin-bottom: 10px; overflow: auto; }
+.project-list__content > :deep(.ant-table-wrapper) { min-height: 100%; }
+.project-list__pagination { flex: 0 0 auto; align-self: flex-end; }
 .project-list__display { display: flex; align-items: center; gap: 12px; color: #666; }
 .project-list__display :deep(.ant-select) { width: 130px; }
 .project-list :deep(.ant-table-cell) { white-space: nowrap; }
-.project-group-list { max-height: 520px; overflow-y: auto; }
+.project-group-list { min-height: 100%; }
 .project-group + .project-group { margin-top: 8px; }
 .project-group__header { display: flex; align-items: center; justify-content: space-between; height: 40px; padding: 0 14px; font-weight: 600; background: #fafafa; border-top: 1px solid #edf0f3; border-bottom: 1px solid #edf0f3; }
 .project-group__header button { display: inline-flex; gap: 8px; align-items: center; padding: 0; font-weight: 600; background: transparent; border: 0; cursor: pointer; }
 .table-link { height: auto; padding: 0; }
-.project-form-card { width: min(1100px, 100%); margin: 0 auto; }
-.project-form-card :deep(.ant-card-body) { padding: 24px 50px 30px; }
-.project-form-card h2 { margin: 0 0 24px; font-size: 18px; }
-.project-form-card :deep(.ant-form-item) { margin-bottom: 28px; }
-.project-form-card :deep(.ant-input-number), .project-form-card :deep(.ant-picker) { width: 100%; }
-.project-form-card :deep(.ant-checkbox-group) { display: flex; flex-wrap: wrap; gap: 10px 18px; }
-.form-actions { display: flex; justify-content: flex-end; gap: 20px; }
-.form-actions .ant-btn { width: 120px; }
 .project-detail { min-height: 100%; overflow: visible; }
 .project-detail__heading { display: flex; align-items: center; gap: 16px; margin-bottom: 6px; }
 .project-detail__heading :deep(.ant-tag) { padding: 6px 14px; font-size: 16px; }
@@ -1698,7 +1547,7 @@ const handleSubmit = async () => {
 .upload-drag-hint { margin: 2px 0 !important; color: #8c8c8c; }
 .upload-list-title { margin: 18px 0 10px; }
 .upload-file-list { min-height: 70px; padding-bottom: 14px; border-bottom: 1px solid #edf0f3; }
-.upload-file-item { display: grid; grid-template-columns: 28px minmax(180px, 1fr) 72px 160px 48px 46px; gap: 10px; align-items: center; min-height: 42px; }
+.upload-file-item { display: grid; grid-template-columns: 28px minmax(180px, 1fr) 72px 46px; gap: 10px; align-items: center; min-height: 42px; }
 .upload-file-item__icon { color: #1677ff; font-size: 22px; }.upload-file-item__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.upload-file-item__success { color: #52c41a; }
 .upload-form { margin-top: 18px; }.upload-form__row { display: block; }.upload-form :deep(.ant-form-item) { margin-bottom: 18px; }.upload-form :deep(.ant-select) { width: 100%; }
 .upload-modal-actions { display: flex; justify-content: flex-end; gap: 16px; }.upload-modal-actions .ant-btn { width: 118px; }

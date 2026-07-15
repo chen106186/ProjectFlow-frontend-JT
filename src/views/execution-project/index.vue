@@ -19,7 +19,8 @@
         </div>
       </div>
 
-      <a-table v-if="displayMode === 'list'" row-key="id" :columns="columns" :data-source="visibleProjects" :loading="loading" :pagination="pagination" :scroll="{ x: 980 }" @change="handleTableChange">
+      <div class="execution-list__content">
+      <a-table v-if="displayMode === 'list'" row-key="id" :columns="columns" :data-source="visibleProjects" :loading="loading" :pagination="false" :scroll="{ x: 980 }">
         <template #bodyCell="{ column, record, index, text }">
           <template v-if="column.dataIndex === 'index'">{{ (pagination.current - 1) * pagination.pageSize + index + 1 }}</template>
           <template v-else-if="column.dataIndex === 'name'"><a-button type="link" class="table-link" @click="handleDetail(record)">{{ text }}</a-button></template>
@@ -41,6 +42,17 @@
           </a-table>
         </section>
       </div>
+      </div>
+      <a-pagination
+        class="execution-list__pagination"
+        :current="pagination.current"
+        :page-size="pagination.pageSize"
+        :total="pagination.total"
+        :page-size-options="pagination.pageSizeOptions"
+        :show-size-changer="pagination.showSizeChanger"
+        :show-total="pagination.showTotal"
+        @change="handlePageChange"
+      />
     </a-card>
 
     <a-modal v-model:open="formVisible" class="execution-form-modal" :title="editingId ? '编辑项目' : '新建项目'" :footer="null" :width="700" destroy-on-close>
@@ -92,7 +104,7 @@ const statusFilterOptions = computed(() => withAll(statusOptions.value))
 const groupOptions = [{ label: '项目阶段', value: 'stage' }, { label: '项目经理', value: 'manager' }, { label: '项目状态', value: 'status' }]
 const query = reactive({ keyword: '', managerId: '全部', stage: '全部', status: '全部' })
 const appliedQuery = reactive({ ...query })
-const pagination = reactive({ current: 1, pageSize: 10, total: 0, pageSizeOptions: ['10', '20', '50'], showSizeChanger: true, showTotal: total => `共 ${total} 条` })
+const pagination = reactive({ current: 1, pageSize: 10, total: 0, pageSizeOptions: ['10', '50', '100'], showSizeChanger: true, showTotal: total => `共 ${total} 条` })
 
 const columns = [
   { title: '序号', dataIndex: 'index', width: 70 },
@@ -209,7 +221,7 @@ const handleSearch = async () => {
   })
 }
 const handleReset = async () => { Object.assign(query, { keyword: '', managerId: '全部', stage: '全部', status: '全部' }); Object.assign(appliedQuery, query); pagination.current = 1; await fetchProjects() }
-const handleTableChange = async page => { pagination.current = page.current; pagination.pageSize = page.pageSize; await fetchProjects() }
+const handlePageChange = async (page, pageSize) => { pagination.current = page; pagination.pageSize = pageSize; await fetchProjects() }
 const handleToggleGroup = value => { collapsedGroups.value = collapsedGroups.value.includes(value) ? collapsedGroups.value.filter(item => item !== value) : [...collapsedGroups.value, value] }
 const handleCreate = () => { editingId.value = null; Object.assign(formState, createDefaultForm()); formVisible.value = true }
 const handleEdit = async record => {
@@ -308,9 +320,9 @@ onMounted(async () => { await fetchReferenceData(); await fetchProjects() })
 </script>
 
 <style scoped>
-.execution-project-page { height: 100%;  width: min(1600px, 100%);  margin: 0 auto; overflow-y: auto; color: #262626; }
+.execution-project-page { display: flex; flex-direction: column; width: min(1600px, 100%); height: 100%; min-height: 0; margin: 0 auto; overflow: hidden; color: #262626; }
 .execution-filter, .execution-list { border: 1px solid #edf0f3; box-shadow: 0 2px 8px rgb(0 0 0 / 3%); }
-.execution-filter { margin-bottom: 16px; }
+.execution-filter { flex: 0 0 auto; margin-bottom: 16px; }
 .execution-filter :deep(.ant-card-body) { padding: 20px 30px 4px; }
 .execution-filter__form.app-filter-form { display: grid; grid-template-columns: minmax(180px, 1.3fr) repeat(3, minmax(140px, 1fr)) max-content !important; column-gap: 24px !important; align-items: end; }
 .execution-filter__form :deep(.ant-form-item) { margin: 0 0 16px; }
@@ -318,13 +330,18 @@ onMounted(async () => { await fetchReferenceData(); await fetchProjects() })
 .execution-filter__form :deep(.ant-form-item-label) { flex: 0 0 76px; }
 .execution-filter__form :deep(.ant-form-item-control), .execution-filter__form :deep(.ant-select), .execution-filter__form :deep(.ant-input) { width: 100%; }
 .execution-filter__actions { grid-column: auto !important; justify-self: end; }
-.execution-list :deep(.ant-card-body) { padding: 22px 30px 18px; }
+.execution-list { flex: 1; min-height: 0; margin-bottom: 20px; }
+.execution-list :deep(.ant-card-body) { display: flex; flex-direction: column; height: 100%; min-height: 0; padding: 22px 30px 10px; }
 .execution-list__toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.execution-list__toolbar { flex: 0 0 auto; }
+.execution-list__content { flex: 1; min-height: 0; margin-bottom: 10px; overflow: auto; }
+.execution-list__content > :deep(.ant-table-wrapper) { min-height: 100%; }
+.execution-list__pagination { flex: 0 0 auto; align-self: flex-end; }
 .execution-list__display { display: flex; align-items: center; gap: 12px; color: #8c8c8c; }
 .execution-list__display :deep(.ant-select) { width: 132px; }
 .execution-list :deep(.ant-table-cell) { white-space: nowrap; }
 .table-link { height: auto; padding: 0; }
-.execution-groups { max-height: 560px; overflow-y: auto; }
+.execution-groups { min-height: 100%; }
 .execution-group + .execution-group { margin-top: 8px; }
 .execution-group__header { display: flex; align-items: center; justify-content: space-between; height: 40px; padding: 0 14px; background: #fafafa; border-block: 1px solid #edf0f3; }
 .execution-group__header button { display: inline-flex; align-items: center; gap: 8px; padding: 0; font-weight: 600; background: transparent; border: 0; cursor: pointer; }

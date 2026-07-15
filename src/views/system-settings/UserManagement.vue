@@ -67,7 +67,7 @@
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.dataIndex === 'enabled'">
-              <a-switch :checked="record.enabled" size="small" @change="checked => handleStatusChange(record, checked)" />
+              <a-switch v-if="!isSuperAdminUser(record)" :checked="record.enabled" size="small" @change="checked => handleStatusChange(record, checked)" />
               <span :class="['status-text', { 'status-text--disabled': !record.enabled }]">{{ record.enabled ? '启用' : '停用' }}</span>
             </template>
             <template v-else-if="column.dataIndex === 'roleNames'">
@@ -78,8 +78,8 @@
             </template>
             <template v-else-if="column.dataIndex === 'operation'">
               <a-space :size="2">
-                <a-button type="link" size="small" @click="handleEdit(record)">编辑</a-button>
-                <a-button type="link" size="small" @click="handleAssignRole(record)">分配角色</a-button>
+                <a-button v-if="!isSuperAdminUser(record)" type="link" size="small" @click="handleEdit(record)">编辑</a-button>
+                <a-button v-if="!isSuperAdminUser(record)" type="link" size="small" @click="handleAssignRole(record)">分配角色</a-button>
                 <a-button type="link" size="small" @click="handleResetPwd(record)">重置密码</a-button>
               </a-space>
             </template>
@@ -360,6 +360,17 @@ const getDepartmentChildrenIds = departmentId => {
 }
 
 const getDepartmentById = id => departments.value.find(item => item.id === id)
+const isAdminRole = role => {
+  const code = String(role?.code || '').toUpperCase()
+  return code === 'ADMIN' || code === 'SUPER_ADMIN' || role?.name === '超级管理员'
+}
+const isSuperAdminUser = record => {
+  const roleIds = record.roleIds || []
+  const roleNames = record.roleNames || []
+  return String(record.username || '').toLowerCase() === 'admin'
+    || roleNames.includes('超级管理员')
+    || roles.value.some(role => isAdminRole(role) && roleIds.includes(role.id))
+}
 
 const fetchDepartments = async () => { departments.value = await getSystemDepartments() }
 const fetchRoles = async () => { roles.value = await getSystemRoles() }
@@ -436,6 +447,8 @@ const handleSearch = () => { currentPage.value = 1; fetchUsers() }
 const handlePageChange = page => { currentPage.value = page; fetchUsers() }
 
 const handleStatusChange = async (record, checked) => {
+  if (isSuperAdminUser(record)) return
+
   try {
     await updateSystemUserEnabled(record.id, checked)
     message.success('状态已更新')
@@ -532,6 +545,8 @@ const handleAdd = () => {
 }
 
 const handleEdit = record => {
+  if (isSuperAdminUser(record)) return
+
   modalMode.value = 'edit'
   editingUserId.value = record.id
   Object.assign(formState, {
@@ -587,6 +602,8 @@ const handleSubmit = async () => {
 }
 
 const handleAssignRole = record => {
+  if (isSuperAdminUser(record)) return
+
   assigningUserId.value = record.id
   assigningUserName.value = record.realName || record.username
   selectedRoleIds.value = [...(record.roleIds || [])]

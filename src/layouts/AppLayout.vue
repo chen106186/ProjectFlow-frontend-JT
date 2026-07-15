@@ -79,11 +79,23 @@
 
         <a-spin
           :spinning="profileLoading"
-          :class="['app-content__spin', { 'app-content__spin--fixed': route.meta.isBugPage || route.meta.isProjectPage }]"
+          :class="[
+            'app-content__spin',
+            {
+              'app-content__spin--fixed': route.meta.isBugPage || route.meta.isProjectPage,
+              'app-content__spin--project-form': route.name === 'ManagementProjectCreate' || route.name === 'ManagementProjectEdit',
+            },
+          ]"
         >
           <div
             v-if="profileReady"
-            :class="['app-content__body', { 'app-content__body--fixed': route.meta.isBugPage || route.meta.isProjectPage }]"
+            :class="[
+              'app-content__body',
+              {
+                'app-content__body--fixed': route.meta.isBugPage || route.meta.isProjectPage,
+                'app-content__body--project-form': route.name === 'ManagementProjectCreate' || route.name === 'ManagementProjectEdit',
+              },
+            ]"
           >
             <router-view />
           </div>
@@ -649,6 +661,10 @@ const handleUserMenuClick = ({ key }) => {
   background: transparent;
 }
 
+.app-sider :deep(.ant-menu-inline.ant-menu-root > .ant-menu-item) {
+  padding-inline-start: 14px !important;
+}
+
 .app-content {
   display: flex;
   flex-direction: column;
@@ -657,6 +673,11 @@ const handleUserMenuClick = ({ key }) => {
   min-width: 0;
   overflow: hidden;
   overscroll-behavior: contain;
+}
+
+.app-content--home {
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .app-content__header {
@@ -675,6 +696,10 @@ const handleUserMenuClick = ({ key }) => {
   overflow: hidden;
 }
 
+.app-content__spin.ant-spin-nested-loading {
+  overflow: auto;
+}
+
 .app-content__spin :deep(.ant-spin-container) {
   display: flex;
   flex-direction: column;
@@ -691,6 +716,23 @@ const handleUserMenuClick = ({ key }) => {
   overflow-y: auto;
 }
 
+.app-content--home .app-content__spin {
+  flex: none;
+  overflow: visible;
+}
+
+.app-content--home .app-content__spin :deep(.ant-spin-container) {
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+}
+
+.app-content--home .app-content__body {
+  flex: none;
+  min-height: 100%;
+  overflow: visible;
+}
+
 .app-content__spin--fixed {
   overflow: hidden;
 }
@@ -699,8 +741,26 @@ const handleUserMenuClick = ({ key }) => {
   overflow: hidden;
 }
 
+.app-content__spin--project-form {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.app-content__spin--project-form :deep(.ant-spin-container) {
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+}
+
 .app-content__body--fixed {
   overflow-x: hidden;
   overflow-y: auto;
+}
+
+.app-content__body--project-form {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  overflow: visible;
 }
 </style>

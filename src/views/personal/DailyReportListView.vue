@@ -1,5 +1,5 @@
 <template>
-  <div class="daily-list-page">
+  <div :class="['daily-list-page', { 'daily-list-page--full': !canViewWeeklyStatus }]">
     <section class="daily-list-main">
       <div class="daily-list-toolbar">
         <a-space :size="12" wrap>
@@ -126,6 +126,7 @@ const pagination = computed(() => ({
   current: paginationState.current,
   pageSize: paginationState.pageSize,
   showSizeChanger: true,
+  pageSizeOptions: ['10', '50', '100'],
   showTotal: total => `共 ${total} 条`,
 }))
 
@@ -251,8 +252,12 @@ function goDetail(date) {
   width: min(1600px, 100%);
   margin: 0 auto;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
+  grid-template-columns: minmax(0, 1fr) 500px;
   gap: 16px;
+}
+
+.daily-list-page--full {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .daily-list-main,
@@ -324,7 +329,7 @@ function goDetail(date) {
 
 .weekly-grid {
   display: grid;
-  grid-template-columns: 46px repeat(7, 1fr);
+  grid-template-columns: 80px repeat(7, 1fr);
   gap: 5px;
   align-items: center;
 }

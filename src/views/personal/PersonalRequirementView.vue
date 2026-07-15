@@ -183,7 +183,7 @@ const pagination = reactive({
   pageSize: 10,
   total: 0,
   showSizeChanger: true,
-  pageSizeOptions: ['10', '20', '50'],
+  pageSizeOptions: ['10', '50', '100'],
   showTotal: total => `共 ${total} 条`,
 })
 
@@ -227,7 +227,8 @@ const fallbackPriorities = [
 const fallbackStatuses = [
   { label: '待评审', value: 'PENDING_REVIEW' },
   { label: '已采纳', value: 'ACCEPTED' },
-  { label: '已拒绝', value: 'REJECTED' },
+  { label: '未采纳', value: 'REJECTED' },
+  { label: '已搁置', value: 'SHELVED' },
 ]
 
 const normalizeOptions = items => items.map(item => ({
@@ -341,7 +342,7 @@ const columns = [
 ]
 
 const priorityColor = value => ({ URGENT: 'red', HIGH: 'orange', MEDIUM: 'gold', LOW: 'default' }[value] || 'default')
-const statusColor = value => ({ PENDING_REVIEW: 'blue', ACCEPTED: 'green', REJECTED: 'red' }[value] || 'default')
+const statusColor = value => ({ PENDING_REVIEW: 'blue', ACCEPTED: 'green', REJECTED: 'red', SHELVED: 'orange' }[value] || 'default')
 
 const loadProjects = async () => {
   const result = await getProjectList({ pageNo: 1, pageSize: 200, projectType: 'MANAGEMENT' })

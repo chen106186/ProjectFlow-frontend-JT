@@ -85,12 +85,13 @@
           <h3>任务列表</h3>
           <a-space><a-select value="全部状态" :options="taskStatusFilters" /><a-select value="全部负责人" :options="personFilterOptions" /></a-space>
         </div>
-        <a-table row-key="id" :columns="taskColumns" :data-source="taskRows" :loading="taskLoading" :pagination="pagination" size="small" :scroll="{ x: 950 }">
+        <a-table row-key="id" class="project-task-table" :columns="taskColumns" :data-source="pagedTaskRows" :loading="taskLoading" :pagination="false" size="small" :scroll="{ x: 950, y: 500 }">
           <template #bodyCell="{ column, text }">
             <a-tag v-if="column.dataIndex === 'priority'" color="red">{{ text }}</a-tag>
             <a-tag v-else-if="column.dataIndex === 'status'" color="processing">{{ text }}</a-tag>
           </template>
         </a-table>
+        <a-pagination class="detail-list-pagination" :current="taskPagination.current" :page-size="taskPagination.pageSize" :total="taskRows.length" :page-size-options="taskPagination.pageSizeOptions" :show-total="taskPagination.showTotal" show-size-changer @change="(page, pageSize) => handleTablePaginationChange(taskPagination, page, pageSize)" />
       </div>
 
       <div v-show="activeTab === 'bugs'" class="execution-tab-panel">
@@ -105,12 +106,13 @@
           <h3>Bug 列表</h3>
           <a-space><a-select value="全部状态" :options="bugStatusFilters" /><a-select value="全部指定人" :options="personFilterOptions" /></a-space>
         </div>
-        <a-table row-key="id" :columns="bugColumns" :data-source="bugRows" :loading="bugLoading" :pagination="pagination" size="small" :scroll="{ x: 900 }">
+        <a-table row-key="id" class="project-bug-table" :columns="bugColumns" :data-source="pagedBugRows" :loading="bugLoading" :pagination="false" size="small" :scroll="{ x: 840, y: 500 }">
           <template #bodyCell="{ column, text }">
             <a-tag v-if="column.dataIndex === 'severity'" color="red">{{ text }}</a-tag>
             <a-tag v-else-if="column.dataIndex === 'status'" color="orange">{{ text }}</a-tag>
           </template>
         </a-table>
+        <a-pagination class="detail-list-pagination" :current="bugPagination.current" :page-size="bugPagination.pageSize" :total="bugRows.length" :page-size-options="bugPagination.pageSizeOptions" :show-total="bugPagination.showTotal" show-size-changer @change="(page, pageSize) => handleTablePaginationChange(bugPagination, page, pageSize)" />
       </div>
 
       <div v-show="activeTab === 'reports'" class="execution-tab-panel">
@@ -124,7 +126,7 @@
           <a-form-item><a-range-picker v-model:value="reportFilter.dateRange" value-format="YYYY-MM-DD" /></a-form-item>
           <a-button @click="handleResetReportFilter">重置</a-button>
         </a-form>
-        <a-table row-key="id" :columns="reportColumns" :data-source="filteredReportRows" :loading="reportLoading" :pagination="pagination" :scroll="{ x: 1040 }" :custom-row="getReportCustomRow">
+        <a-table row-key="id" class="project-report-table" :columns="reportColumns" :data-source="pagedReportRows" :loading="reportLoading" :pagination="false" :scroll="{ x: 1040, y: 500 }" :custom-row="getReportCustomRow">
           <template #bodyCell="{ column, record, text }">
             <a-button v-if="column.dataIndex === 'title'" type="link" @click.stop="handleViewReport(record)">{{ text }}</a-button>
             <a-tag v-else-if="column.dataIndex === 'status'" color="green">{{ text }}</a-tag>
@@ -136,6 +138,7 @@
             </a-space>
           </template>
         </a-table>
+        <a-pagination class="detail-list-pagination" :current="reportPagination.current" :page-size="reportPagination.pageSize" :total="filteredReportRows.length" :page-size-options="reportPagination.pageSizeOptions" :show-total="reportPagination.showTotal" show-size-changer @change="(page, pageSize) => handleTablePaginationChange(reportPagination, page, pageSize)" />
       </div>
 
       <div v-show="activeTab === 'documents'" class="execution-tab-panel">
@@ -196,8 +199,6 @@
           <FileOutlined class="upload-file-item__icon" />
           <span class="upload-file-item__name">{{ file.name }}</span>
           <span>{{ formatFileSize(file.size) }}</span>
-          <a-progress :percent="file.percent" size="small" :show-info="false" />
-          <span>{{ file.percent }}%</span>
           <a-button v-if="file.percent < 100" type="link" @click="handleRemoveUploadFile(file.uid)">取消</a-button>
           <CheckOutlined v-else class="upload-file-item__success" />
         </div>
@@ -515,16 +516,31 @@ const risks = computed(() => [
   { label: '即将到期', value: `${ganttSummaryData.dueSoon} 个`, desc: '未来 3 天内到期', class: 'risk-due', icon: ClockCircleOutlined },
   { label: '按计划进行', value: `${Math.max(taskRows.value.length - ganttSummaryData.overdue, 0)} 个`, desc: '无延期风险', class: 'risk-normal', icon: CheckCircleOutlined },
 ])
+const createTablePagination = () => reactive({
+  current: 1,
+  pageSize: 10,
+  pageSizeOptions: ['10', '50', '100'],
+  showSizeChanger: true,
+  hideOnSinglePage: false,
+  showTotal: total => `共 ${total} 条`,
+})
+const handleTablePaginationChange = (target, page, pageSize) => {
+  target.current = page
+  target.pageSize = pageSize
+}
 const taskColumns = [{ title: '序号', dataIndex: 'id', width: 60 }, { title: '任务名称', dataIndex: 'name', width: 180 }, { title: '负责人', dataIndex: 'owner', width: 90 }, { title: '优先级', dataIndex: 'priority', width: 80 }, { title: '状态', dataIndex: 'status', width: 90 }, { title: '计划开始', dataIndex: 'planStart', width: 110 }, { title: '计划结束', dataIndex: 'planEnd', width: 110 }, { title: '实际开始', dataIndex: 'actualStart', width: 110 }, { title: '实际结束', dataIndex: 'actualEnd', width: 110 }]
+const taskPagination = createTablePagination()
 const taskRows = ref([])
 const taskStatusFilters = toOptions(['全部状态', '未开始', '进行中', '已完成'])
 const personFilterOptions = toOptions(['全部负责人', '全部指定人', '张三', '李四', '王五'])
 const bugSummary = computed(() => [{ label: '严重', value: bugRows.value.filter(item => item.priorityCode === 'URGENT' || item.severity === '严重').length, class: 'bug-severe', icon: ExclamationCircleOutlined }, { label: '已提交', value: bugRows.value.filter(item => item.statusCode === 'PENDING_FIX').length, class: 'bug-submitted', icon: SendOutlined }, { label: '已确认', value: bugRows.value.filter(item => item.statusCode === 'FIXING').length, class: 'bug-confirmed', icon: ToolOutlined }, { label: '已关闭', value: bugRows.value.filter(item => item.statusCode === 'CLOSED').length, class: 'bug-closed', icon: CheckCircleOutlined }])
-const bugColumns = [{ title: '序号', dataIndex: 'id', width: 60 }, { title: 'BUG ID', dataIndex: 'code', width: 130 }, { title: '标题', dataIndex: 'title', width: 220 }, { title: '严重级别', dataIndex: 'severity', width: 100 }, { title: '状态', dataIndex: 'status', width: 100 }, { title: '指定人', dataIndex: 'assignee', width: 90 }, { title: '创建人', dataIndex: 'creator', width: 90 }]
+const bugColumns = [{ title: 'BUG ID', dataIndex: 'code', width: 130 }, { title: '标题', dataIndex: 'title', width: 220 }, { title: '严重级别', dataIndex: 'severity', width: 100 }, { title: '状态', dataIndex: 'status', width: 100 }, { title: '指定人', dataIndex: 'assignee', width: 90 }, { title: '创建人', dataIndex: 'creator', width: 90 }]
+const bugPagination = createTablePagination()
 const bugRows = ref([])
 const bugStatusFilters = toOptions(['全部状态', '待处理', '修复中', '已完成'])
 const reportStatusFilters = toOptions(['全部', '准备中', '进行中', '已完成'])
 const reportColumns = [{ title: '汇报标题', dataIndex: 'title', width: 220 }, { title: '汇报类型', dataIndex: 'type', width: 110 }, { title: '状态', dataIndex: 'status', width: 100 }, { title: '计划时间', dataIndex: 'planTime', width: 150 }, { title: '实际时间', dataIndex: 'actualTime', width: 150 }, { title: '汇报对象', dataIndex: 'target', width: 110 }, { title: '地点/方式', dataIndex: 'place', width: 120 }, { title: '操作', dataIndex: 'operation', width: 140, fixed: 'right' }]
+const reportPagination = createTablePagination()
 const reportRows = ref([])
 const reportItemColumns = [
   { title: '任务', dataIndex: 'content', width: 240 },
@@ -559,6 +575,16 @@ const filteredReportRows = computed(() => reportRows.value.filter(record => {
   }
   return true
 }))
+const paginateRows = (rows, pagination) => {
+  const start = (pagination.current - 1) * pagination.pageSize
+  return rows.slice(start, start + pagination.pageSize)
+}
+const pagedTaskRows = computed(() => paginateRows(taskRows.value, taskPagination))
+const pagedBugRows = computed(() => paginateRows(bugRows.value, bugPagination))
+const pagedReportRows = computed(() => paginateRows(filteredReportRows.value, reportPagination))
+watch(reportFilter, () => {
+  reportPagination.current = 1
+})
 const documentCategoryMeta = computed(() => {
   const fallback = [
     { label: '合同类', value: 'CONTRACT' },
@@ -741,6 +767,8 @@ const mapProject = project => ({
   ...project,
   department: project.department || project.businessDepartment || '-',
   manager: getUserName(project.managerId),
+  stage: getDictLabel('projectStage', project.stage),
+  stageCode: project.stage,
   status: getDictLabel('projectStatus', project.status),
   statusCode: project.status,
 })
@@ -1184,7 +1212,15 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.execution-detail { min-height: 100%;  width: min(1600px, 100%);  margin: 0 auto; overflow: visible; color: #262626; }
+.execution-detail {
+  width: min(1600px, 100%);
+  height: 100%;
+  min-height: 0;
+  margin: 0 auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  color: #262626;
+}
 .execution-detail__heading { display: flex; align-items: center; gap: 16px; margin-bottom: 8px; }
 .execution-detail__heading :deep(.ant-tag) { padding: 6px 14px; font-size: 16px; }
 .execution-summary { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; margin: 0 0 14px; padding: 16px 18px; background: #fff; border-radius: 8px; }
@@ -1213,6 +1249,17 @@ onMounted(async () => {
 .gantt-panel { padding: 12px; }
 .execution-stat-row, .risk-grid, .bug-summary, .document-categories { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 22px; }
 .execution-stat-row { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 16px; }
+.project-bug-table :deep(.ant-table-body),
+.project-task-table :deep(.ant-table-body),
+.project-report-table :deep(.ant-table-body) {
+  height: 200px;
+  overflow-y: auto !important;
+}
+.detail-list-pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
 .semantic-card { display: flex; gap: 14px; align-items: center; min-height: 86px; padding: 16px 18px; border: 1px solid #edf0f3; border-radius: 6px; }
 .execution-stat-row .semantic-card, .risk-grid .semantic-card, .bug-summary .semantic-card { gap: 12px; width: 100%; height: 86px; min-height: 0; padding: 14px 15px; text-align: left; border: 1px solid rgb(0 0 0 / 5%); border-radius: 16px; box-shadow: 0 4px 16px rgb(0 0 0 / 5%); transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.28s ease; }
 .execution-stat-row .semantic-card:hover, .risk-grid .semantic-card:hover, .bug-summary .semantic-card:hover, .document-categories button:hover { box-shadow: 0 14px 28px rgb(0 0 0 / 10%); transform: translateY(-4px); }
@@ -1328,7 +1375,7 @@ onMounted(async () => {
 .upload-drag-title span { color: #1677ff; }
 .upload-list-title { margin: 18px 0 10px; }
 .upload-file-list { min-height: 70px; padding-bottom: 14px; border-bottom: 1px solid #edf0f3; }
-.upload-file-item { display: grid; grid-template-columns: 28px minmax(180px, 1fr) 72px 160px 48px 46px; gap: 10px; align-items: center; min-height: 42px; }
+.upload-file-item { display: grid; grid-template-columns: 28px minmax(180px, 1fr) 72px 46px; gap: 10px; align-items: center; min-height: 42px; }
 .upload-file-item__icon { color: #1677ff; font-size: 22px; }
 .upload-file-item__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .upload-file-item__success { color: #52c41a; }

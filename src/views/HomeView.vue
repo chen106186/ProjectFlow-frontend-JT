@@ -485,6 +485,8 @@ const handleTodoClick = item => {
 }
 
 .home-workspace {
+  --home-workspace-panel-height: 500px;
+
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(320px, 360px);
   gap: 18px;
@@ -493,9 +495,15 @@ const handleTodoClick = item => {
 
 .todo-panel,
 .calendar-panel {
+  height: var(--home-workspace-panel-height);
   min-height: 470px;
   border: 1px solid #eef1f4;
   box-shadow: 0 2px 8px rgb(0 0 0 / 3%);
+}
+
+.todo-panel {
+  display: flex;
+  flex-direction: column;
 }
 
 .panel-title {
@@ -512,6 +520,18 @@ const handleTodoClick = item => {
 
 .todo-panel :deep(.ant-card-extra) {
   padding: 0;
+}
+
+.todo-panel :deep(.ant-card-body) {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.todo-panel :deep(.ant-spin-nested-loading),
+.todo-panel :deep(.ant-spin-container) {
+  height: 100%;
+  min-height: 0;
 }
 
 .todo-tabs {
@@ -531,7 +551,8 @@ const handleTodoClick = item => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 350px;
+  height: 100%;
+  min-height: 0;
   color: #bfbfbf;
   font-size: 13px;
 }
@@ -539,6 +560,9 @@ const handleTodoClick = item => {
 .todo-list {
   display: grid;
   gap: 8px;
+  height: 100%;
+  padding-right: 4px;
+  overflow-y: auto;
 }
 
 .todo-card {
@@ -895,7 +919,9 @@ const handleTodoClick = item => {
     grid-template-columns: 1fr;
   }
 
+  .todo-panel,
   .calendar-panel {
+    height: auto;
     min-height: auto;
   }
 
