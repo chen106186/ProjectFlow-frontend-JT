@@ -13,7 +13,7 @@
               v-model:value="filters.keyword"
               allow-clear
               placeholder="请输入内容"
-              style="width: 240px"
+              style="width: 15rem"
               @press-enter="handleSearch"
             />
           </label>

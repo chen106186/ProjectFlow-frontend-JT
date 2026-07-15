@@ -52,7 +52,7 @@
               </article>
             </section>
           </template>
-          <a-empty v-else description="暂无通知" style="padding: 48px 0" />
+          <a-empty v-else description="暂无通知" style="padding: 3rem 0" />
         </div>
       </a-spin>
       <div class="notification-pagination">
@@ -304,8 +304,15 @@ onMounted(async () => {
   height: 40px;
 }
 
+.notification-search :deep(.ant-input-affix-wrapper),
+.notification-search :deep(.ant-input-search-button) {
+  height: 40px;
+}
+
 .read-all-button {
   height: 40px;
+  min-height: 40px;
+  line-height: 38px;
   color: #1677ff;
 }
 
@@ -398,6 +405,7 @@ onMounted(async () => {
 .notification-item__title strong {
   color: #1f2937;
   font-size: 14px;
+  font-weight: 400;
 }
 
 .notification-tag {
@@ -427,6 +435,7 @@ onMounted(async () => {
 
 .notification-item__content p {
   margin: 0;
+  font-size: 12px;
   color: #6b7280;
 }
 

@@ -92,7 +92,7 @@
     <a-modal
       v-model:open="departmentModalOpen"
       :title="departmentModalMode === 'create' ? '新增部门' : '编辑部门'"
-      width="480px"
+      width="30rem"
       :confirm-loading="departmentSubmitLoading"
       ok-text="确认"
       cancel-text="取消"
@@ -121,7 +121,7 @@
     <a-modal
       v-model:open="userModalOpen"
       :title="modalMode === 'create' ? '新增用户' : '编辑用户'"
-      width="640px"
+      width="40rem"
       :confirm-loading="submitLoading"
       ok-text="确认"
       cancel-text="取消"
@@ -162,7 +162,7 @@
     <a-modal
       v-model:open="roleModalOpen"
       title="分配角色"
-      width="480px"
+      width="30rem"
       :confirm-loading="roleSubmitLoading"
       ok-text="保存"
       cancel-text="取消"
@@ -178,7 +178,7 @@
     <a-modal
       v-model:open="pwdModalOpen"
       title="重置密码"
-      width="400px"
+      width="25rem"
       :confirm-loading="pwdSubmitLoading"
       ok-text="确认重置"
       cancel-text="取消"

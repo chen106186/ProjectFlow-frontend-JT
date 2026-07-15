@@ -121,7 +121,7 @@
       </div>
     </a-spin>
 
-    <a-modal v-model:open="uploadOpen" width="640px" title="上传文件" centered>
+    <a-modal v-model:open="uploadOpen" width="40rem" title="上传文件" centered>
       <template #footer>
         <a-space>
           <a-button @click="uploadOpen = false">取消</a-button>

@@ -150,11 +150,11 @@
           <div v-if="taskDisplayMode === 'list'" class="prototype-table-scroll">
             <table class="prototype-table task-prototype-table">
               <colgroup>
-                <col v-for="column in personalTaskColumns" :key="column.dataIndex" :style="{ width: `${column.width}px` }" />
+                <col v-for="column in personalTaskColumns" :key="column.dataIndex" :style="{ width: $px2rem(column.width) }" />
               </colgroup>
               <thead>
                 <tr>
-                  <th v-for="column in personalTaskColumns" :key="column.dataIndex" :style="{ width: `${column.width}px` }">{{ column.title }}</th>
+                  <th v-for="column in personalTaskColumns" :key="column.dataIndex" :style="{ width: $px2rem(column.width) }">{{ column.title }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -196,11 +196,11 @@
               <div v-if="!isTaskGroupCollapsed(group.value)" class="prototype-table-scroll">
                 <table class="prototype-table task-prototype-table">
                   <colgroup>
-                    <col v-for="column in personalTaskColumns" :key="column.dataIndex" :style="{ width: `${column.width}px` }" />
+                    <col v-for="column in personalTaskColumns" :key="column.dataIndex" :style="{ width: $px2rem(column.width) }" />
                   </colgroup>
                   <thead v-if="groupIndex === 0">
                     <tr>
-                      <th v-for="column in personalTaskColumns" :key="column.dataIndex" :style="{ width: `${column.width}px` }">{{ column.title }}</th>
+                      <th v-for="column in personalTaskColumns" :key="column.dataIndex" :style="{ width: $px2rem(column.width) }">{{ column.title }}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -244,17 +244,17 @@
           <a-form class="prototype-filter bug-filter app-filter-form" layout="inline">
             <a-form-item label="搜索"><a-input v-model:value="bugFilter.keyword" placeholder="请输入关键字" allow-clear /></a-form-item>
             <a-form-item label="所属项目">
-              <a-select v-model:value="bugFilter.projectId" placeholder="全部" allow-clear :options="bugProjects.map(p => ({ label: p.name, value: p.id }))" style="width:160px" />
+              <a-select v-model:value="bugFilter.projectId" placeholder="全部" allow-clear :options="bugProjects.map(p => ({ label: p.name, value: p.id }))" style="width:10rem" />
             </a-form-item>
             <a-form-item label="严重等级">
               <a-select v-model:value="bugFilter.priority" placeholder="全部" allow-clear
                 :options="[{ label: '紧急', value: 'URGENT' }, { label: '高', value: 'HIGH' }, { label: '中', value: 'MEDIUM' }, { label: '低', value: 'LOW' }]"
-                style="width:120px" />
+                style="width:7.5rem" />
             </a-form-item>
             <a-form-item label="状态">
               <a-select v-model:value="bugFilter.status" placeholder="全部" allow-clear
                 :options="Object.entries(BUG_STATUS_LABELS).map(([value, label]) => ({ label, value }))"
-                style="width:120px" />
+                style="width:7.5rem" />
             </a-form-item>
             <a-form-item class="filter-buttons app-filter-actions">
               <a-space>
@@ -472,7 +472,7 @@
       </section>
     </template>
 
-    <a-modal v-model:open="taskEditOpen" width="660px" :title="taskModalTitle" centered>
+    <a-modal v-model:open="taskEditOpen" width="41.25rem" :title="taskModalTitle" centered>
       <template #footer>
         <a-space>
           <a-button @click="taskEditOpen = false">取消</a-button>
@@ -499,7 +499,7 @@
       </a-form>
     </a-modal>
 
-    <a-modal v-model:open="bugEditOpen" width="640px" title="编辑Bug" centered>
+    <a-modal v-model:open="bugEditOpen" width="40rem" title="编辑Bug" centered>
       <template #footer>
         <a-space>
           <a-button @click="bugEditOpen = false">取消</a-button>
@@ -519,7 +519,7 @@
       </a-form>
     </a-modal>
 
-    <a-modal v-model:open="bugFixOpen" width="600px" title="填写修复详情" centered>
+    <a-modal v-model:open="bugFixOpen" width="37.5rem" title="填写修复详情" centered>
       <template #footer>
         <a-space>
           <a-button @click="bugFixOpen = false">取消</a-button>
@@ -532,7 +532,7 @@
       </a-form>
     </a-modal>
 
-    <a-modal v-model:open="dailyEditOpen" width="720px" title="新建日报" centered>
+    <a-modal v-model:open="dailyEditOpen" width="45rem" title="新建日报" centered>
       <template #footer>
         <a-space>
           <a-button @click="dailyEditOpen = false">取消</a-button>
@@ -549,7 +549,7 @@
       </a-form>
     </a-modal>
 
-    <a-modal v-model:open="uploadOpen" width="760px" title="上传文件" centered>
+    <a-modal v-model:open="uploadOpen" width="47.5rem" title="上传文件" centered>
       <template #footer>
         <a-space>
           <a-button @click="uploadOpen = false">取消</a-button>

@@ -59,7 +59,7 @@
     <a-modal
       v-model:open="roleModalOpen"
       :title="modalTitle"
-      width="576px"
+      width="36rem"
       :confirm-loading="submitLoading"
       ok-text="确认"
       cancel-text="取消"

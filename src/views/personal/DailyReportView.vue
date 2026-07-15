@@ -15,7 +15,7 @@
             <a-form
               layout="horizontal"
               class="dr-form"
-              :label-col="{ style: { width: '88px' } }"
+              :label-col="{ style: { width: '5.5rem' } }"
               :wrapper-col="{ flex: 1 }"
             >
               <a-form-item label="日报日期">

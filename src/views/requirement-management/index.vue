@@ -96,7 +96,7 @@
     <a-modal
       v-model:open="modalVisible"
       :title="editId ? '编辑需求' : '添加需求'"
-      width="640px"
+        width="40rem"
       :confirm-loading="modalLoading"
       ok-text="确认"
       cancel-text="取消"
@@ -110,7 +110,7 @@
         :rules="modalRules"
         :label-col="{ span: 4 }"
         :wrapper-col="{ span: 18 }"
-        style="margin-top: 20px;"
+        style="margin-top: 1.25rem;"
       >
         <a-form-item label="需求标题" name="title">
           <a-input v-model:value="modalForm.title" placeholder="请输入需求标题" />

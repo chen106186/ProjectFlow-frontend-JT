@@ -26,7 +26,7 @@
               </span>
             </div>
           </div>
-          <div class="gantt-workspace" :style="{ gridTemplateColumns: `${ganttTableWidth}px minmax(0, 1fr)`, height: `${ganttWorkspaceHeight}px` }">
+          <div class="gantt-workspace" :style="{ gridTemplateColumns: `${$px2rem(ganttTableWidth)} minmax(0, 1fr)`, height: $px2rem(ganttWorkspaceHeight) }">
             <a-table
               class="gantt-node-table"
               row-key="id"
@@ -87,8 +87,8 @@
               <small v-if="activeRisk || taskStatusFilter || taskPersonFilter" class="filter-hint">已筛选 {{ filteredTaskDisplayRows.length }} 条</small>
             </h3>
             <a-space>
-              <a-select v-model:value="taskStatusFilter" :options="TASK_STATUS_OPTIONS" style="min-width:120px" />
-              <a-select v-model:value="taskPersonFilter" :options="taskPersonOptions" style="min-width:120px" />
+              <a-select v-model:value="taskStatusFilter" :options="TASK_STATUS_OPTIONS" style="min-width:7.5rem" />
+              <a-select v-model:value="taskPersonFilter" :options="taskPersonOptions" style="min-width:7.5rem" />
             </a-space>
           </div>
           <a-table row-key="id" :columns="taskColumns" :data-source="filteredTaskDisplayRows" :loading="taskLoading" :pagination="taskTablePagination" size="small" :scroll="{ x: 950 }">
@@ -171,7 +171,7 @@
                 <a-button danger :disabled="selectedDocumentIds.length === 0"><DeleteOutlined />批量删除</a-button>
               </a-popconfirm>
             </a-space>
-            <a-input-search v-model:value="documentSearch" placeholder="搜索文件名、上传人、分类..." style="width: 300px" />
+            <a-input-search v-model:value="documentSearch" placeholder="搜索文件名、上传人、分类..." style="width: 18.75rem" />
           </div>
           <div class="document-breadcrumb">
             <span>文件夹支持展开查看，上传时可选择目标文件夹。</span>

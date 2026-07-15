@@ -231,12 +231,12 @@
             <!-- Right: sidebar (always visible) -->
             <div class="detail-sidebar">
               <div v-if="isClosedBug(selectedBug)" class="closed-tip detail-closed-tip">
-                <a-tag color="green" style="font-size:13px;padding:4px 10px">已关闭</a-tag>
+                <a-tag color="green" style="font-size:0.8125rem;padding:0.25rem 0.625rem">已关闭</a-tag>
                 <p>该 Bug 已关闭，不可再进行操作。</p>
               </div>
               <a-card class="detail-card lifecycle-card" :bordered="false">
                 <template #title><span class="detail-card__title">Bug的一生</span></template>
-                <a-empty v-if="!selectedBug.logs?.length" description="暂无流转记录" style="padding: 16px 0" />
+                <a-empty v-if="!selectedBug.logs?.length" description="暂无流转记录" style="padding: 1rem 0" />
                 <a-timeline v-else class="lifecycle-timeline">
                   <a-timeline-item v-for="log in selectedBug.logs" :key="log.id">
                     <div class="timeline-action">{{ log.operatorName }} · {{ operationLabel(log.operationType) }}</div>

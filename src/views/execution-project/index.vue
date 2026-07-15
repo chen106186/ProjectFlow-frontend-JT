@@ -44,7 +44,7 @@
     </a-card>
 
     <a-modal v-model:open="formVisible" class="execution-form-modal" :title="editingId ? '编辑项目' : '新建项目'" :footer="null" :width="700" destroy-on-close>
-      <a-form ref="formRef" class="execution-form" :model="formState" :rules="formRules" :label-col="{ flex: '138px' }" :wrapper-col="{ flex: '368px' }">
+      <a-form ref="formRef" class="execution-form" :model="formState" :rules="formRules" :label-col="{ flex: '8.625rem' }" :wrapper-col="{ flex: '23rem' }">
         <a-form-item label="项目名称" name="name">
           <a-select v-model:value="formState.name" class="execution-project-name-select" show-search :filter-option="filterOption" :options="managementProjectNameOptions" placeholder="请搜索或选择" @change="handleProjectNameChange">
             <template #suffixIcon><SearchOutlined /></template>

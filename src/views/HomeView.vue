@@ -115,13 +115,13 @@
         </div>
       </div>
       <div class="stats-charts">
-        <a-card class="chart-card" :bordered="false" :body-style="{ padding: '12px 16px' }">
+        <a-card class="chart-card" :bordered="false" :body-style="{ padding: '0.75rem 1rem' }">
           <template #title><span class="chart-title">任务完成趋势</span></template>
           <a-spin :spinning="statsLoading">
             <div ref="trendChartRef" class="chart-container"></div>
           </a-spin>
         </a-card>
-        <a-card class="chart-card" :bordered="false" :body-style="{ padding: '12px 16px' }">
+        <a-card class="chart-card" :bordered="false" :body-style="{ padding: '0.75rem 1rem' }">
           <template #title><span class="chart-title">工作分布</span></template>
           <a-spin :spinning="statsLoading">
             <div class="dist-panels">

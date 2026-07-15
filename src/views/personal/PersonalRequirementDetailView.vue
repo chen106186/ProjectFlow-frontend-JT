@@ -87,7 +87,7 @@
     <a-modal
       v-model:open="editVisible"
       title="编辑需求"
-      width="720px"
+      width="45rem"
       :confirm-loading="editLoading"
       ok-text="保存"
       cancel-text="取消"

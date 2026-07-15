@@ -53,7 +53,7 @@
             <span class="semantic-card__content"><span>{{ item.label }}</span><strong>{{ item.value }}</strong><small>{{ item.desc }}</small></span>
           </div>
         </div>
-        <div class="gantt-workspace" :style="{ gridTemplateColumns: `${ganttTableWidth}px minmax(0, 1fr)`, height: `${ganttWorkspaceHeight}px` }">
+        <div class="gantt-workspace" :style="{ gridTemplateColumns: `${$px2rem(ganttTableWidth)} minmax(0, 1fr)`, height: $px2rem(ganttWorkspaceHeight) }">
           <a-table class="gantt-node-table" row-key="id" :columns="ganttNodeColumns" :data-source="ganttNodeRows" :loading="detailLoading" :pagination="false" :custom-row="handleGanttRow" size="small" table-layout="fixed">
             <template #bodyCell="{ column, record, text }">
               <template v-if="column.dataIndex === 'status'"><a-tag :color="ganttStatusColors[text]">{{ text }}</a-tag></template>

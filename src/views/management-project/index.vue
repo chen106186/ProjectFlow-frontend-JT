@@ -244,7 +244,7 @@
               <template v-if="column.dataIndex === 'content'">
                 <a-space :size="4">
                   <span>{{ text }}</span>
-                  <a-tag v-if="record.relatedTaskId" color="blue" style="margin:0;font-size:11px;line-height:18px;padding:0 4px;">关联</a-tag>
+                  <a-tag v-if="record.relatedTaskId" color="blue" style="margin:0;font-size:0.6875rem;line-height:1.125rem;padding:0 0.25rem;">关联</a-tag>
                 </a-space>
               </template>
               <a-tag v-else-if="column.dataIndex === 'priority'" color="orange">{{ text }}</a-tag>
@@ -290,7 +290,7 @@
     </a-modal>
 
     <a-modal v-model:open="taskPickerVisible" title="关联项目任务" :width="760" :confirm-loading="taskPickerConfirming" ok-text="确认关联" cancel-text="取消" destroy-on-close @ok="handleLinkTasks">
-      <p v-if="!taskRows.length" style="color:#8c8c8c;text-align:center;padding:20px 0;">暂无可关联的任务</p>
+      <p v-if="!taskRows.length" style="color:#8c8c8c;text-align:center;padding:1.25rem 0;">暂无可关联的任务</p>
       <a-table v-else row-key="id" :columns="taskPickerColumns" :data-source="taskRows" :row-selection="taskPickerRowSelection" :pagination="false" size="small" :scroll="{ x: 620, y: 360 }" />
     </a-modal>
 

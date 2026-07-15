@@ -1,0 +1,397 @@
+$control-height: 32px;
+$control-height-sm: 24px;
+$control-height-lg: 40px;
+$font-size: 14px;
+$font-size-sm: 12px;
+$border-radius: 6px;
+$spacing-xs: 4px;
+$spacing-sm: 8px;
+$spacing-md: 16px;
+$spacing-lg: 24px;
+
+/* Layout */
+.ant-layout-header {
+  height: 64px;
+  padding-inline: 50px;
+  line-height: 64px;
+}
+
+.ant-layout-sider-trigger {
+  height: 48px;
+  line-height: 48px;
+}
+
+/* Button */
+.ant-btn {
+  height: $control-height;
+  padding: 4px 15px;
+  font-size: $font-size;
+  border-radius: $border-radius;
+}
+
+.ant-btn-sm {
+  height: $control-height-sm;
+  padding: 0 7px;
+  font-size: $font-size-sm;
+}
+
+.ant-btn-lg {
+  height: $control-height-lg;
+  padding: 6px 15px;
+  font-size: 16px;
+}
+
+.ant-btn-icon-only {
+  width: $control-height;
+  padding-inline: 0;
+}
+
+.ant-btn-sm.ant-btn-icon-only { width: $control-height-sm; }
+.ant-btn-lg.ant-btn-icon-only { width: $control-height-lg; }
+
+/* Input, textarea and input number */
+.ant-input,
+.ant-input-affix-wrapper,
+.ant-input-number,
+.ant-input-group-addon {
+  min-height: $control-height;
+  font-size: $font-size;
+  border-radius: $border-radius;
+}
+
+.ant-input {
+  padding: 4px 11px;
+}
+
+textarea.ant-input {
+  min-height: 32px;
+  padding: 4px 11px;
+}
+
+.ant-input-affix-wrapper {
+  padding: 4px 11px;
+}
+
+.ant-input-affix-wrapper > input.ant-input {
+  min-height: 0;
+  padding: 0;
+}
+
+.ant-input-group-addon {
+  padding-inline: 11px;
+}
+
+.ant-input-search .ant-input-search-button {
+  width: $control-height;
+  height: $control-height;
+  padding-inline: 0;
+}
+
+.ant-input-number-input {
+  height: 30px;
+  padding: 0 11px;
+}
+
+.ant-input-number-handler-wrap { width: 22px; }
+.ant-input-number-handler { height: 15px; }
+
+/* Select and tree select */
+.ant-select.ant-select {
+  min-width: 0;
+  font-size: $font-size;
+}
+
+.ant-select.ant-select-single {
+  height: $control-height;
+}
+
+.ant-select.ant-select-single .ant-select-selector {
+  height: $control-height;
+  padding: 0 11px;
+  font-size: $font-size;
+  border-radius: $border-radius;
+}
+
+.ant-select.ant-select-single .ant-select-selection-item,
+.ant-select.ant-select-single .ant-select-selection-placeholder,
+.ant-select.ant-select-single .ant-select-selection-search-input {
+  height: 30px;
+  font-size: $font-size;
+  line-height: 30px;
+}
+
+.ant-select.ant-select-multiple .ant-select-selector {
+  min-height: $control-height;
+  padding: 1px 4px;
+  font-size: $font-size;
+  border-radius: $border-radius;
+}
+
+.ant-select.ant-select-multiple .ant-select-selection-item {
+  height: 24px;
+  margin-block: 2px;
+  margin-inline-end: 4px;
+  padding-inline: 8px 4px;
+  font-size: $font-size;
+  line-height: 22px;
+}
+
+.ant-select.ant-select .ant-select-arrow {
+  inset-inline-end: 11px;
+  font-size: 12px;
+}
+
+.ant-select-dropdown.ant-select-dropdown,
+.ant-tree-select-dropdown.ant-tree-select-dropdown {
+  padding: 4px;
+  font-size: $font-size;
+  border-radius: 8px;
+}
+
+.ant-select-dropdown .ant-select-item.ant-select-item,
+.ant-tree-select-dropdown .ant-select-tree-node-content-wrapper {
+  min-height: $control-height;
+  padding: 5px 12px;
+  font-size: $font-size;
+  border-radius: 4px;
+}
+
+.ant-select-dropdown .ant-select-item-option-content,
+.ant-tree-select-dropdown .ant-select-tree-title {
+  font-size: $font-size;
+}
+
+/* Date picker */
+.ant-picker {
+  min-height: $control-height;
+  padding: 4px 11px;
+  font-size: $font-size;
+  border-radius: $border-radius;
+}
+
+.ant-picker-input > input { font-size: $font-size; }
+.ant-picker-range .ant-picker-active-bar { height: 2px; }
+.ant-picker-dropdown .ant-picker-panel-container { border-radius: 8px; }
+.ant-picker-header { height: 40px; padding-inline: 8px; }
+.ant-picker-header button { min-width: 24px; height: 40px; }
+.ant-picker-content th { height: 30px; }
+.ant-picker-cell { padding: 3px 0; }
+.ant-picker-cell-inner { min-width: 24px; height: 24px; line-height: 24px; }
+.ant-picker-footer { min-width: 280px; line-height: 38px; }
+
+/* Form */
+.ant-form-item { margin-bottom: $spacing-lg; }
+.ant-form-item-label { padding-bottom: $spacing-sm; }
+.ant-form.ant-form .ant-form-item-label > label {
+  height: $control-height;
+  font-size: $font-size;
+}
+.ant-form-item-explain,
+.ant-form-item-extra { min-height: 22px; font-size: $font-size; }
+
+/* Table */
+.ant-table-wrapper .ant-table.ant-table {
+  font-size: $font-size;
+  border-radius: $border-radius;
+}
+
+.ant-table-wrapper .ant-table-thead > tr > th,
+.ant-table-wrapper .ant-table-tbody > tr > td,
+.ant-table-wrapper tfoot > tr > th,
+.ant-table-wrapper tfoot > tr > td {
+  padding: 16px;
+  font-size: $font-size;
+}
+
+.ant-table-wrapper .ant-table-thead > tr > th.ant-table-cell,
+.ant-table-wrapper .ant-table-tbody > tr > td.ant-table-cell,
+.ant-table-wrapper .ant-table-column-title {
+  font-size: $font-size;
+}
+
+.ant-table-wrapper .ant-table-middle .ant-table-thead > tr > th,
+.ant-table-wrapper .ant-table-middle .ant-table-tbody > tr > td {
+  padding: 12px 8px;
+}
+
+.ant-table-wrapper .ant-table-small .ant-table-thead > tr > th,
+.ant-table-wrapper .ant-table-small .ant-table-tbody > tr > td {
+  padding: 8px;
+}
+
+.ant-table-wrapper .ant-table-title { padding: 16px; }
+.ant-table-wrapper .ant-table-footer { padding: 16px; }
+.ant-table-wrapper .ant-table-pagination { margin: 16px 0; }
+.ant-table-wrapper .ant-table-filter-trigger { margin-inline: 4px -8px; padding: 0 4px; }
+
+/* Card */
+.ant-card {
+  font-size: $font-size;
+  border-radius: 8px;
+}
+
+.ant-card-head {
+  min-height: 56px;
+  padding-inline: $spacing-lg;
+  font-size: 16px;
+}
+
+.ant-card-head-title,
+.ant-card-extra { padding: 16px 0; }
+.ant-card-body { padding: $spacing-lg; }
+.ant-card-small > .ant-card-head { min-height: 38px; padding-inline: 12px; }
+.ant-card-small > .ant-card-head .ant-card-head-title,
+.ant-card-small > .ant-card-head .ant-card-extra { padding: 8px 0; }
+.ant-card-small > .ant-card-body { padding: 12px; }
+
+/* Menu and dropdown */
+.ant-menu {
+  font-size: $font-size;
+}
+
+.ant-menu-inline .ant-menu-item,
+.ant-menu-inline .ant-menu-submenu-title,
+.ant-menu-vertical .ant-menu-item,
+.ant-menu-vertical .ant-menu-submenu-title {
+  height: 40px;
+  margin-block: 4px;
+  line-height: 40px;
+  border-radius: 4px;
+}
+
+.ant-menu-inline .ant-menu-item,
+.ant-menu-inline .ant-menu-submenu-title {
+  width: calc(100% - 8px);
+  margin-inline: 4px;
+  padding-inline: 16px;
+}
+
+.ant-menu-item .ant-menu-item-icon,
+.ant-menu-submenu-title .ant-menu-item-icon {
+  min-width: 14px;
+  font-size: 14px;
+}
+
+.ant-menu-title-content { margin-inline-start: 10px; }
+.ant-dropdown-menu { min-width: 120px; padding: 4px; border-radius: 8px; }
+.ant-dropdown-menu-item,
+.ant-dropdown-menu-submenu-title { min-height: $control-height; padding: 5px 12px; border-radius: 4px; }
+
+/* Pagination */
+.ant-pagination {
+  gap: $spacing-sm;
+  font-size: $font-size;
+}
+
+.ant-pagination .ant-pagination-item,
+.ant-pagination .ant-pagination-prev,
+.ant-pagination .ant-pagination-next,
+.ant-pagination .ant-pagination-jump-prev,
+.ant-pagination .ant-pagination-jump-next {
+  min-width: $control-height;
+  height: $control-height;
+  margin-inline-end: 0;
+  line-height: 30px;
+  border-radius: $border-radius;
+}
+
+.ant-pagination .ant-pagination-options { margin-inline-start: 8px; }
+.ant-pagination .ant-pagination-options-size-changer { min-width: 96px; }
+.ant-pagination.ant-pagination-mini { gap: 4px; }
+.ant-pagination.ant-pagination-mini .ant-pagination-item,
+.ant-pagination.ant-pagination-mini .ant-pagination-prev,
+.ant-pagination.ant-pagination-mini .ant-pagination-next {
+  min-width: $control-height-sm;
+  height: $control-height-sm;
+  line-height: 22px;
+}
+
+/* Modal */
+.ant-modal { padding-bottom: $spacing-lg; }
+.ant-modal-content { padding: 20px 24px; border-radius: 8px; }
+.ant-modal-header { margin-bottom: $spacing-sm; }
+.ant-modal-title { font-size: 16px; }
+.ant-modal-close { top: 12px; inset-inline-end: 12px; width: $control-height; height: $control-height; }
+.ant-modal-footer { margin-top: 12px; }
+.ant-modal-footer .ant-btn + .ant-btn { margin-inline-start: $spacing-sm; }
+.ant-modal-confirm-body-wrapper { padding: 8px 0; }
+
+/* Tabs */
+.ant-tabs.ant-tabs { font-size: $font-size; }
+.ant-tabs.ant-tabs .ant-tabs-nav { margin-bottom: $spacing-md; }
+.ant-tabs.ant-tabs .ant-tabs-tab { padding: 12px 0; font-size: $font-size; }
+.ant-tabs.ant-tabs .ant-tabs-tab-btn { font-size: $font-size; }
+.ant-tabs.ant-tabs .ant-tabs-tab + .ant-tabs-tab { margin-inline-start: 32px; }
+.ant-tabs.ant-tabs .ant-tabs-ink-bar { height: 2px; }
+.ant-tabs.ant-tabs-card > .ant-tabs-nav .ant-tabs-tab { padding: 8px 16px; border-radius: 6px 6px 0 0; }
+
+/* Feedback and data display */
+.ant-alert { padding: 8px 12px; border-radius: $border-radius; }
+.ant-alert-with-description { padding: 20px 24px; }
+.ant-alert-icon { margin-inline-end: $spacing-sm; }
+.ant-avatar { width: $control-height; height: $control-height; font-size: 18px; line-height: $control-height; }
+.ant-avatar-sm { width: $control-height-sm; height: $control-height-sm; font-size: 14px; line-height: $control-height-sm; }
+.ant-avatar-lg { width: $control-height-lg; height: $control-height-lg; font-size: 24px; line-height: $control-height-lg; }
+.ant-badge-count { min-width: 20px; height: 20px; padding-inline: 6px; font-size: 12px; line-height: 20px; border-radius: 10px; }
+.ant-breadcrumb { font-size: $font-size; }
+.ant-breadcrumb-separator { margin-inline: $spacing-sm; }
+.ant-tag { margin-inline-end: $spacing-sm; padding-inline: 7px; font-size: 12px; line-height: 22px; border-radius: 4px; }
+.ant-empty { margin-block: $spacing-lg; font-size: $font-size; }
+.ant-empty-image { height: 100px; margin-bottom: $spacing-sm; }
+.ant-result { padding: 48px 32px; }
+.ant-result-icon { margin-bottom: $spacing-lg; }
+.ant-result-title { font-size: 24px; }
+.ant-result-subtitle { font-size: $font-size; }
+.ant-result-extra { margin-top: $spacing-lg; }
+.ant-spin-dot { width: 20px; height: 20px; font-size: 20px; }
+.ant-spin-text { padding-top: 5px; font-size: $font-size; }
+.ant-progress-text { min-width: 32px; margin-inline-start: $spacing-sm; font-size: $font-size; }
+
+/* Checkbox, radio and switch */
+.ant-checkbox-inner,
+.ant-radio-inner { width: 16px; height: 16px; }
+.ant-checkbox + span,
+.ant-radio + span { padding-inline: $spacing-sm; }
+.ant-checkbox-wrapper + .ant-checkbox-wrapper,
+.ant-radio-wrapper + .ant-radio-wrapper { margin-inline-start: $spacing-sm; }
+.ant-radio-group.ant-radio-group .ant-radio-button-wrapper {
+  height: $control-height;
+  padding-inline: 15px;
+  font-size: $font-size;
+  line-height: 30px;
+}
+.ant-radio-group.ant-radio-group .ant-radio-button-wrapper:first-child { border-start-start-radius: $border-radius; border-end-start-radius: $border-radius; }
+.ant-radio-group.ant-radio-group .ant-radio-button-wrapper:last-child { border-start-end-radius: $border-radius; border-end-end-radius: $border-radius; }
+.ant-switch { min-width: 44px; height: 22px; line-height: 22px; }
+.ant-switch-handle { top: 2px; width: 18px; height: 18px; }
+.ant-switch-inner { padding-inline: 24px 9px; font-size: 12px; }
+
+/* Divider, timeline and tree */
+.ant-divider-horizontal { margin: $spacing-lg 0; }
+.ant-divider-vertical { height: 14px; margin-inline: $spacing-sm; }
+.ant-timeline { margin: 0; padding: 0; }
+.ant-timeline-item { padding-bottom: 20px; }
+.ant-timeline-item-head { width: 10px; height: 10px; }
+.ant-timeline-item-tail { inset-inline-start: 4px; }
+.ant-timeline-item-content { inset-inline-start: 26px; margin-inline-start: 0; }
+.ant-tree { font-size: $font-size; }
+.ant-tree-switcher { width: 24px; line-height: 24px; }
+.ant-tree-node-content-wrapper { min-height: 24px; padding: 0 4px; line-height: 24px; border-radius: 4px; }
+.ant-tree-checkbox { margin: 4px 8px 0 0; }
+
+/* Calendar and upload */
+.ant-picker-calendar-header { padding: 12px 0; }
+.ant-picker-calendar-header .ant-select { min-width: 80px; }
+.ant-picker-calendar-date { margin: 0 4px; padding: 4px 8px 0; }
+.ant-picker-calendar-date-content { height: 86px; }
+.ant-upload-wrapper .ant-upload-drag { min-height: 160px; padding: 16px; border-radius: 8px; }
+.ant-upload-wrapper .ant-upload-drag-icon { margin-bottom: $spacing-md; }
+.ant-upload-list { margin-top: $spacing-sm; }
+.ant-upload-list-item { height: 28px; margin-top: $spacing-sm; padding-inline: 4px; }
+
+/* Overlay */
+.ant-tooltip { max-width: 250px; font-size: $font-size-sm; }
+.ant-tooltip-inner { min-height: $control-height; padding: 6px 8px; border-radius: $border-radius; }
+.ant-popover-inner { padding: 12px; border-radius: 8px; }
+.ant-popconfirm-buttons { margin-top: $spacing-sm; }
+.ant-popconfirm-buttons .ant-btn + .ant-btn { margin-inline-start: $spacing-sm; }

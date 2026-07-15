@@ -102,7 +102,7 @@
     <a-modal
       v-model:open="createVisible"
       title="新增需求"
-      width="720px"
+      width="45rem"
       :confirm-loading="submitLoading"
       ok-text="确定"
       cancel-text="取消"
