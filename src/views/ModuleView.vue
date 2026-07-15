@@ -150,11 +150,11 @@
           <div v-if="taskDisplayMode === 'list'" class="prototype-table-scroll">
             <table class="prototype-table task-prototype-table">
               <colgroup>
-                <col v-for="column in personalTaskColumns" :key="column.dataIndex" :style="{ width: $px2rem(column.width) }" />
+                <col v-for="column in taskTableColumns" :key="column.dataIndex" :style="{ width: $px2rem(column.width) }" />
               </colgroup>
               <thead>
                 <tr>
-                  <th v-for="column in personalTaskColumns" :key="column.dataIndex" :style="{ width: $px2rem(column.width) }">{{ column.title }}</th>
+                  <th v-for="column in taskTableColumns" :key="column.dataIndex" :style="{ width: $px2rem(column.width) }">{{ column.title }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -166,11 +166,13 @@
                   <td>{{ record.tag }}</td>
                   <td>{{ record.owner }}</td>
                   <td><span class="tag-soft tag-priority">{{ record.priority }}</span></td>
-                  <td><span class="tag-soft tag-processing">{{ record.status }}</span></td>
+                  <td v-if="!isTaskModule"><span class="tag-soft tag-processing">{{ record.status }}</span></td>
                   <td>{{ record.planStart }}</td>
+                  <td v-if="isTaskModule">{{ record.planEnd }}</td>
                   <td>{{ record.actualStart }}</td>
-                  <td>{{ record.planEnd }}</td>
+                  <td v-if="!isTaskModule">{{ record.planEnd }}</td>
                   <td>{{ record.actualEnd }}</td>
+                  <td v-if="isTaskModule">{{ record.createdAt }}</td>
                   <td>
                     <a-space :size="4">
                       <button class="icon-link" type="button" title="编辑任务" @click="openTaskModal('edit', record)"><EditOutlined /></button>
@@ -196,11 +198,11 @@
               <div v-if="!isTaskGroupCollapsed(group.value)" class="prototype-table-scroll">
                 <table class="prototype-table task-prototype-table">
                   <colgroup>
-                    <col v-for="column in personalTaskColumns" :key="column.dataIndex" :style="{ width: $px2rem(column.width) }" />
+                    <col v-for="column in taskTableColumns" :key="column.dataIndex" :style="{ width: $px2rem(column.width) }" />
                   </colgroup>
                   <thead v-if="groupIndex === 0">
                     <tr>
-                      <th v-for="column in personalTaskColumns" :key="column.dataIndex" :style="{ width: $px2rem(column.width) }">{{ column.title }}</th>
+                      <th v-for="column in taskTableColumns" :key="column.dataIndex" :style="{ width: $px2rem(column.width) }">{{ column.title }}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -212,11 +214,13 @@
                       <td>{{ record.tag }}</td>
                       <td>{{ record.owner }}</td>
                       <td><span class="tag-soft tag-priority">{{ record.priority }}</span></td>
-                      <td><span class="tag-soft tag-processing">{{ record.status }}</span></td>
+                      <td v-if="!isTaskModule"><span class="tag-soft tag-processing">{{ record.status }}</span></td>
                       <td>{{ record.planStart }}</td>
+                      <td v-if="isTaskModule">{{ record.planEnd }}</td>
                       <td>{{ record.actualStart }}</td>
-                      <td>{{ record.planEnd }}</td>
+                      <td v-if="!isTaskModule">{{ record.planEnd }}</td>
                       <td>{{ record.actualEnd }}</td>
+                      <td v-if="isTaskModule">{{ record.createdAt }}</td>
                       <td>
                         <a-space :size="4">
                           <button class="icon-link" type="button" title="编辑任务" @click="openTaskModal('edit', record)"><EditOutlined /></button>
@@ -948,6 +952,7 @@ async function loadTasks() {
       actualStart: task.actualStartDate ? String(task.actualStartDate) : '-',
       planEnd: task.plannedEndDate ? String(task.plannedEndDate) : '-',
       actualEnd: task.actualEndDate ? String(task.actualEndDate) : '-',
+      createdAt: formatDateTime(task.createdAt),
       description: task.description || '',
       tags: task.tags || '',
     }))
@@ -1774,6 +1779,23 @@ const personalTaskColumns = [
   { title: '实际完成日期', dataIndex: 'actualEnd', width: 125 },
   { title: '操作', dataIndex: 'operation', fixed: 'right', width: 100 },
 ]
+
+const taskModuleColumns = [
+  { title: '序号', dataIndex: 'index', width: 70 },
+  { title: '任务名称', dataIndex: 'name', width: 190 },
+  { title: '所属项目', dataIndex: 'project', width: 210 },
+  { title: '角色', dataIndex: 'role', width: 90 },
+  { title: '标签', dataIndex: 'tag', width: 100 },
+  { title: '负责人', dataIndex: 'owner', width: 100 },
+  { title: '优先级', dataIndex: 'priority', width: 90 },
+  { title: '计划开始日期', dataIndex: 'planStart', width: 130 },
+  { title: '计划结束日期', dataIndex: 'planEnd', width: 130 },
+  { title: '实际开始日期', dataIndex: 'actualStart', width: 130 },
+  { title: '实际完成日期', dataIndex: 'actualEnd', width: 130 },
+  { title: '创建时间', dataIndex: 'createdAt', width: 170 },
+  { title: '操作', dataIndex: 'operation', fixed: 'right', width: 100 },
+]
+const taskTableColumns = computed(() => isTaskModule.value ? taskModuleColumns : personalTaskColumns)
 
 const personalBugColumns = [
   { title: 'Bug编号', dataIndex: 'code', width: 160 },

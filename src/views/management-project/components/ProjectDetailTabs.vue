@@ -91,12 +91,13 @@
               <a-select v-model:value="taskPersonFilter" :options="taskPersonOptions" style="min-width:7.5rem" />
             </a-space>
           </div>
-          <a-table row-key="id" class="project-task-table" :columns="taskColumns" :data-source="filteredTaskDisplayRows" :loading="taskLoading" :pagination="taskTablePagination" size="small" :scroll="{ x: 950, y: 500 }" @change="page => handleTablePaginationChange(taskPagination, page)">
+          <a-table row-key="id" class="project-task-table" :columns="taskColumns" :data-source="filteredTaskDisplayRows" :loading="taskLoading" :pagination="false" size="small" :scroll="{ x: 1390, y: 500 }">
             <template #bodyCell="{ column, text }">
               <a-tag v-if="column.dataIndex === 'priority'" color="red">{{ text }}</a-tag>
-              <a-tag v-else-if="column.dataIndex === 'status'" color="processing">{{ text }}</a-tag>
+              <a-tag v-else-if="column.dataIndex === 'riskLevel'" :color="riskColorMap[text] || 'default'">{{ text }}</a-tag>
             </template>
           </a-table>
+          <a-pagination class="detail-list-pagination" :current="taskPagination.current" :page-size="taskPagination.pageSize" :total="taskPagination.total" :page-size-options="paginationOptions.pageSizeOptions" :show-total="paginationOptions.showTotal" show-size-changer @change="(page, pageSize) => emit('task-page-change', page, pageSize)" />
         </section>
 
         <section v-if="activeTab === 'bugs'" class="detail-panel">
@@ -117,17 +118,18 @@
               <a-select value="全部指定人" :options="personFilterOptions" />
             </a-space>
           </div>
-          <a-table row-key="id" class="project-bug-table" :columns="bugColumns" :data-source="bugRows" :loading="bugLoading" :pagination="bugTablePagination" size="small" :scroll="{ x: 840, y: 500 }" @change="page => handleTablePaginationChange(bugPagination, page)">
+          <a-table row-key="id" class="project-bug-table" :columns="bugColumns" :data-source="bugRows" :loading="bugLoading" :pagination="false" size="small" :scroll="{ x: 840, y: 500 }">
             <template #bodyCell="{ column, text }">
               <a-tag v-if="column.dataIndex === 'severity'" color="red">{{ text }}</a-tag>
               <a-tag v-else-if="column.dataIndex === 'status'" color="orange">{{ text }}</a-tag>
             </template>
           </a-table>
+          <a-pagination class="detail-list-pagination" :current="bugPagination.current" :page-size="bugPagination.pageSize" :total="bugPagination.total" :page-size-options="paginationOptions.pageSizeOptions" :show-total="paginationOptions.showTotal" show-size-changer @change="(page, pageSize) => emit('bug-page-change', page, pageSize)" />
         </section>
 
         <section v-if="activeTab === 'reports'" class="detail-panel">
           <div class="section-heading">
-            <h2>汇报管理 <small>（共 {{ filteredReportRows.length }} 条）</small></h2>
+            <h2>汇报管理 <small>（共 {{ reportPagination.total }} 条）</small></h2>
             <a-button type="primary" @click="emit('create-report')">
               <PlusOutlined />
               新建汇报
@@ -147,7 +149,7 @@
             <a-button @click="handleResetReportFilter">重置</a-button>
           </a-form>
 
-          <a-table row-key="id" class="project-report-table" :columns="reportColumns" :data-source="filteredReportRows" :loading="reportLoading" :pagination="reportTablePagination" :scroll="{ x: 1040, y: 500 }" :custom-row="getReportCustomRow" @change="page => handleTablePaginationChange(reportPagination, page)">
+          <a-table row-key="id" class="project-report-table" :columns="reportColumns" :data-source="filteredReportRows" :loading="reportLoading" :pagination="false" :scroll="{ x: 1040, y: 500 }" :custom-row="getReportCustomRow">
             <template #bodyCell="{ column, record, text }">
               <a-button v-if="column.dataIndex === 'title'" type="link" @click.stop="emit('view-report', record)">{{ text }}</a-button>
               <a-tag v-else-if="column.dataIndex === 'status'" color="green">{{ text }}</a-tag>
@@ -159,6 +161,7 @@
               </a-space>
             </template>
           </a-table>
+          <a-pagination class="detail-list-pagination" :current="reportPagination.current" :page-size="reportPagination.pageSize" :total="reportPagination.total" :page-size-options="paginationOptions.pageSizeOptions" :show-total="paginationOptions.showTotal" show-size-changer @change="(page, pageSize) => emit('report-page-change', page, pageSize)" />
         </section>
 
         <section v-if="activeTab === 'documents'" class="detail-panel">
@@ -184,7 +187,7 @@
               <strong>{{ item.count }}</strong>
             </button>
           </div>
-          <a-table row-key="id" :row-selection="documentRowSelection" :columns="documentColumns" :data-source="filteredDocsBySearch" :loading="documentLoading" :pagination="false">
+          <a-table row-key="id" class="project-document-table" :row-selection="documentRowSelection" :columns="documentColumns" :data-source="pagedDocumentRows" :loading="documentLoading" :pagination="false" :scroll="{ x: 1040, y: 200 }">
             <template #bodyCell="{ column, record }">
               <template v-if="column.dataIndex === 'name'">
                 <button type="button" class="document-name" :class="{ 'document-name--folder': record.isFolder, 'document-name--child': record.isChildFile }" @click="record.isFolder ? emit('toggle-folder', record) : emit('download-document', record)">
@@ -207,6 +210,7 @@
               </template>
             </template>
           </a-table>
+          <a-pagination class="detail-list-pagination" :current="documentPagination.current" :page-size="documentPagination.pageSize" :total="filteredDocsBySearch.length" :page-size-options="paginationOptions.pageSizeOptions" :show-total="paginationOptions.showTotal" show-size-changer @change="handleDocumentPageChange" />
         </section>
       </main>
     </div>
@@ -232,16 +236,19 @@ const props = defineProps({
   taskColumns: { type: Array, required: true },
   taskRows: { type: Array, required: true },
   taskLoading: { type: Boolean, default: false },
+  taskPagination: { type: Object, required: true },
   taskStatusFilters: { type: Array, required: true },
   personFilterOptions: { type: Array, required: true },
   bugSummary: { type: Array, required: true },
   bugColumns: { type: Array, required: true },
   bugRows: { type: Array, required: true },
   bugLoading: { type: Boolean, default: false },
+  bugPagination: { type: Object, required: true },
   bugStatusFilters: { type: Array, required: true },
   reportRows: { type: Array, required: true },
   reportColumns: { type: Array, required: true },
   reportLoading: { type: Boolean, default: false },
+  reportPagination: { type: Object, required: true },
   reportStatusFilters: { type: Array, required: true },
   documentCategories: { type: Array, required: true },
   documentColumns: { type: Array, required: true },
@@ -254,6 +261,10 @@ const props = defineProps({
 
 const emit = defineEmits([
   'update:activeTab',
+  'task-page-change',
+  'bug-page-change',
+  'report-page-change',
+  'report-filter-change',
   'create-report',
   'view-report',
   'edit-report',
@@ -275,19 +286,14 @@ const documentSearch = ref('')
 const activeRisk = ref('')
 const taskStatusFilter = ref('')
 const taskPersonFilter = ref('')
-const createTablePagination = () => reactive({ current: 1, pageSize: 10 })
-const taskPagination = createTablePagination()
-const bugPagination = createTablePagination()
-const reportPagination = createTablePagination()
+const documentPagination = reactive({ current: 1, pageSize: 10 })
 const paginationOptions = {
   pageSizeOptions: ['10', '50', '100'],
-  showSizeChanger: true,
-  hideOnSinglePage: false,
   showTotal: total => `共 ${total} 条`,
 }
-const handleTablePaginationChange = (target, page) => {
-  target.current = page.current
-  target.pageSize = page.pageSize
+const handleDocumentPageChange = (page, pageSize) => {
+  documentPagination.current = page
+  documentPagination.pageSize = pageSize
 }
 
 // reset local filters when switching to tasks tab
@@ -307,6 +313,7 @@ const TASK_STATUS_OPTIONS = [
   { label: '已完成', value: 'COMPLETED' },
   { label: '已暂停', value: 'PAUSED' },
 ]
+const riskColorMap = { 高风险: 'red', 中风险: 'orange', 低风险: 'green' }
 
 const taskPersonOptions = computed(() => {
   const seen = new Set()
@@ -347,16 +354,6 @@ const filteredTaskDisplayRows = computed(() =>
   })
 )
 
-const taskTablePagination = computed(() => ({
-  ...paginationOptions,
-  ...taskPagination,
-  total: filteredTaskDisplayRows.value.length,
-}))
-const bugTablePagination = computed(() => ({
-  ...paginationOptions,
-  ...bugPagination,
-  total: props.bugRows.length,
-}))
 const canBatchDownload = computed(() => props.selectedDocumentIds.length > 0)
 const filteredDocsBySearch = computed(() => {
   const q = documentSearch.value.trim().toLowerCase()
@@ -364,6 +361,16 @@ const filteredDocsBySearch = computed(() => {
   return props.documentRows.filter(row =>
     [row.name, row.uploader, row.category].some(v => v && v.toLowerCase().includes(q))
   )
+})
+const pagedDocumentRows = computed(() => {
+  const start = (documentPagination.current - 1) * documentPagination.pageSize
+  return filteredDocsBySearch.value.slice(start, start + documentPagination.pageSize)
+})
+watch(documentSearch, () => {
+  documentPagination.current = 1
+})
+watch(() => props.documentRows, () => {
+  documentPagination.current = 1
 })
 
 const reportFilter = reactive({
@@ -398,26 +405,15 @@ const filteredReportRows = computed(() =>
   })
 )
 
-const reportTablePagination = computed(() => ({
-  ...paginationOptions,
-  ...reportPagination,
-  total: filteredReportRows.value.length,
-}))
-
 watch([activeRisk, taskStatusFilter, taskPersonFilter], () => {
-  taskPagination.current = 1
+  emit('task-page-change', 1, props.taskPagination.pageSize)
 })
 watch(reportFilter, () => {
-  reportPagination.current = 1
-})
-watch(() => props.taskRows, () => {
-  taskPagination.current = 1
-})
-watch(() => props.bugRows, () => {
-  bugPagination.current = 1
-})
-watch(() => props.reportRows, () => {
-  reportPagination.current = 1
+  emit('report-filter-change', {
+    keyword: reportFilter.keyword.trim(),
+    status: reportFilter.status,
+    dateRange: reportFilter.dateRange || [],
+  })
 })
 
 const handleResetReportFilter = () => {
@@ -516,9 +512,15 @@ defineExpose({
 
 .project-bug-table :deep(.ant-table-body),
 .project-task-table :deep(.ant-table-body),
-.project-report-table :deep(.ant-table-body) {
+.project-report-table :deep(.ant-table-body),
+.project-document-table :deep(.ant-table-body) {
   height: 200px;
   overflow-y: auto !important;
+}
+.detail-list-pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
 }
 
 .project-stat-row .semantic-card,

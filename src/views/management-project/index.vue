@@ -80,10 +80,11 @@
           <div class="project-summary__progress">
             <div class="project-summary__title"><h3><ProjectOutlined />项目进度</h3><span>根据项目进度权重计算</span></div>
             <div class="project-summary__bar"><a-progress :percent="ganttSummaryData.overallProgress" :show-info="false" stroke-color="#52c41a" /><strong>{{ ganttSummaryData.overallProgress }}%</strong></div>
-            <div class="summary-metrics"><div><strong>{{ taskRows.length }}</strong><span>关联任务</span></div><div><strong class="danger">{{ bugRows.length }}</strong><span>关联Bug</span></div></div>
+            <div class="summary-metrics"><div><strong>{{ taskPagination.total }}</strong><span>关联任务</span></div><div><strong class="danger">{{ bugPagination.total }}</strong><span>关联Bug</span></div></div>
           </div>
         </section>
         <ProjectDetailTabs
+          :key="route.params.id"
           ref="detailTabsRef"
           v-model:active-tab="activeTab"
           :tabs="detailTabs"
@@ -99,16 +100,19 @@
           :task-columns="taskColumns"
           :task-rows="taskRows"
           :task-loading="taskLoading"
+          :task-pagination="taskPagination"
           :task-status-filters="taskStatusFilters"
           :person-filter-options="personFilterOptions"
           :bug-summary="bugSummary"
           :bug-columns="bugColumns"
           :bug-rows="bugRows"
           :bug-loading="bugLoading"
+          :bug-pagination="bugPagination"
           :bug-status-filters="bugStatusFilters"
           :report-rows="reportRows"
           :report-columns="reportTableColumns"
           :report-loading="reportLoading"
+          :report-pagination="reportPagination"
           :report-status-filters="reportStatusFilters"
           :document-categories="documentCategories"
           :document-columns="documentColumns"
@@ -117,6 +121,10 @@
           :document-row-selection="documentRowSelection"
           :selected-document-ids="selectedDocumentIds"
           :expanded-document-folder-ids="expandedFolderIds"
+          @task-page-change="handleTaskPageChange"
+          @bug-page-change="handleBugPageChange"
+          @report-page-change="handleReportPageChange"
+          @report-filter-change="handleReportFilterChange"
           @create-report="handleCreateReport"
           @view-report="handleViewReport"
           @edit-report="handleEditReport"
@@ -210,22 +218,41 @@
 
           <div class="report-detail-section-title">
             <FileTextOutlined />
-            <span>准备工作 ({{ currentReportDetail.items.length }})</span>
+            <span>准备工作</span>
           </div>
           <div class="report-detail-remark">
             <label>备注：</label>
             <a-textarea v-model:value="reportDetailRemark" :rows="3" placeholder="请输入备注" />
           </div>
+          <div class="report-detail-attachment">
+            <label>上传附件：</label>
+            <div class="report-detail-attachment__content">
+              <a-upload-dragger :before-upload="handleReportAttachmentBeforeUpload" :show-upload-list="false" multiple accept=".docx,.xlsx,.pdf,.png,.jpg,.jpeg,.drawio">
+                <p class="ant-upload-drag-icon"><InboxOutlined /></p>
+                <p class="ant-upload-text">点击或拖拽文件到此区域上传</p>
+                <p class="ant-upload-hint">支持 docx、xlsx、pdf、png、jpg、drawio，单个文件不超过 50MB</p>
+              </a-upload-dragger>
+              <div v-if="reportAttachmentRows.length || reportAttachmentFiles.length" class="report-detail-attachment__list">
+                <div v-for="file in reportAttachmentRows" :key="`uploaded-${file.id}`">
+                  <FileOutlined />
+                  <span>{{ file.name }}</span>
+                  <a-button type="link" size="small" @click="handleDownloadReportAttachment(file)">下载</a-button>
+                </div>
+                <div v-for="file in reportAttachmentFiles" :key="`pending-${file.uid}`">
+                  <FileOutlined />
+                  <span>{{ file.name }}</span>
+                  <a-button type="link" size="small" danger @click="handleRemoveReportAttachment(file.uid)">移除</a-button>
+                </div>
+              </div>
+            </div>
+          </div>
           <div class="report-detail-remark-actions">
-            <a-button type="primary" @click="handleConfirmReportRemark">确认</a-button>
+            <a-button type="primary" :loading="reportAttachmentUploading" @click="handleConfirmReportRemark">保存</a-button>
           </div>
           <div class="report-task-toolbar">
-            <a-space>
-              <a-button type="primary" @click="handleAddReportTask"><PlusOutlined />新建准备项</a-button>
-              <a-button @click="handleOpenTaskPicker"><LinkOutlined />关联项目任务</a-button>
-            </a-space>
+            <a-button type="primary" @click="handleOpenTaskPicker"><PlusOutlined />添加关联任务</a-button>
           </div>
-          <a-table row-key="id" :columns="reportItemColumns" :data-source="currentReportDetail.items" :pagination="false" size="small" :scroll="{ x: 1000 }">
+          <a-table row-key="id" class="report-item-table" :columns="reportItemColumns" :data-source="currentReportDetail.items" :pagination="false" size="small" :scroll="{ x: 1000, y: 200 }">
             <template #bodyCell="{ column, text, record }">
               <template v-if="column.dataIndex === 'content'">
                 <a-space :size="4">
@@ -237,7 +264,7 @@
               <a-tag v-else-if="column.dataIndex === 'status'" color="processing">{{ text }}</a-tag>
               <template v-else-if="column.dataIndex === 'operation'">
                 <a-space :size="2">
-                  <a-button type="link" size="small" @click="handleEditReportItem(record)">编辑</a-button>
+                  <a-button v-if="!record.relatedTaskId" type="link" size="small" @click="handleEditReportItem(record)">编辑</a-button>
                   <a-button type="link" danger size="small" @click="handleDeleteReportItem(record)">删除</a-button>
                 </a-space>
               </template>
@@ -260,7 +287,7 @@
       </a-spin>
     </a-modal>
 
-    <a-modal v-model:open="reportItemVisible" :title="reportItemMode === 'create' ? '新建准备项' : '编辑准备项'" :width="560" :footer="null" destroy-on-close>
+    <a-modal v-model:open="reportItemVisible" title="编辑准备项" :width="560" :footer="null" destroy-on-close>
       <a-form ref="reportItemFormRef" :model="reportItemForm" :rules="reportItemRules" :label-col="{ span: 5 }" :wrapper-col="{ span: 19 }">
         <a-form-item label="任务内容" name="content"><a-input v-model:value="reportItemForm.content" placeholder="请输入任务内容" /></a-form-item>
         <a-form-item label="负责人" name="ownerId"><a-select v-model:value="reportItemForm.ownerId" :options="managerOptions" placeholder="请选择负责人" show-search :filter-option="(input, option) => option.label.toLowerCase().includes(input.toLowerCase())" /></a-form-item>
@@ -275,9 +302,9 @@
       </div>
     </a-modal>
 
-    <a-modal v-model:open="taskPickerVisible" title="关联项目任务" :width="760" :confirm-loading="taskPickerConfirming" ok-text="确认关联" cancel-text="取消" destroy-on-close @ok="handleLinkTasks">
-      <p v-if="!taskRows.length" style="color:#8c8c8c;text-align:center;padding:1.25rem 0;">暂无可关联的任务</p>
-      <a-table v-else row-key="id" :columns="taskPickerColumns" :data-source="taskRows" :row-selection="taskPickerRowSelection" :pagination="false" size="small" :scroll="{ x: 620, y: 360 }" />
+    <a-modal v-model:open="taskPickerVisible" title="添加关联任务" :width="760" :confirm-loading="taskPickerConfirming" ok-text="确认" cancel-text="取消" destroy-on-close @ok="handleLinkTasks">
+      <a-table row-key="id" :columns="taskPickerColumns" :data-source="taskPickerRows" :row-selection="taskPickerRowSelection" :loading="taskPickerLoading" :pagination="false" size="small" :scroll="{ x: 620, y: 360 }" />
+      <a-pagination class="task-picker-pagination" :current="taskPickerPagination.current" :page-size="taskPickerPagination.pageSize" :total="taskPickerPagination.total" :page-size-options="['10', '50', '100']" show-size-changer :show-total="total => `共 ${total} 条`" @change="handleTaskPickerPageChange" />
     </a-modal>
 
     <a-modal v-model:open="reportVisible" class="report-modal" :title="reportMode === 'create' ? '新建汇报' : '编辑汇报'" :width="640" :footer="null" destroy-on-close>
@@ -311,7 +338,7 @@
 </template>
 
 <script setup>
-import { ArrowLeftOutlined, BugOutlined, CheckCircleOutlined, CheckOutlined, ClockCircleOutlined, CodeOutlined, DeleteOutlined, DownOutlined, EditOutlined, ExclamationCircleOutlined, FileDoneOutlined, FileOutlined, FileProtectOutlined, FileTextOutlined, FireOutlined, FlagOutlined, FolderOpenOutlined, InboxOutlined, LinkOutlined, PlusOutlined, ProfileOutlined, ProjectOutlined, RightOutlined, SendOutlined, SnippetsOutlined, ToolOutlined, WarningOutlined } from '@ant-design/icons-vue'
+import { ArrowLeftOutlined, BugOutlined, CheckCircleOutlined, CheckOutlined, ClockCircleOutlined, CodeOutlined, DeleteOutlined, DownOutlined, EditOutlined, ExclamationCircleOutlined, FileDoneOutlined, FileOutlined, FileProtectOutlined, FileTextOutlined, FireOutlined, FlagOutlined, FolderOpenOutlined, InboxOutlined, PlusOutlined, ProfileOutlined, ProjectOutlined, RightOutlined, SendOutlined, SnippetsOutlined, ToolOutlined, WarningOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import Gantt from 'frappe-gantt'
@@ -380,6 +407,9 @@ const reportDetailLoading = ref(false)
 const currentReportDetail = ref(null)
 const reportDetailRemark = ref('')
 const reportDetailTaskType = ref('meeting')
+const reportAttachmentRows = ref([])
+const reportAttachmentFiles = ref([])
+const reportAttachmentUploading = ref(false)
 const ganttEditVisible = ref(false)
 const ganttSubmitLoading = ref(false)
 const ganttFormRef = ref()
@@ -393,7 +423,11 @@ const reportItemLoading = ref(false)
 const editingItemId = ref(null)
 const reportItemFormRef = ref()
 const taskPickerVisible = ref(false)
+const taskPickerLoading = ref(false)
+const taskPickerRows = ref([])
+const taskPickerPagination = reactive({ current: 1, pageSize: 10, total: 0 })
 const selectedTaskIds = ref([])
+const selectedTaskRecords = ref(new Map())
 const taskPickerConfirming = ref(false)
 let ganttInstance
 
@@ -455,6 +489,11 @@ const projectColumns = [
   { title: '操作', dataIndex: 'operation', width: 110, fixed: 'right' },
 ]
 const projectPagination = reactive({ current: 1, pageSize: 10, total: 0, pageSizeOptions: ['10', '50', '100'], showSizeChanger: true, showTotal: total => `共 ${total} 条` })
+const createDetailPagination = () => reactive({ current: 1, pageSize: 10, total: 0 })
+const taskPagination = createDetailPagination()
+const bugPagination = createDetailPagination()
+const reportPagination = createDetailPagination()
+const reportListFilter = reactive({ keyword: '', status: '全部', dateRange: [] })
 const filteredProjects = computed(() => projects.value)
 const groupedProjects = computed(() => {
   const labelMap = { manager: '项目经理', stage: '项目阶段', status: '项目状态', type: '项目类型', contractStatus: '合同状态' }
@@ -534,7 +573,19 @@ const ganttFormRules = {
 }
 
 const risks = [{ label: '高风险任务', value: '3 个', desc: '延期 ≥ 3 天', class: 'risk-high', icon: FireOutlined }, { label: '中风险任务', value: '2 个', desc: '延期 1 - 2 天', class: 'risk-medium', icon: WarningOutlined }, { label: '即将到期', value: '4 个', desc: '未来 3 天内到期', class: 'risk-due', icon: ClockCircleOutlined }, { label: '按计划进行', value: '8 个', desc: '无延期风险', class: 'risk-normal', icon: CheckCircleOutlined }]
-const taskColumns = [{ title: '序号', dataIndex: 'id', width: 60 }, { title: '任务名称', dataIndex: 'name', width: 180 }, { title: '负责人', dataIndex: 'owner', width: 90 }, { title: '优先级', dataIndex: 'priority', width: 80 }, { title: '状态', dataIndex: 'status', width: 90 }, { title: '计划开始', dataIndex: 'planStart', width: 110 }, { title: '计划结束', dataIndex: 'planEnd', width: 110 }, { title: '实际开始', dataIndex: 'actualStart', width: 110 }, { title: '实际结束', dataIndex: 'actualEnd', width: 110 }]
+const taskColumns = [
+  { title: '序号', dataIndex: 'index', width: 70 },
+  { title: '任务名称', dataIndex: 'name', width: 190 },
+  { title: '风险等级', dataIndex: 'riskLevel', width: 100 },
+  { title: '角色', dataIndex: 'role', width: 100 },
+  { title: '标签', dataIndex: 'tag', width: 120 },
+  { title: '负责人', dataIndex: 'owner', width: 100 },
+  { title: '优先级', dataIndex: 'priority', width: 90 },
+  { title: '计划开始日期', dataIndex: 'planStart', width: 130 },
+  { title: '计划结束日期', dataIndex: 'planEnd', width: 130 },
+  { title: '实际开始日期', dataIndex: 'actualStart', width: 130 },
+  { title: '实际完成日期', dataIndex: 'actualEnd', width: 130 },
+]
 const taskRows = ref([])
 const taskStatusFilters = toOptions(['全部状态', '未开始', '进行中', '已完成'])
 const personFilterOptions = toOptions(['全部负责人', '全部指定人', '张三', '李四', '王五'])
@@ -891,6 +942,106 @@ const fetchProjects = async () => {
   }
 }
 
+const getTaskRiskLevel = task => {
+  if (task.status === 'OVERDUE') {
+    const overdueDays = task.plannedEndDate ? dayjs().diff(dayjs(task.plannedEndDate), 'day') : 0
+    return overdueDays >= 3 ? '高风险' : '中风险'
+  }
+  return task.status === 'DUE_SOON' ? '中风险' : '低风险'
+}
+const mapTaskRow = (task, index) => ({
+  id: task.id,
+  index: (taskPagination.current - 1) * taskPagination.pageSize + index + 1,
+  name: task.name,
+  riskLevel: getTaskRiskLevel(task),
+  role: task.roleName || '-',
+  tag: task.tags || '-',
+  owner: getUserName(task.assigneeId),
+  assigneeId: task.assigneeId,
+  priority: getDictLabel('taskPriority', task.priority),
+  priorityCode: task.priority,
+  status: getDictLabel('taskStatus', task.status),
+  statusCode: task.status,
+  planStart: task.plannedStartDate || '-',
+  planEnd: task.plannedEndDate || '-',
+  plannedEndDate: task.plannedEndDate || null,
+  actualStart: task.actualStartDate || '-',
+  actualEnd: task.actualEndDate || '-',
+})
+const mapBugRow = bug => ({ id: bug.id, code: `BUG-${bug.id}`, title: bug.title, severity: getDictLabel('bugPriority', bug.priority), priorityCode: bug.priority, status: getDictLabel('bugStatus', bug.status), statusCode: bug.status, assignee: getUserName(bug.assigneeId), creator: getUserName(bug.creatorId) })
+const mapReportRow = report => ({ id: report.id, title: report.title, type: getDictLabel('reportType', report.reportType), typeCode: report.reportType, status: getDictLabel('reportStatus', report.status), statusCode: report.status, planTime: report.plannedDate, actualTime: report.actualDate || '-', target: report.targetAudience, place: report.locationMethod, description: report.description, taskId: report.taskId || report.relatedTaskId || undefined, taskName: report.taskName || report.relatedTaskName || undefined })
+const applyTaskResult = result => {
+  taskRows.value = result.records.map(mapTaskRow)
+  taskPagination.total = result.total ?? result.records.length
+}
+const applyBugResult = result => {
+  bugRows.value = result.records.map(mapBugRow)
+  bugPagination.total = result.total ?? result.records.length
+}
+const applyReportResult = result => {
+  reportRows.value = result.records.map(mapReportRow)
+  reportPagination.total = result.total ?? result.records.length
+}
+const getReportQueryParams = projectId => ({
+  projectId,
+  pageNo: reportPagination.current,
+  pageSize: reportPagination.pageSize,
+  keyword: reportListFilter.keyword || undefined,
+  status: reportListFilter.status === '全部' ? undefined : reportListFilter.status,
+  plannedDateFrom: reportListFilter.dateRange?.[0],
+  plannedDateTo: reportListFilter.dateRange?.[1],
+})
+const fetchTaskPage = async (projectId = route.params.id) => {
+  taskLoading.value = true
+  try {
+    applyTaskResult(await getProjectTasks({ projectId, pageNo: taskPagination.current, pageSize: taskPagination.pageSize }))
+  } catch (error) {
+    message.error(error.message)
+  } finally {
+    taskLoading.value = false
+  }
+}
+const fetchBugPage = async (projectId = route.params.id) => {
+  bugLoading.value = true
+  try {
+    applyBugResult(await getProjectBugs({ projectId, pageNo: bugPagination.current, pageSize: bugPagination.pageSize }))
+  } catch (error) {
+    message.error(error.message)
+  } finally {
+    bugLoading.value = false
+  }
+}
+const fetchReportPage = async (projectId = route.params.id) => {
+  reportLoading.value = true
+  try {
+    applyReportResult(await getProjectReports(getReportQueryParams(projectId)))
+  } catch (error) {
+    message.error(error.message)
+  } finally {
+    reportLoading.value = false
+  }
+}
+const handleTaskPageChange = async (page, pageSize) => {
+  taskPagination.current = page
+  taskPagination.pageSize = pageSize
+  await fetchTaskPage()
+}
+const handleBugPageChange = async (page, pageSize) => {
+  bugPagination.current = page
+  bugPagination.pageSize = pageSize
+  await fetchBugPage()
+}
+const handleReportPageChange = async (page, pageSize) => {
+  reportPagination.current = page
+  reportPagination.pageSize = pageSize
+  await fetchReportPage()
+}
+const handleReportFilterChange = async filter => {
+  Object.assign(reportListFilter, filter)
+  reportPagination.current = 1
+  await fetchReportPage()
+}
+
 const fetchProjectRelatedData = async projectId => {
   detailLoading.value = true
   taskLoading.value = true
@@ -902,9 +1053,9 @@ const fetchProjectRelatedData = async projectId => {
       getProjectDetail(projectId),
       getGanttNodes(projectId),
       getGanttSummary(projectId),
-      getProjectTasks({ projectId, pageNo: 1, pageSize: 200 }),
-      getProjectBugs({ projectId, pageNo: 1, pageSize: 200 }),
-      getProjectReports({ projectId, pageNo: 1, pageSize: 200 }),
+      getProjectTasks({ projectId, pageNo: taskPagination.current, pageSize: taskPagination.pageSize }),
+      getProjectBugs({ projectId, pageNo: bugPagination.current, pageSize: bugPagination.pageSize }),
+      getProjectReports(getReportQueryParams(projectId)),
       getProjectFiles({ businessType: 'PROJECT', businessId: projectId }),
       getProjectFolders({ businessType: 'PROJECT', businessId: projectId }),
     ])
@@ -928,9 +1079,9 @@ const fetchProjectRelatedData = async projectId => {
       const actualEnd = node.actualEndDate?.replaceAll('-', '/') || '-'
       return { id: node.id, name: node.nodeName, planStart, planEnd, planTime: formatDateRange(planStart, planEnd), actualStart, actualEnd, actualTime: formatDateRange(actualStart, actualEnd), status: getDictLabel('taskStatus', node.status), statusCode: node.status, progress: node.progressPercent || 0, isOverdue: node.status === 'OVERDUE' }
     })
-    taskRows.value = taskResult.records.map(task => ({ id: task.id, name: task.name, owner: getUserName(task.assigneeId), assigneeId: task.assigneeId, priority: getDictLabel('taskPriority', task.priority), priorityCode: task.priority, status: getDictLabel('taskStatus', task.status), statusCode: task.status, planStart: task.plannedStartDate || '-', planEnd: task.plannedEndDate || '-', plannedEndDate: task.plannedEndDate || null, actualStart: task.actualStartDate || '-', actualEnd: task.actualEndDate || '-' }))
-    bugRows.value = bugResult.records.map(bug => ({ id: bug.id, code: `BUG-${bug.id}`, title: bug.title, severity: getDictLabel('bugPriority', bug.priority), priorityCode: bug.priority, status: getDictLabel('bugStatus', bug.status), statusCode: bug.status, assignee: getUserName(bug.assigneeId), creator: getUserName(bug.creatorId) }))
-    reportRows.value = reportResult.records.map(report => ({ id: report.id, title: report.title, type: getDictLabel('reportType', report.reportType), typeCode: report.reportType, status: getDictLabel('reportStatus', report.status), statusCode: report.status, planTime: report.plannedDate, actualTime: report.actualDate || '-', target: report.targetAudience, place: report.locationMethod, description: report.description, taskId: report.taskId || report.relatedTaskId || undefined, taskName: report.taskName || report.relatedTaskName || undefined }))
+    applyTaskResult(taskResult)
+    applyBugResult(bugResult)
+    applyReportResult(reportResult)
     folderRows.value = folders || []
     expandedFolderIds.value = folderRows.value.map(folder => folder.id)
     documentRows.value = files.map(file => {
@@ -989,7 +1140,14 @@ const syncQueryFromRoute = () => {
 const syncRoute = async () => {
   if (viewMode.value === 'list') { syncQueryFromRoute(); await fetchProjects(); return }
   const projectId = route.params.id
-  if (viewMode.value === 'detail') { activeTab.value = 'gantt'; await fetchProjectRelatedData(projectId) }
+  if (viewMode.value === 'detail') {
+    activeTab.value = 'gantt'
+    taskPagination.current = 1
+    bugPagination.current = 1
+    reportPagination.current = 1
+    Object.assign(reportListFilter, { keyword: '', status: '全部', dateRange: [] })
+    await fetchProjectRelatedData(projectId)
+  }
 }
 watch(() => [route.name, route.params.id, route.query.status], syncRoute)
 watch(activeTab, renderGantt)
@@ -1250,14 +1408,50 @@ const handleDeleteDocuments = async () => {
     message.error(error.message)
   }
 }
+const loadReportAttachments = async reportId => {
+  const files = await getProjectFiles({ businessType: 'PROJECT_REPORT', businessId: reportId })
+  reportAttachmentRows.value = files.map(file => ({
+    id: file.id,
+    name: file.originalName,
+  }))
+}
+const handleReportAttachmentBeforeUpload = file => {
+  if (file.size > 50 * 1024 * 1024) {
+    message.warning('单个文件不能超过50MB')
+    return false
+  }
+  reportAttachmentFiles.value.push({ uid: file.uid, name: file.name, originFile: file })
+  return false
+}
+const handleRemoveReportAttachment = uid => {
+  reportAttachmentFiles.value = reportAttachmentFiles.value.filter(file => file.uid !== uid)
+}
+const handleDownloadReportAttachment = async file => {
+  try {
+    const result = await downloadProjectFile(file.id)
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(result.blob)
+    link.download = result.fileName
+    link.click()
+    URL.revokeObjectURL(link.href)
+  } catch (error) {
+    message.error(error.message)
+  }
+}
 const handleViewReport = async record => {
   reportDetailVisible.value = true
   reportDetailLoading.value = true
   currentReportDetail.value = null
   reportDetailRemark.value = ''
   reportDetailTaskType.value = 'meeting'
+  reportAttachmentRows.value = []
+  reportAttachmentFiles.value = []
   try {
-    currentReportDetail.value = await loadReportDetail(record.id)
+    const [detail] = await Promise.all([
+      loadReportDetail(record.id),
+      loadReportAttachments(record.id),
+    ])
+    currentReportDetail.value = detail
     reportDetailRemark.value = currentReportDetail.value.remark
   } catch (error) {
     message.error(error.message)
@@ -1266,21 +1460,26 @@ const handleViewReport = async record => {
 }
 const handleConfirmReportRemark = async () => {
   if (!currentReportDetail.value) return
+  reportAttachmentUploading.value = true
   try {
     await updateProjectReport(currentReportDetail.value.id, { remark: reportDetailRemark.value })
+    for (const attachment of [...reportAttachmentFiles.value]) {
+      const data = new FormData()
+      data.append('businessType', 'PROJECT_REPORT')
+      data.append('businessId', currentReportDetail.value.id)
+      data.append('file', attachment.originFile)
+      await uploadProjectFile(data)
+      handleRemoveReportAttachment(attachment.uid)
+    }
     currentReportDetail.value = await loadReportDetail(currentReportDetail.value.id)
     reportDetailRemark.value = currentReportDetail.value.remark
-    message.success('备注已保存')
+    await loadReportAttachments(currentReportDetail.value.id)
+    message.success('汇报信息已保存')
   } catch (error) {
     message.error(error.message)
+  } finally {
+    reportAttachmentUploading.value = false
   }
-}
-const handleAddReportTask = () => {
-  reportItemMode.value = 'create'
-  editingItemId.value = null
-  Object.assign(reportItemForm, createDefaultItemForm())
-  reportItemFormRef.value?.clearValidate()
-  reportItemVisible.value = true
 }
 const handleEditReportItem = item => {
   reportItemMode.value = 'edit'
@@ -1351,19 +1550,66 @@ const linkedTaskIds = computed(() => {
 })
 const taskPickerRowSelection = computed(() => ({
   selectedRowKeys: selectedTaskIds.value,
-  onChange: keys => { selectedTaskIds.value = keys },
+  preserveSelectedRowKeys: true,
+  onChange: keys => {
+    selectedTaskIds.value = keys
+    const selectedKeys = new Set(keys.map(String))
+    const next = new Map(selectedTaskRecords.value)
+    taskPickerRows.value.forEach(task => {
+      if (selectedKeys.has(String(task.id))) next.set(String(task.id), task)
+      else next.delete(String(task.id))
+    })
+    selectedTaskRecords.value = next
+  },
   getCheckboxProps: record => ({ disabled: linkedTaskIds.value.has(String(record.id)) }),
 }))
-const handleOpenTaskPicker = () => {
+const fetchTaskPickerTasks = async () => {
+  taskPickerLoading.value = true
+  try {
+    const result = await getProjectTasks({
+      projectId: route.params.id,
+      pageNo: taskPickerPagination.current,
+      pageSize: taskPickerPagination.pageSize,
+    })
+    taskPickerRows.value = result.records.map(task => ({
+      id: task.id,
+      name: task.name,
+      owner: getUserName(task.assigneeId),
+      assigneeId: task.assigneeId,
+      priority: getDictLabel('taskPriority', task.priority),
+      priorityCode: task.priority,
+      status: getDictLabel('taskStatus', task.status),
+      statusCode: task.status,
+      planEnd: task.plannedEndDate || '-',
+      plannedEndDate: task.plannedEndDate || null,
+    }))
+    taskPickerPagination.total = result.total ?? result.records.length
+  } catch (error) {
+    taskPickerRows.value = []
+    taskPickerPagination.total = 0
+    message.error(error.message)
+  } finally {
+    taskPickerLoading.value = false
+  }
+}
+const handleOpenTaskPicker = async () => {
   selectedTaskIds.value = []
+  selectedTaskRecords.value = new Map()
+  taskPickerPagination.current = 1
   taskPickerVisible.value = true
+  await fetchTaskPickerTasks()
+}
+const handleTaskPickerPageChange = async (page, pageSize) => {
+  taskPickerPagination.current = page
+  taskPickerPagination.pageSize = pageSize
+  await fetchTaskPickerTasks()
 }
 const handleLinkTasks = async () => {
   if (!selectedTaskIds.value.length) { message.warning('请选择要关联的任务'); return }
   if (!currentReportDetail.value) return
   taskPickerConfirming.value = true
   try {
-    const tasksToLink = taskRows.value.filter(t => selectedTaskIds.value.includes(t.id))
+    const tasksToLink = Array.from(selectedTaskRecords.value.values())
     await Promise.all(tasksToLink.map(task => createReportItem(currentReportDetail.value.id, {
       content: task.name,
       ownerId: task.assigneeId || null,
@@ -1377,6 +1623,7 @@ const handleLinkTasks = async () => {
     reportDetailRemark.value = currentReportDetail.value.remark
     taskPickerVisible.value = false
     selectedTaskIds.value = []
+    selectedTaskRecords.value = new Map()
     message.success(`已关联 ${tasksToLink.length} 个任务`)
   } catch (error) {
     message.error(error.message)
@@ -1570,12 +1817,25 @@ const handleDeleteReport = async record => {
 .report-detail-description { display: grid; grid-template-columns: 86px minmax(0, 1fr); margin: 0; color: #404040; }
 .report-detail-description p { margin: 0; }
 .report-detail-section-title { display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 12px; font-size: 18px; }
-.report-detail-remark { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 10px; align-items: flex-start; margin-bottom: 10px; }
+.report-detail-remark { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 10px; align-items: flex-start; margin-bottom: 10px; }
 .report-detail-remark label { padding-top: 6px; font-weight: 500; }
-.report-detail-remark-actions { display: flex; justify-content: flex-end; margin-bottom: 14px; }
+.report-detail-attachment { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 10px; align-items: flex-start; margin-bottom: 10px; }
+.report-detail-attachment > label { padding-top: 6px; font-weight: 500; }
+.report-detail-attachment__content { min-width: 0; }
+.report-detail-attachment :deep(.ant-upload-drag) { padding: 12px; background: #fafcff; }
+.report-detail-attachment :deep(.ant-upload-drag-icon) { margin-bottom: 4px; font-size: 30px; }
+.report-detail-attachment :deep(.ant-upload-text) { margin-bottom: 2px; font-size: 14px; }
+.report-detail-attachment :deep(.ant-upload-hint) { font-size: 12px; }
+.report-detail-attachment__list { margin-top: 8px; border: 1px solid #edf0f3; border-radius: 6px; }
+.report-detail-attachment__list > div { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 8px; align-items: center; min-height: 34px; padding: 2px 10px; }
+.report-detail-attachment__list > div + div { border-top: 1px solid #edf0f3; }
+.report-detail-attachment__list span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.report-detail-remark-actions { display: flex; justify-content: center; margin-bottom: 14px; }
 .report-task-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
+.report-item-table :deep(.ant-table-body) { max-height: 200px; overflow-y: auto !important; }
+.task-picker-pagination { display: flex; justify-content: flex-end; margin-top: 12px; }
 .report-detail-log-title { margin-top: 28px; }
-.report-detail-logs { min-height: 130px; padding: 16px 18px 4px; border: 1px solid #f0f0f0; border-radius: 6px; }
+.report-detail-logs { height: 200px; padding: 16px 18px 4px; overflow-x: hidden; overflow-y: auto; border: 1px solid #f0f0f0; border-radius: 6px; }
 .report-detail-log-meta { color: #8c8c8c; font-size: 12px; }
 .report-detail-logs p { margin: 6px 0 0; color: #1f1f1f; }
 .report-detail-view :deep(.ant-table-cell) { white-space: nowrap; }
