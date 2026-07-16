@@ -19,6 +19,7 @@
             <a-tab-pane key="overdue" tab="逾期" />
             <a-tab-pane key="urgent" tab="紧急" />
             <a-tab-pane key="bug" tab="BUG" />
+            <a-tab-pane key="requirement" tab="需求" />
           </a-tabs>
         </template>
         <a-spin :spinning="todoLoading">
@@ -32,8 +33,8 @@
                 type="button"
                 @click="handleTodoClick(item)"
               >
-                <span class="todo-card__type" :class="`todo-card__type--${item.itemType === 'BUG' ? 'bug' : 'task'}`">
-                  {{ item.itemType === 'BUG' ? 'BUG' : '任务' }}
+                <span class="todo-card__type" :class="`todo-card__type--${todoItemTypeKey(item.itemType)}`">
+                  {{ todoItemTypeLabel(item.itemType) }}
                 </span>
                 <span class="todo-card__priority" :class="`todo-card__priority--${todoPriorityKey(item.priority)}`">
                   <component :is="priorityIcon(item.priority)" />
@@ -204,6 +205,7 @@ const filteredTodos = computed(() => {
   if (activeTodoTab.value === 'overdue') return todos.value.filter(t => t.overdueDays > 0)
   if (activeTodoTab.value === 'urgent') return todos.value.filter(t => t.priority === 'URGENT')
   if (activeTodoTab.value === 'bug') return todos.value.filter(t => t.itemType === 'BUG')
+  if (activeTodoTab.value === 'requirement') return todos.value.filter(t => t.itemType === 'REQUIREMENT')
   return todos.value
 })
 
@@ -213,8 +215,21 @@ const todoStatus = item => {
   const s = item.status
   if (s === 'DUE_SOON' || s === 'PENDING_VERIFY') return 'dueSoon'
   if (s === 'IN_PROGRESS' || s === 'FIXING') return 'inProgress'
-  if (s === 'COMPLETED' || s === 'CLOSED') return 'completed'
+  if (s === 'COMPLETED' || s === 'CLOSED' || s === 'ACCEPTED') return 'completed'
+  if (s === 'PENDING_REVIEW') return 'notStarted'
   return 'notStarted'
+}
+
+const todoItemTypeKey = type => {
+  if (type === 'BUG') return 'bug'
+  if (type === 'REQUIREMENT') return 'requirement'
+  return 'task'
+}
+
+const todoItemTypeLabel = type => {
+  if (type === 'BUG') return 'BUG'
+  if (type === 'REQUIREMENT') return '需求'
+  return '任务'
 }
 
 const todoStatusLabel = item => {
@@ -636,6 +651,11 @@ const handleTodoClick = item => {
 .todo-card__type--bug {
   color: #f5222d;
   background: #fff1f0;
+}
+
+.todo-card__type--requirement {
+  color: #722ed1;
+  background: #f9f0ff;
 }
 
 .todo-card__priority {
