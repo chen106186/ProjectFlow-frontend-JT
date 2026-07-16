@@ -62,7 +62,6 @@
 
         <section v-if="activeTab === 'tasks'" class="detail-panel">
           <div class="section-heading risk-heading">
-            <h3>全局风险预警</h3>
             <a-button v-if="activeRisk" type="link" size="small" @click="activeRisk = ''">清除筛选</a-button>
           </div>
           <div class="risk-grid">
@@ -82,10 +81,9 @@
             </button>
           </div>
           <div class="section-heading">
-            <h3>
-              任务列表
+            <h4>
               <small v-if="activeRisk || taskStatusFilter || taskPersonFilter" class="filter-hint">已筛选 {{ filteredTaskDisplayRows.length }} 条</small>
-            </h3>
+            </h4>
             <a-space>
               <a-select v-model:value="taskStatusFilter" :options="TASK_STATUS_OPTIONS" style="min-width:7.5rem" />
               <a-select v-model:value="taskPersonFilter" :options="taskPersonOptions" style="min-width:7.5rem" />

@@ -74,7 +74,6 @@
       </div>
 
       <div v-show="activeTab === 'tasks'" class="execution-tab-panel">
-        <h3>全局风险预警</h3>
         <div class="risk-grid">
           <div v-for="risk in risks" :key="risk.label" class="semantic-card" :class="risk.class">
             <span class="semantic-card__icon"><component :is="risk.icon" /></span>
@@ -82,7 +81,6 @@
           </div>
         </div>
         <div class="section-heading">
-          <h3>任务列表</h3>
           <a-space><a-select value="全部状态" :options="taskStatusFilters" /><a-select value="全部负责人" :options="personFilterOptions" /></a-space>
         </div>
         <a-table row-key="id" class="project-task-table" :columns="taskColumns" :data-source="taskRows" :loading="taskLoading" :pagination="false" size="small" :scroll="{ x: 1390, y: 500 }">
