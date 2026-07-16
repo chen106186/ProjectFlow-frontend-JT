@@ -597,7 +597,7 @@ const handleUserMenuClick = ({ key }) => {
 
 .app-header__icon,
 .app-user {
-  color: rgb(255 255 255 / 88%);
+  color: #262626;
 }
 
 .app-header__icon {
@@ -612,7 +612,7 @@ const handleUserMenuClick = ({ key }) => {
 
 .app-header__icon:hover,
 .app-user:hover {
-  color: #fff;
+  color: #1677ff;
 }
 
 .app-user {
@@ -625,7 +625,13 @@ const handleUserMenuClick = ({ key }) => {
 }
 
 .app-user__arrow {
+  color: #595959;
   font-size: 12px;
+}
+
+.app-user :deep(.ant-avatar) {
+  color: #fff;
+  background: #1677ff;
 }
 
 .app-layout__body {
