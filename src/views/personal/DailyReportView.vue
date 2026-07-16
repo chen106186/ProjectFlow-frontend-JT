@@ -376,10 +376,8 @@ const handleSave = async () => {
 .dr-page {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 68px);
   width: min(1600px, 100%);
   margin: 0 auto;
-  background: #f5f6fa;
 }
 
 .dr-detail-header {
