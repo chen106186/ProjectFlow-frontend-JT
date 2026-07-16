@@ -511,12 +511,22 @@ const ganttFormRules = {
   progress: [{ required: true, message: '请输入节点进度', trigger: 'change' }],
 }
 
-const risks = computed(() => [
-  { label: '高风险任务', value: `${taskRows.value.filter(item => item.priorityCode === 'HIGH').length} 个`, desc: '延期 ≥ 3 天', class: 'risk-high', icon: FireOutlined },
-  { label: '中风险任务', value: `${taskRows.value.filter(item => item.priorityCode === 'MEDIUM').length} 个`, desc: '延期 1 - 2 天', class: 'risk-medium', icon: WarningOutlined },
-  { label: '即将到期', value: `${ganttSummaryData.dueSoon} 个`, desc: '未来 3 天内到期', class: 'risk-due', icon: ClockCircleOutlined },
-  { label: '按计划进行', value: `${Math.max(taskRows.value.length - ganttSummaryData.overdue, 0)} 个`, desc: '无延期风险', class: 'risk-normal', icon: CheckCircleOutlined },
-])
+const taskRiskKey = task => {
+  if (task.statusCode === 'DUE_SOON') return 'due'
+  if (task.statusCode !== 'OVERDUE') return 'normal'
+  const days = task.planEnd && task.planEnd !== '-' ? dayjs().diff(dayjs(task.planEnd), 'day') : 0
+  return days >= 3 ? 'high' : 'medium'
+}
+const risks = computed(() => {
+  const counts = { high: 0, medium: 0, due: 0, normal: 0 }
+  for (const task of taskRows.value) counts[taskRiskKey(task)]++
+  return [
+    { label: '高风险任务', value: `${counts.high} 个`, desc: '延期 ≥ 3 天', class: 'risk-high', icon: FireOutlined },
+    { label: '中风险任务', value: `${counts.medium} 个`, desc: '延期 1 - 2 天', class: 'risk-medium', icon: WarningOutlined },
+    { label: '即将到期', value: `${counts.due} 个`, desc: '未来 3 天内到期', class: 'risk-due', icon: ClockCircleOutlined },
+    { label: '按计划进行', value: `${counts.normal} 个`, desc: '无延期风险', class: 'risk-normal', icon: CheckCircleOutlined },
+  ]
+})
 const createTablePagination = () => reactive({
   current: 1,
   pageSize: 10,
