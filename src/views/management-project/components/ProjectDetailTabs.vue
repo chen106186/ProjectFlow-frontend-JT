@@ -92,8 +92,9 @@
             </a-space>
           </div>
           <a-table row-key="id" class="project-task-table" :columns="taskColumns" :data-source="filteredTaskDisplayRows" :loading="taskLoading" :pagination="false" size="small" :scroll="{ x: 1390, y: 500 }">
-            <template #bodyCell="{ column, text }">
-              <a-tag v-if="column.dataIndex === 'priority'" color="red">{{ text }}</a-tag>
+            <template #bodyCell="{ column, record, text }">
+              <a-button v-if="column.dataIndex === 'name'" type="link" @click="emit('view-task', record)">{{ text }}</a-button>
+              <a-tag v-else-if="column.dataIndex === 'priority'" color="red">{{ text }}</a-tag>
               <a-tag v-else-if="column.dataIndex === 'riskLevel'" :color="riskColorMap[text] || 'default'">{{ text }}</a-tag>
             </template>
           </a-table>
@@ -119,8 +120,9 @@
             </a-space>
           </div>
           <a-table row-key="id" class="project-bug-table" :columns="bugColumns" :data-source="bugRows" :loading="bugLoading" :pagination="false" size="small" :scroll="{ x: 840, y: 500 }">
-            <template #bodyCell="{ column, text }">
-              <a-tag v-if="column.dataIndex === 'severity'" color="red">{{ text }}</a-tag>
+            <template #bodyCell="{ column, record, text }">
+              <a-button v-if="column.dataIndex === 'title'" type="link" @click="emit('view-bug', record)">{{ text }}</a-button>
+              <a-tag v-else-if="column.dataIndex === 'severity'" color="red">{{ text }}</a-tag>
               <a-tag v-else-if="column.dataIndex === 'status'" color="orange">{{ text }}</a-tag>
             </template>
           </a-table>
@@ -263,6 +265,8 @@ const emit = defineEmits([
   'update:activeTab',
   'task-page-change',
   'bug-page-change',
+  'view-task',
+  'view-bug',
   'report-page-change',
   'report-filter-change',
   'create-report',

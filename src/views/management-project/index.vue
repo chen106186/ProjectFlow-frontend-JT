@@ -123,6 +123,8 @@
           :expanded-document-folder-ids="expandedFolderIds"
           @task-page-change="handleTaskPageChange"
           @bug-page-change="handleBugPageChange"
+          @view-task="handleTaskDetail"
+          @view-bug="handleBugDetail"
           @report-page-change="handleReportPageChange"
           @report-filter-change="handleReportFilterChange"
           @create-report="handleCreateReport"
@@ -1232,6 +1234,8 @@ const handleDetail = record => {
   router.push({ name: 'ManagementProjectDetail', params: { id: record.id } })
 }
 const handleBack = () => router.push({ name: 'ManagementProjects' })
+const handleTaskDetail = record => router.push({ name: 'AllTasks', query: { detail: 'task', taskId: String(record.id) } })
+const handleBugDetail = record => router.push({ name: 'BugDetail', params: { id: String(record.id) } })
 const handleDelete = async record => {
   try {
     await deleteProject(record.id)

@@ -86,8 +86,9 @@
           <a-space><a-select value="全部状态" :options="taskStatusFilters" /><a-select value="全部负责人" :options="personFilterOptions" /></a-space>
         </div>
         <a-table row-key="id" class="project-task-table" :columns="taskColumns" :data-source="taskRows" :loading="taskLoading" :pagination="false" size="small" :scroll="{ x: 1390, y: 500 }">
-          <template #bodyCell="{ column, text }">
-            <a-tag v-if="column.dataIndex === 'priority'" color="red">{{ text }}</a-tag>
+          <template #bodyCell="{ column, record, text }">
+            <a-button v-if="column.dataIndex === 'name'" type="link" @click="handleTaskDetail(record)">{{ text }}</a-button>
+            <a-tag v-else-if="column.dataIndex === 'priority'" color="red">{{ text }}</a-tag>
             <a-tag v-else-if="column.dataIndex === 'riskLevel'" :color="getTaskRiskColor(text)">{{ text }}</a-tag>
           </template>
         </a-table>
@@ -107,8 +108,9 @@
           <a-space><a-select value="全部状态" :options="bugStatusFilters" /><a-select value="全部指定人" :options="personFilterOptions" /></a-space>
         </div>
         <a-table row-key="id" class="project-bug-table" :columns="bugColumns" :data-source="bugRows" :loading="bugLoading" :pagination="false" size="small" :scroll="{ x: 840, y: 500 }">
-          <template #bodyCell="{ column, text }">
-            <a-tag v-if="column.dataIndex === 'severity'" color="red">{{ text }}</a-tag>
+          <template #bodyCell="{ column, record, text }">
+            <a-button v-if="column.dataIndex === 'title'" type="link" @click="handleBugDetail(record)">{{ text }}</a-button>
+            <a-tag v-else-if="column.dataIndex === 'severity'" color="red">{{ text }}</a-tag>
             <a-tag v-else-if="column.dataIndex === 'status'" color="orange">{{ text }}</a-tag>
           </template>
         </a-table>
@@ -785,6 +787,8 @@ const mapProject = project => ({
   statusCode: project.status,
 })
 const handleBack = () => router.push({ name: 'ExecutionProjects' })
+const handleTaskDetail = record => router.push({ name: 'AllTasks', query: { detail: 'task', taskId: String(record.id) } })
+const handleBugDetail = record => router.push({ name: 'BugDetail', params: { id: String(record.id) } })
 const formatFileSize = size => size >= 1024 * 1024 ? `${(size / 1024 / 1024).toFixed(1)}MB` : `${Math.ceil((size || 0) / 1024)}KB`
 const formatNodeDate = value => {
   if (!value || value === '-') return undefined
