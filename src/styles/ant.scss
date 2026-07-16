@@ -318,12 +318,17 @@ textarea.ant-input {
 
 /* Tabs */
 .ant-tabs.ant-tabs { font-size: $font-size; }
-.ant-tabs.ant-tabs .ant-tabs-nav { margin-bottom: $spacing-md; }
-.ant-tabs.ant-tabs .ant-tabs-tab { padding: 12px 0; font-size: $font-size; }
+.ant-tabs.ant-tabs .ant-tabs-nav { min-height: 46px; margin-bottom: $spacing-md; }
+.ant-tabs.ant-tabs .ant-tabs-tab { min-height: 46px; padding: 12px 0; font-size: $font-size; }
 .ant-tabs.ant-tabs .ant-tabs-tab-btn { font-size: $font-size; }
 .ant-tabs.ant-tabs .ant-tabs-tab + .ant-tabs-tab { margin-inline-start: 32px; }
 .ant-tabs.ant-tabs .ant-tabs-ink-bar { height: 2px; }
 .ant-tabs.ant-tabs-card > .ant-tabs-nav .ant-tabs-tab { padding: 8px 16px; border-radius: 6px 6px 0 0; }
+.ant-tabs.ant-tabs-small .ant-tabs-nav,
+.ant-tabs.ant-tabs-small .ant-tabs-tab { min-height: 32px; }
+.ant-tabs.ant-tabs-small .ant-tabs-tab { padding: 6px 0; font-size: $font-size-sm; }
+.ant-tabs.ant-tabs-small .ant-tabs-tab-btn,
+.ant-tabs.ant-tabs .ant-tabs-nav-operations { font-size: $font-size-sm; }
 
 /* Feedback and data display */
 .ant-alert { padding: 8px 12px; border-radius: $border-radius; }
@@ -335,7 +340,21 @@ textarea.ant-input {
 .ant-badge-count { min-width: 20px; height: 20px; padding-inline: 6px; font-size: 12px; line-height: 20px; border-radius: 10px; }
 .ant-breadcrumb { font-size: $font-size; }
 .ant-breadcrumb-separator { margin-inline: $spacing-sm; }
-.ant-tag { margin-inline-end: $spacing-sm; padding-inline: 7px; font-size: 12px; line-height: 22px; border-radius: 4px; }
+.ant-tag.ant-tag {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-width: 0;
+  height: 24px;
+  margin-inline-end: $spacing-sm;
+  padding-inline: 7px;
+  font-size: $font-size-sm;
+  line-height: 22px;
+  border-radius: 4px;
+}
+.ant-tag.ant-tag .anticon,
+.ant-tag.ant-tag .ant-tag-close-icon { font-size: $font-size-sm; }
+.ant-tag.ant-tag .ant-tag-close-icon { margin-inline-start: 4px; }
 .ant-empty { margin-block: $spacing-lg; font-size: $font-size; }
 .ant-empty-image { height: 100px; margin-bottom: $spacing-sm; }
 .ant-result { padding: 48px 32px; }
