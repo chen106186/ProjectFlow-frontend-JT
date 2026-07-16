@@ -1192,7 +1192,7 @@ const updateDetailQuery = (detail, taskId) => {
   })
 }
 
-const loadTaskDetailData = async taskId => {
+async function loadTaskDetailData(taskId) {
   selectedTaskDetail.value = null
   taskAttachmentRows.value = []
   taskDetailLoading.value = true
