@@ -109,6 +109,7 @@
           :bug-loading="bugLoading"
           :bug-pagination="bugPagination"
           :bug-status-filters="bugStatusFilters"
+          :bug-assignee-options="bugAssigneeOptions"
           :report-rows="reportRows"
           :report-columns="reportTableColumns"
           :report-loading="reportLoading"
@@ -123,6 +124,7 @@
           :expanded-document-folder-ids="expandedFolderIds"
           @task-page-change="handleTaskPageChange"
           @bug-page-change="handleBugPageChange"
+          @bug-filter-change="handleBugFilterChange"
           @view-task="handleTaskDetail"
           @view-bug="handleBugDetail"
           @report-page-change="handleReportPageChange"
@@ -591,10 +593,18 @@ const taskColumns = [
 const taskRows = ref([])
 const taskStatusFilters = toOptions(['全部状态', '未开始', '进行中', '已完成'])
 const personFilterOptions = toOptions(['全部负责人', '全部指定人', '张三', '李四', '王五'])
-const bugSummary = computed(() => [{ label: '紧急', value: bugRows.value.filter(item => item.priorityCode === 'URGENT').length, class: 'bug-severe', icon: ExclamationCircleOutlined }, { label: '待修复', value: bugRows.value.filter(item => item.statusCode === 'PENDING_FIX').length, class: 'bug-submitted', icon: SendOutlined }, { label: '修复中', value: bugRows.value.filter(item => item.statusCode === 'FIXING').length, class: 'bug-confirmed', icon: ToolOutlined }, { label: '已关闭', value: bugRows.value.filter(item => item.statusCode === 'CLOSED').length, class: 'bug-closed', icon: CheckCircleOutlined }])
+const bugSummary = computed(() => [{ key: 'urgent', label: '紧急', value: bugRows.value.filter(item => item.priorityCode === 'URGENT').length, class: 'bug-severe', icon: ExclamationCircleOutlined }, { key: 'pending', label: '待修复', value: bugRows.value.filter(item => item.statusCode === 'PENDING_FIX').length, class: 'bug-submitted', icon: SendOutlined }, { key: 'fixing', label: '修复中', value: bugRows.value.filter(item => item.statusCode === 'FIXING').length, class: 'bug-confirmed', icon: ToolOutlined }, { key: 'closed', label: '已关闭', value: bugRows.value.filter(item => item.statusCode === 'CLOSED').length, class: 'bug-closed', icon: CheckCircleOutlined }])
 const bugColumns = [{ title: 'BUG ID', dataIndex: 'code', width: 130 }, { title: '标题', dataIndex: 'title', width: 220 }, { title: '严重级别', dataIndex: 'severity', width: 100 }, { title: '状态', dataIndex: 'status', width: 100 }, { title: '指定人', dataIndex: 'assignee', width: 90 }, { title: '创建人', dataIndex: 'creator', width: 90 }]
 const bugRows = ref([])
-const bugStatusFilters = toOptions(['全部状态', '待处理', '修复中', '已完成'])
+const bugStatusFilters = [
+  { label: '全部状态', value: '' },
+  { label: '待修复', value: 'PENDING_FIX' },
+  { label: '修复中', value: 'FIXING' },
+  { label: '待验证', value: 'PENDING_VERIFY' },
+  { label: '已关闭', value: 'CLOSED' },
+]
+const bugAssigneeOptions = computed(() => [{ label: '全部指定人', value: '' }, ...managerOptions.value])
+const bugListFilter = reactive({ status: '', assigneeId: '', priority: '' })
 const reportStatusFilters = computed(() => [{ label: '全部', value: '全部' }, ...reportStatusOptions.value])
 const reportColumns = [{ title: '汇报标题', dataIndex: 'title', width: 220 }, { title: '汇报类型', dataIndex: 'type', width: 110 }, { title: '状态', dataIndex: 'status', width: 100 }, { title: '计划时间', dataIndex: 'planTime', width: 150 }, { title: '实际时间', dataIndex: 'actualTime', width: 150 }, { title: '汇报对象', dataIndex: 'target', width: 110 }, { title: '地点/方式', dataIndex: 'place', width: 120 }]
 const reportRows = ref([])
@@ -1006,7 +1016,7 @@ const fetchTaskPage = async (projectId = route.params.id) => {
 const fetchBugPage = async (projectId = route.params.id) => {
   bugLoading.value = true
   try {
-    applyBugResult(await getProjectBugs({ projectId, pageNo: bugPagination.current, pageSize: bugPagination.pageSize }))
+    applyBugResult(await getProjectBugs({ projectId, pageNo: bugPagination.current, pageSize: bugPagination.pageSize, ...Object.fromEntries(Object.entries(bugListFilter).filter(([, value]) => value !== '')) }))
   } catch (error) {
     message.error(error.message)
   } finally {
@@ -1031,6 +1041,13 @@ const handleTaskPageChange = async (page, pageSize) => {
 const handleBugPageChange = async (page, pageSize) => {
   bugPagination.current = page
   bugPagination.pageSize = pageSize
+  await fetchBugPage()
+}
+const handleBugFilterChange = async filter => {
+  bugListFilter.status = filter.status || ''
+  bugListFilter.assigneeId = filter.assigneeId || ''
+  bugListFilter.priority = filter.priority || ''
+  bugPagination.current = 1
   await fetchBugPage()
 }
 const handleReportPageChange = async (page, pageSize) => {

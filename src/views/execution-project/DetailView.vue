@@ -75,18 +75,22 @@
 
       <div v-show="activeTab === 'tasks'" class="execution-tab-panel">
         <div class="risk-grid">
-          <div v-for="risk in risks" :key="risk.label" class="semantic-card" :class="risk.class">
+          <button v-for="risk in risks" :key="risk.key" type="button" :class="['semantic-card', risk.class, { 'risk-card--active': activeRisk === risk.key }]" @click="activeRisk = activeRisk === risk.key ? '' : risk.key">
             <span class="semantic-card__icon"><component :is="risk.icon" /></span>
-            <span class="semantic-card__content"><span>{{ risk.label }}</span><strong>{{ risk.value }}</strong><small>{{ risk.desc }}</small></span>
-          </div>
+            <span class="semantic-card__content"><span>{{ risk.label }}</span><strong>{{ risk.count }} 个</strong><small>{{ risk.desc }}</small></span>
+          </button>
         </div>
         <div class="section-heading">
-          <a-space><a-select value="全部状态" :options="taskStatusFilters" /><a-select value="全部负责人" :options="personFilterOptions" /></a-space>
+          <a-space v-if="activeRisk">
+            <small class="filter-hint">已筛选 {{ filteredTaskRows.length }} 条</small>
+            <a-button type="link" size="small" @click="activeRisk = ''">清除筛选</a-button>
+          </a-space>
+          <a-space class="task-table-filters"><a-select value="全部状态" :options="taskStatusFilters" /><a-select value="全部负责人" :options="personFilterOptions" /></a-space>
         </div>
-        <a-table row-key="id" class="project-task-table" :columns="taskColumns" :data-source="taskRows" :loading="taskLoading" :pagination="false" size="small" :scroll="{ x: 1390, y: 500 }">
+        <a-table row-key="id" class="project-task-table" :columns="taskColumns" :data-source="filteredTaskRows" :loading="taskLoading" :pagination="false" size="small" :scroll="{ x: 1390, y: 500 }">
           <template #bodyCell="{ column, record, text }">
             <a-button v-if="column.dataIndex === 'name'" type="link" @click="handleTaskDetail(record)">{{ text }}</a-button>
-            <a-tag v-else-if="column.dataIndex === 'priority'" color="red">{{ text }}</a-tag>
+            <a-tag v-else-if="column.dataIndex === 'priority'" :color="getTaskPriorityColor(record.priorityCode)">{{ text }}</a-tag>
             <a-tag v-else-if="column.dataIndex === 'riskLevel'" :color="getTaskRiskColor(text)">{{ text }}</a-tag>
           </template>
         </a-table>
@@ -94,16 +98,18 @@
       </div>
 
       <div v-show="activeTab === 'bugs'" class="execution-tab-panel">
-        <h3>Bug 总览</h3>
         <div class="bug-summary">
-          <div v-for="item in bugSummary" :key="item.label" class="semantic-card" :class="item.class">
+          <button v-for="item in bugSummary" :key="item.key" type="button" :class="['semantic-card', item.class, { 'risk-card--active': activeBugFilter === item.key }]" @click="handleBugCardFilter(item.key)">
             <span class="semantic-card__icon"><component :is="item.icon" /></span>
             <span class="semantic-card__content"><span>{{ item.label }}</span><strong>{{ item.value }} 个</strong></span>
-          </div>
+          </button>
         </div>
         <div class="section-heading">
-          <h3>Bug 列表</h3>
-          <a-space><a-select value="全部状态" :options="bugStatusFilters" /><a-select value="全部指定人" :options="personFilterOptions" /></a-space>
+          <a-space v-if="hasBugFilter">
+            <small class="filter-hint">已筛选 {{ bugPagination.total }} 条</small>
+            <a-button type="link" size="small" @click="resetBugFilters">清除筛选</a-button>
+          </a-space>
+          <a-space class="bug-table-filters"><a-select v-model:value="bugStatusFilter" :options="bugStatusFilters" /><a-select v-model:value="bugAssigneeFilter" :options="personFilterOptions" /></a-space>
         </div>
         <a-table row-key="id" class="project-bug-table" :columns="bugColumns" :data-source="bugRows" :loading="bugLoading" :pagination="false" size="small" :scroll="{ x: 840, y: 500 }">
           <template #bodyCell="{ column, record, text }">
@@ -515,16 +521,21 @@ const taskRiskKey = task => {
   const days = task.planEnd && task.planEnd !== '-' ? dayjs().diff(dayjs(task.planEnd), 'day') : 0
   return days >= 3 ? 'high' : 'medium'
 }
+const activeRisk = ref('')
+const activeBugFilter = ref('')
+const bugStatusFilter = ref('')
+const bugAssigneeFilter = ref('')
 const risks = computed(() => {
   const counts = { high: 0, medium: 0, due: 0, normal: 0 }
   for (const task of taskRows.value) counts[taskRiskKey(task)]++
   return [
-    { label: '高风险任务', value: `${counts.high} 个`, desc: '延期 ≥ 3 天', class: 'risk-high', icon: FireOutlined },
-    { label: '中风险任务', value: `${counts.medium} 个`, desc: '延期 1 - 2 天', class: 'risk-medium', icon: WarningOutlined },
-    { label: '即将到期', value: `${counts.due} 个`, desc: '未来 3 天内到期', class: 'risk-due', icon: ClockCircleOutlined },
-    { label: '按计划进行', value: `${counts.normal} 个`, desc: '无延期风险', class: 'risk-normal', icon: CheckCircleOutlined },
+    { key: 'high', label: '高风险任务', count: counts.high, desc: '延期 ≥ 3 天', class: 'risk-high', icon: FireOutlined },
+    { key: 'medium', label: '中风险任务', count: counts.medium, desc: '延期 1 - 2 天', class: 'risk-medium', icon: WarningOutlined },
+    { key: 'due', label: '即将到期', count: counts.due, desc: '未来 3 天内到期', class: 'risk-due', icon: ClockCircleOutlined },
+    { key: 'normal', label: '按计划进行', count: counts.normal, desc: '无延期风险', class: 'risk-normal', icon: CheckCircleOutlined },
   ]
 })
+const filteredTaskRows = computed(() => taskRows.value.filter(task => !activeRisk.value || taskRiskKey(task) === activeRisk.value))
 const createTablePagination = () => reactive({
   current: 1,
   pageSize: 10,
@@ -553,12 +564,33 @@ const taskColumns = [
 const taskPagination = createTablePagination()
 const taskRows = ref([])
 const taskStatusFilters = toOptions(['全部状态', '未开始', '进行中', '已完成'])
-const personFilterOptions = toOptions(['全部负责人', '全部指定人', '张三', '李四', '王五'])
-const bugSummary = computed(() => [{ label: '严重', value: bugRows.value.filter(item => item.priorityCode === 'URGENT' || item.severity === '严重').length, class: 'bug-severe', icon: ExclamationCircleOutlined }, { label: '已提交', value: bugRows.value.filter(item => item.statusCode === 'PENDING_FIX').length, class: 'bug-submitted', icon: SendOutlined }, { label: '已确认', value: bugRows.value.filter(item => item.statusCode === 'FIXING').length, class: 'bug-confirmed', icon: ToolOutlined }, { label: '已关闭', value: bugRows.value.filter(item => item.statusCode === 'CLOSED').length, class: 'bug-closed', icon: CheckCircleOutlined }])
+const personFilterOptions = computed(() => [{ label: '全部指定人', value: '' }, ...managerOptions.value])
+const bugSummary = computed(() => [{ key: 'urgent', label: '严重', value: bugRows.value.filter(item => item.priorityCode === 'URGENT' || item.severity === '严重').length, class: 'bug-severe', icon: ExclamationCircleOutlined }, { key: 'pending', label: '已提交', value: bugRows.value.filter(item => item.statusCode === 'PENDING_FIX').length, class: 'bug-submitted', icon: SendOutlined }, { key: 'fixing', label: '已确认', value: bugRows.value.filter(item => item.statusCode === 'FIXING').length, class: 'bug-confirmed', icon: ToolOutlined }, { key: 'closed', label: '已关闭', value: bugRows.value.filter(item => item.statusCode === 'CLOSED').length, class: 'bug-closed', icon: CheckCircleOutlined }])
+const bugCardFilters = { urgent: { priority: 'URGENT' }, pending: { status: 'PENDING_FIX' }, fixing: { status: 'FIXING' }, closed: { status: 'CLOSED' } }
+const bugQueryParams = computed(() => ({
+  ...(bugCardFilters[activeBugFilter.value] || {}),
+  ...(bugStatusFilter.value ? { status: bugStatusFilter.value } : {}),
+  ...(bugAssigneeFilter.value ? { assigneeId: bugAssigneeFilter.value } : {}),
+}))
+const hasBugFilter = computed(() => Boolean(activeBugFilter.value || bugStatusFilter.value || bugAssigneeFilter.value))
+const handleBugCardFilter = key => {
+  activeBugFilter.value = activeBugFilter.value === key ? '' : key
+}
+const resetBugFilters = () => {
+  activeBugFilter.value = ''
+  bugStatusFilter.value = ''
+  bugAssigneeFilter.value = ''
+}
 const bugColumns = [{ title: 'BUG ID', dataIndex: 'code', width: 130 }, { title: '标题', dataIndex: 'title', width: 220 }, { title: '严重级别', dataIndex: 'severity', width: 100 }, { title: '状态', dataIndex: 'status', width: 100 }, { title: '指定人', dataIndex: 'assignee', width: 90 }, { title: '创建人', dataIndex: 'creator', width: 90 }]
 const bugPagination = createTablePagination()
 const bugRows = ref([])
-const bugStatusFilters = toOptions(['全部状态', '待处理', '修复中', '已完成'])
+const bugStatusFilters = [
+  { label: '全部状态', value: '' },
+  { label: '待修复', value: 'PENDING_FIX' },
+  { label: '修复中', value: 'FIXING' },
+  { label: '待验证', value: 'PENDING_VERIFY' },
+  { label: '已关闭', value: 'CLOSED' },
+]
 const reportStatusFilters = toOptions(['全部', '准备中', '进行中', '已完成'])
 const reportColumns = [{ title: '汇报标题', dataIndex: 'title', width: 220 }, { title: '汇报类型', dataIndex: 'type', width: 110 }, { title: '状态', dataIndex: 'status', width: 100 }, { title: '计划时间', dataIndex: 'planTime', width: 150 }, { title: '实际时间', dataIndex: 'actualTime', width: 150 }, { title: '汇报对象', dataIndex: 'target', width: 110 }, { title: '地点/方式', dataIndex: 'place', width: 120 }, { title: '操作', dataIndex: 'operation', width: 140, fixed: 'right' }]
 const reportPagination = createTablePagination()
@@ -832,6 +864,7 @@ const getTaskRiskLevel = task => {
   return task.status === 'DUE_SOON' ? '中风险' : '低风险'
 }
 const getTaskRiskColor = riskLevel => ({ 高风险: 'red', 中风险: 'orange', 低风险: 'green' }[riskLevel] || 'default')
+const getTaskPriorityColor = priority => ({ URGENT: 'red', HIGH: 'orange', MEDIUM: 'blue', LOW: 'default' }[priority] || 'default')
 const mapTaskRow = (task, index) => ({
   id: task.id,
   index: (taskPagination.current - 1) * taskPagination.pageSize + index + 1,
@@ -888,7 +921,7 @@ const fetchTaskPage = async () => {
 const fetchBugPage = async () => {
   bugLoading.value = true
   try {
-    applyBugResult(await getProjectBugs({ projectId: route.params.id, pageNo: bugPagination.current, pageSize: bugPagination.pageSize }))
+    applyBugResult(await getProjectBugs({ projectId: route.params.id, pageNo: bugPagination.current, pageSize: bugPagination.pageSize, ...bugQueryParams.value }))
   } catch (error) {
     message.error(error.message)
   } finally {
@@ -1308,7 +1341,15 @@ const handleDeleteReport = async record => {
   }
 }
 
-watch(activeTab, renderGantt)
+watch(activeTab, tab => {
+  if (tab === 'tasks') activeRisk.value = ''
+  if (tab === 'bugs') resetBugFilters()
+  renderGantt()
+})
+watch([activeBugFilter, bugStatusFilter, bugAssigneeFilter], () => {
+  bugPagination.current = 1
+  fetchBugPage()
+})
 onBeforeUnmount(() => { ganttInstance = null })
 onMounted(async () => {
   await fetchReferenceData()
@@ -1379,6 +1420,14 @@ onMounted(async () => {
 .risk-high, .bug-severe { color: #d70015; background: linear-gradient(135deg, #fff 0%, #fff0f1 100%); }
 .risk-medium, .bug-submitted { color: #c93400; background: linear-gradient(135deg, #fff 0%, #fff5e8 100%); }
 .risk-normal, .bug-closed { color: #248a3d; background: linear-gradient(135deg, #fff 0%, #eefbf2 100%); }
+.risk-grid .semantic-card, .bug-summary .semantic-card { cursor: pointer; border: 2px solid transparent; font: inherit; }
+.risk-card--active { border-color: currentColor !important; box-shadow: 0 0 0 3px rgb(currentcolor / 15%), 0 4px 16px rgb(0 0 0 / 5%) !important; transform: translateY(-2px); }
+.risk-high.risk-card--active { box-shadow: 0 0 0 3px rgb(215 0 21 / 15%), 0 4px 16px rgb(0 0 0 / 5%) !important; }
+.risk-medium.risk-card--active { box-shadow: 0 0 0 3px rgb(201 52 0 / 15%), 0 4px 16px rgb(0 0 0 / 5%) !important; }
+.risk-due.risk-card--active { box-shadow: 0 0 0 3px rgb(0 102 204 / 15%), 0 4px 16px rgb(0 0 0 / 5%) !important; }
+.risk-normal.risk-card--active { box-shadow: 0 0 0 3px rgb(36 138 61 / 15%), 0 4px 16px rgb(0 0 0 / 5%) !important; }
+.section-heading .filter-hint { color: #1677ff; font-size: 13px; }
+.task-table-filters, .bug-table-filters { margin-left: auto; }
 .gantt-workspace { display: grid; min-height: 0; overflow: hidden; border: 1px solid #edf0f3; }
 .gantt-node-table { width: 100%; border-right: 1px solid #edf0f3; }
 .gantt-node-table :deep(.ant-table-container), .gantt-node-table :deep(.ant-table), .gantt-node-table :deep(.ant-table-content) { height: 100%; }

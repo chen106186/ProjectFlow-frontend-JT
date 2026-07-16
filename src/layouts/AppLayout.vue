@@ -567,18 +567,18 @@ const handleUserMenuClick = ({ key }) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 68px;
+  height: 52px;
   padding: 0 24px 0 20px;
   line-height: normal;
-  background: #001529;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 12%);
+  background: #ffffff8c;
+  //box-shadow: 0 2px 8px rgb(0 0 0 / 12%);
 }
 
 .app-brand {
   display: inline-flex;
   gap: 12px;
   align-items: center;
-  color: #fff;
+  color: #000;
   font-size: 20px;
   font-weight: 600;
 }
@@ -633,7 +633,7 @@ const handleUserMenuClick = ({ key }) => {
   height: calc(100vh - 68px);
   min-height: 0;
   overflow: hidden;
-  background: #f5f7fa;
+  background: radial-gradient(ellipse 800px 600px at 0% 0%, #0071e32e 0%, transparent 60%), radial-gradient(ellipse 700px 500px at 0% 100%, #34c75924 0%, transparent 60%), radial-gradient(ellipse 900px 700px at 100% 0%, #af52de24 0%, transparent 60%), radial-gradient(ellipse 700px 500px at 100% 100%, #ff9f0a1f 0%, transparent 60%), #f5f5f7;
 }
 
 .app-sider {

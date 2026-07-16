@@ -61,9 +61,6 @@
         </section>
 
         <section v-if="activeTab === 'tasks'" class="detail-panel">
-          <div class="section-heading risk-heading">
-            <a-button v-if="activeRisk" type="link" size="small" @click="activeRisk = ''">清除筛选</a-button>
-          </div>
           <div class="risk-grid">
             <button
               v-for="risk in computedRisks"
@@ -81,10 +78,11 @@
             </button>
           </div>
           <div class="section-heading">
-            <h4>
-              <small v-if="activeRisk || taskStatusFilter || taskPersonFilter" class="filter-hint">已筛选 {{ filteredTaskDisplayRows.length }} 条</small>
-            </h4>
-            <a-space>
+            <a-space v-if="hasTaskFilter">
+              <small class="filter-hint">已筛选 {{ filteredTaskDisplayRows.length }} 条</small>
+              <a-button type="link" size="small" @click="resetTaskFilters">清除筛选</a-button>
+            </a-space>
+            <a-space class="task-table-filters">
               <a-select v-model:value="taskStatusFilter" :options="TASK_STATUS_OPTIONS" style="min-width:7.5rem" />
               <a-select v-model:value="taskPersonFilter" :options="taskPersonOptions" style="min-width:7.5rem" />
             </a-space>
@@ -92,7 +90,7 @@
           <a-table row-key="id" class="project-task-table" :columns="taskColumns" :data-source="filteredTaskDisplayRows" :loading="taskLoading" :pagination="false" size="small" :scroll="{ x: 1390, y: 500 }">
             <template #bodyCell="{ column, record, text }">
               <a-button v-if="column.dataIndex === 'name'" type="link" @click="emit('view-task', record)">{{ text }}</a-button>
-              <a-tag v-else-if="column.dataIndex === 'priority'" color="red">{{ text }}</a-tag>
+              <a-tag v-else-if="column.dataIndex === 'priority'" :color="priorityColorMap[record.priorityCode] || 'default'">{{ text }}</a-tag>
               <a-tag v-else-if="column.dataIndex === 'riskLevel'" :color="riskColorMap[text] || 'default'">{{ text }}</a-tag>
             </template>
           </a-table>
@@ -100,21 +98,23 @@
         </section>
 
         <section v-if="activeTab === 'bugs'" class="detail-panel">
-          <h3>Bug 总览</h3>
           <div class="bug-summary">
-            <div v-for="item in bugSummary" :key="item.label" class="semantic-card" :class="item.class">
+            <button v-for="item in bugSummary" :key="item.key" type="button" :class="['semantic-card', item.class, { 'risk-card--active': activeBugFilter === item.key }]" @click="handleBugCardFilter(item.key)">
               <span class="semantic-card__icon"><component :is="item.icon" /></span>
               <span class="semantic-card__content">
                 <span>{{ item.label }}</span>
                 <strong>{{ item.value }} 个</strong>
               </span>
-            </div>
+            </button>
           </div>
           <div class="section-heading">
-            <h3>Bug 列表</h3>
-            <a-space>
-              <a-select value="全部状态" :options="bugStatusFilters" />
-              <a-select value="全部指定人" :options="personFilterOptions" />
+            <a-space v-if="hasBugFilter">
+              <small class="filter-hint">已筛选 {{ bugPagination.total }} 条</small>
+              <a-button type="link" size="small" @click="resetBugFilters">清除筛选</a-button>
+            </a-space>
+            <a-space class="bug-table-filters">
+              <a-select v-model:value="bugStatusFilter" :options="bugStatusFilters" />
+              <a-select v-model:value="bugAssigneeFilter" :options="bugAssigneeOptions" />
             </a-space>
           </div>
           <a-table row-key="id" class="project-bug-table" :columns="bugColumns" :data-source="bugRows" :loading="bugLoading" :pagination="false" size="small" :scroll="{ x: 840, y: 500 }">
@@ -245,6 +245,7 @@ const props = defineProps({
   bugLoading: { type: Boolean, default: false },
   bugPagination: { type: Object, required: true },
   bugStatusFilters: { type: Array, required: true },
+  bugAssigneeOptions: { type: Array, required: true },
   reportRows: { type: Array, required: true },
   reportColumns: { type: Array, required: true },
   reportLoading: { type: Boolean, default: false },
@@ -263,6 +264,7 @@ const emit = defineEmits([
   'update:activeTab',
   'task-page-change',
   'bug-page-change',
+  'bug-filter-change',
   'view-task',
   'view-bug',
   'report-page-change',
@@ -288,6 +290,9 @@ const documentSearch = ref('')
 const activeRisk = ref('')
 const taskStatusFilter = ref('')
 const taskPersonFilter = ref('')
+const activeBugFilter = ref('')
+const bugStatusFilter = ref('')
+const bugAssigneeFilter = ref('')
 const documentPagination = reactive({ current: 1, pageSize: 10 })
 const paginationOptions = {
   pageSizeOptions: ['10', '50', '100'],
@@ -300,10 +305,12 @@ const handleDocumentPageChange = (page, pageSize) => {
 
 // reset local filters when switching to tasks tab
 watch(() => props.activeTab, tab => {
-  if (tab !== 'tasks') return
-  activeRisk.value = ''
-  taskStatusFilter.value = ''
-  taskPersonFilter.value = ''
+  if (tab === 'tasks') {
+    activeRisk.value = ''
+    taskStatusFilter.value = ''
+    taskPersonFilter.value = ''
+  }
+  if (tab === 'bugs') resetBugFilters()
 })
 
 const TASK_STATUS_OPTIONS = [
@@ -316,6 +323,7 @@ const TASK_STATUS_OPTIONS = [
   { label: '已暂停', value: 'PAUSED' },
 ]
 const riskColorMap = { 高风险: 'red', 中风险: 'orange', 低风险: 'green' }
+const priorityColorMap = { URGENT: 'red', HIGH: 'orange', MEDIUM: 'blue', LOW: 'default' }
 
 const taskPersonOptions = computed(() => {
   const seen = new Set()
@@ -355,6 +363,27 @@ const filteredTaskDisplayRows = computed(() =>
     return true
   })
 )
+const hasTaskFilter = computed(() => Boolean(activeRisk.value || taskStatusFilter.value || taskPersonFilter.value))
+const resetTaskFilters = () => {
+  activeRisk.value = ''
+  taskStatusFilter.value = ''
+  taskPersonFilter.value = ''
+}
+const bugCardFilters = { urgent: { priority: 'URGENT' }, pending: { status: 'PENDING_FIX' }, fixing: { status: 'FIXING' }, closed: { status: 'CLOSED' } }
+const bugFilterParams = computed(() => ({
+  ...(bugCardFilters[activeBugFilter.value] || {}),
+  ...(bugStatusFilter.value ? { status: bugStatusFilter.value } : {}),
+  ...(bugAssigneeFilter.value ? { assigneeId: bugAssigneeFilter.value } : {}),
+}))
+const hasBugFilter = computed(() => Boolean(activeBugFilter.value || bugStatusFilter.value || bugAssigneeFilter.value))
+const handleBugCardFilter = key => {
+  activeBugFilter.value = activeBugFilter.value === key ? '' : key
+}
+const resetBugFilters = () => {
+  activeBugFilter.value = ''
+  bugStatusFilter.value = ''
+  bugAssigneeFilter.value = ''
+}
 
 const canBatchDownload = computed(() => props.selectedDocumentIds.length > 0)
 const filteredDocsBySearch = computed(() => {
@@ -410,6 +439,9 @@ const filteredReportRows = computed(() =>
 watch([activeRisk, taskStatusFilter, taskPersonFilter], () => {
   emit('task-page-change', 1, props.taskPagination.pageSize)
 })
+watch([activeBugFilter, bugStatusFilter, bugAssigneeFilter], () => {
+  emit('bug-filter-change', bugFilterParams.value)
+})
 watch(reportFilter, () => {
   emit('report-filter-change', {
     keyword: reportFilter.keyword.trim(),
@@ -435,7 +467,7 @@ defineExpose({
 
 <style scoped>
 .project-detail-tabs {
-  min-height: 560px;
+  min-height: 520px;
   overflow: visible;
   background: #fff;
 }
@@ -784,9 +816,11 @@ defineExpose({
   margin-bottom: 12px;
 }
 
-.risk-grid .semantic-card {
+.risk-grid .semantic-card,
+.bug-summary .semantic-card {
   cursor: pointer;
   border: 2px solid transparent;
+  font: inherit;
 }
 
 .risk-card--active {
@@ -800,12 +834,14 @@ defineExpose({
 .risk-due.risk-card--active { box-shadow: 0 0 0 3px rgb(0 102 204 / 15%), 0 4px 16px rgb(0 0 0 / 5%) !important; }
 .risk-normal.risk-card--active { box-shadow: 0 0 0 3px rgb(36 138 61 / 15%), 0 4px 16px rgb(0 0 0 / 5%) !important; }
 
-.filter-hint {
+.section-heading .filter-hint {
   margin-left: 8px;
   color: #1677ff;
   font-size: 13px;
   font-weight: 400;
 }
+.task-table-filters,
+.bug-table-filters { margin-left: auto; }
 
 .section-heading,
 .document-toolbar {
