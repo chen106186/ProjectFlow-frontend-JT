@@ -20,6 +20,12 @@
         <a-form-item label="合同状态"><a-select v-model:value="formState.contractStatus" :options="contractOptions" /></a-form-item>
         <a-form-item label="计划开始时间"><a-date-picker v-model:value="formState.plannedStartDate" value-format="YYYY-MM-DD" placeholder="请选择计划开始时间" /></a-form-item>
         <a-form-item label="计划结束时间"><a-date-picker v-model:value="formState.plannedEndDate" value-format="YYYY-MM-DD" placeholder="请选择计划结束时间" /></a-form-item>
+        <a-form-item v-if="isEdit" label="实际开始时间"><a-date-picker v-model:value="formState.actualStartDate" value-format="YYYY-MM-DD" placeholder="请选择实际开始时间" /></a-form-item>
+        <a-form-item v-if="isEdit" label="实际结束时间">
+          <a-date-picker v-model:value="formState.actualEndDate" value-format="YYYY-MM-DD" placeholder="请选择实际结束时间"
+            :class="{ 'date-overdue': isOverdueCompleted }" />
+          <span v-if="isOverdueCompleted" class="overdue-hint">实际完成时间超出计划，状态将标记为逾期完成</span>
+        </a-form-item>
         <a-form-item v-if="isEdit" label="项目状态"><a-select v-model:value="formState.status" :options="editableProjectStatusOptions" /></a-form-item>
         <a-form-item label="回款金额"><a-input-number v-model:value="formState.amount" :min="0" :precision="2" addon-after="万元" /></a-form-item>
         <a-form-item label="项目描述" name="description"><a-textarea v-model:value="formState.description" :rows="5" placeholder="请输入项目描述" /></a-form-item>
@@ -91,7 +97,7 @@ const projectNodeMap = {
 }
 
 const getProjectNodeCodes = type => (projectNodeMap[type] || []).map(item => item.value)
-const createDefaultForm = () => ({ name: '', managerId: undefined, department: '', contractor: '', supervisor: '', type: 'DIGITALIZATION', nodes: getProjectNodeCodes('DIGITALIZATION'), stage: 'BUSINESS_OPPORTUNITY', status: 'NOT_STARTED', contractStatus: 'NOT_SIGNED', plannedStartDate: undefined, plannedEndDate: undefined, amount: 0, description: '' })
+const createDefaultForm = () => ({ name: '', managerId: undefined, department: '', contractor: '', supervisor: '', type: 'DIGITALIZATION', nodes: getProjectNodeCodes('DIGITALIZATION'), stage: 'BUSINESS_OPPORTUNITY', status: 'NOT_STARTED', contractStatus: 'NOT_SIGNED', plannedStartDate: undefined, plannedEndDate: undefined, actualStartDate: undefined, actualEndDate: undefined, amount: 0, description: '' })
 const formState = reactive(createDefaultForm())
 const formRules = { name: [{ required: true, message: '请输入项目名称', trigger: 'blur' }], managerId: [{ required: true, message: '请选择项目经理', trigger: 'change' }], type: [{ required: true, message: '请选择项目类型', trigger: 'change' }], description: [{ required: true, message: '请输入项目描述', trigger: 'blur' }] }
 const allNodeOptions = computed(() => Object.values(projectNodeMap).flat())
@@ -101,12 +107,15 @@ const displayNodeOptions = computed(() => {
   const codes = isEdit.value ? formState.nodes : getProjectNodeCodes(formState.type)
   return codes.map(code => ({ label: getProjectNodeName(code), value: code }))
 })
+const isOverdueCompleted = computed(() => {
+  if (!formState.actualEndDate || !formState.plannedEndDate) return false
+  return formState.actualEndDate > formState.plannedEndDate
+})
+
 const editableProjectStatusOptions = computed(() => {
-  const statusMap = new Map([
-    ...dictStore.getDictItems('taskStatus'),
-    ...projectStatusOptions.value,
-  ].map(item => [item.value, item.label]))
-  return ['NOT_STARTED', 'IN_PROGRESS', 'DUE_SOON', 'OVERDUE', 'COMPLETED', 'PAUSED'].map(value => ({
+  const allItems = [...dictStore.getDictItems('taskStatus'), ...projectStatusOptions.value]
+  const statusMap = new Map(allItems.map(item => [item.value, item.label]))
+  return ['NOT_STARTED', 'IN_PROGRESS', 'DUE_SOON', 'OVERDUE', 'COMPLETED', 'OVERDUE_COMPLETED', 'PAUSED'].map(value => ({
     label: statusMap.get(value) || value,
     value,
     disabled: value !== 'PAUSED',
@@ -145,6 +154,8 @@ const loadProject = async () => {
     contractStatus: project.contractStatusCode || project.contractStatus || 'NOT_SIGNED',
     plannedStartDate: project.plannedStartDate || undefined,
     plannedEndDate: project.plannedEndDate || undefined,
+    actualStartDate: project.actualStartDate || undefined,
+    actualEndDate: project.actualEndDate || undefined,
     amount: project.amount ?? project.receivableAmount ?? 0,
     description: project.description || '',
   })
@@ -186,6 +197,8 @@ const handleSubmit = async () => {
       contractStatus: formState.contractStatus,
       plannedStartDate: formState.plannedStartDate || null,
       plannedEndDate: formState.plannedEndDate || null,
+      actualStartDate: formState.actualStartDate || null,
+      actualEndDate: formState.actualEndDate || null,
       managerId: formState.managerId,
       businessDepartment: formState.department,
       contractorUnit: formState.contractor,
@@ -233,4 +246,6 @@ const handleSubmit = async () => {
 .project-node-list :deep(.ant-tag) { padding: 3px 10px; margin-inline-end: 0; color: #262626; background: #f5f5f5; border-color: #d9d9d9; }
 .form-actions { display: flex; justify-content: flex-end; gap: 20px; }
 .form-actions .ant-btn { width: 120px; }
+.date-overdue :deep(.ant-picker-input input) { color: #f5222d; }
+.overdue-hint { margin-left: 8px; color: #f5222d; font-size: 12px; }
 </style>
