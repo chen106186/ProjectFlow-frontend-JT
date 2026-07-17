@@ -55,11 +55,8 @@
           :scroll="{ x: 1440 }"
           size="middle"
         >
-          <template #bodyCell="{ column, record, text, index }">
-            <template v-if="column.dataIndex === 'rowIndex'">
-              {{ (pagination.current - 1) * pagination.pageSize + index + 1 }}
-            </template>
-            <template v-else-if="column.dataIndex === 'requirementNo'">
+          <template #bodyCell="{ column, record, text }">
+            <template v-if="column.dataIndex === 'requirementNo'">
               <span class="req-no">{{ formatNo(record) }}</span>
             </template>
             <template v-else-if="column.dataIndex === 'title'">
@@ -131,9 +128,8 @@
               :show-header="groupIndex === 0"
               size="middle"
             >
-              <template #bodyCell="{ column, record, text, index }">
-                <template v-if="column.dataIndex === 'rowIndex'">{{ index + 1 }}</template>
-                <template v-else-if="column.dataIndex === 'requirementNo'">
+              <template #bodyCell="{ column, record, text }">
+                <template v-if="column.dataIndex === 'requirementNo'">
                   <span class="req-no">{{ formatNo(record) }}</span>
                 </template>
                 <template v-else-if="column.dataIndex === 'title'">
@@ -354,7 +350,6 @@ const formatNo = record => {
 }
 
 const columns = [
-  { title: '序号', dataIndex: 'rowIndex', width: 60 },
   { title: '需求编号', dataIndex: 'requirementNo', width: 150 },
   { title: '需求标题', dataIndex: 'title', minWidth: 220 },
   { title: '所属项目', dataIndex: 'projectId', width: 180 },
@@ -368,7 +363,7 @@ const columns = [
     width: 170,
     customRender: ({ text }) => formatDateTime(text),
   },
-  { title: '操作', dataIndex: 'ops', width: 170, fixed: 'right' },
+  { title: '操作', dataIndex: 'ops', width: 220, fixed: 'right' },
 ]
 
 const fetchData = async () => {
@@ -605,7 +600,7 @@ onMounted(initPage)
 
 .filter-actions { justify-self: end; }
 
-.req-no { color: #8c8c8c; font-size: 13px; }
+.req-no { font-family: 'Segoe UI', 'PingFang SC', sans-serif; }
 .req-title-link { padding: 0; }
 .status-tip { margin-left: 8px; color: #8c8c8c; font-size: 12px; }
 
