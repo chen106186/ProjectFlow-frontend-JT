@@ -1052,28 +1052,25 @@ function disposeStatisticsCharts() {
   statusChart = undefined
 }
 
-function createDonutOption(data, colors) {
+function createDonutOption(data, colors, centerText) {
   return {
-  color: colors,
-  tooltip: { show: false },
-  series: [
-    {
+    color: colors,
+    tooltip: { show: false },
+    graphic: centerText != null ? [{
+      type: 'text',
+      left: 'center',
+      top: 'middle',
+      style: { text: centerText, textAlign: 'center', fill: '#111827', fontSize: 28, fontWeight: 700 },
+    }] : [],
+    series: [{
       type: 'pie',
       radius: ['68%', '82%'],
       center: ['50%', '50%'],
       avoidLabelOverlap: true,
-      label: {
-        show: true,
-        position: 'center',
-        formatter: '{d}%',
-        color: '#111827',
-        fontSize: 28,
-        fontWeight: 700,
-      },
+      label: { show: false },
       labelLine: { show: false },
       data,
-    },
-  ],
+    }],
   }
 }
 
@@ -1152,9 +1149,11 @@ function renderStatisticsCharts() {
     name,
     itemStyle: { color: CHART_COLORS[i % CHART_COLORS.length] },
   }))
+  const projectTotal = projectData.reduce((s, d) => s + d.value, 0)
   projectChart.setOption(createDonutOption(
-    projectData.length ? projectData : [{ value: 1, name: '暂无数据', itemStyle: { color: '#c8cfd9' } }],
+    projectData.length ? projectData : [{ value: 1, name: '暂无数据', itemStyle: { color: '#e8e8e8' } }],
     CHART_COLORS,
+    projectData.length ? `${projectTotal} 个` : '0%',
   ))
 
   // 任务状态分布
@@ -1164,9 +1163,11 @@ function renderStatisticsCharts() {
     name: STATUS_LABEL_MAP[code] || code,
     itemStyle: { color: STATUS_COLOR_MAP[code] || '#c8cfd9' },
   }))
+  const statusTotal = statusData.reduce((s, d) => s + d.value, 0)
   statusChart.setOption(createDonutOption(
-    statusData.length ? statusData : [{ value: 1, name: '暂无数据', itemStyle: { color: '#c8cfd9' } }],
+    statusData.length ? statusData : [{ value: 1, name: '暂无数据', itemStyle: { color: '#e8e8e8' } }],
     Object.values(STATUS_COLOR_MAP),
+    statusData.length ? `${statusTotal} 个` : '0%',
   ))
 }
 

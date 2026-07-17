@@ -115,17 +115,35 @@ service.interceptors.response.use(
     return payload
   },
   error => {
-    if (error.response?.status === 401 && shouldHandleUnauthorizedAsExpired(error.config)) {
+    const status = error.response?.status
+    const data = error.response?.data
+
+    if (status === 401 && shouldHandleUnauthorizedAsExpired(error.config)) {
       removeToken()
       message.error('登录已过期，请重新登录')
       router.replace('/login')
+      return Promise.reject(new Error('登录已过期，请重新登录'))
     }
 
-    const errorMessage =
-      error.response?.data?.message ||
-      error.response?.data?.msg ||
-      error.message ||
-      '网络异常，请稍后重试'
+    const backendMessage =
+      (typeof data?.message === 'string' && data.message.trim()) ||
+      (typeof data?.msg === 'string' && data.msg.trim()) ||
+      null
+
+    let errorMessage
+    if (backendMessage) {
+      errorMessage = backendMessage
+    } else if (status === 500) {
+      errorMessage = '服务器内部错误，请稍后重试'
+    } else if (status === 403) {
+      errorMessage = '没有操作权限'
+    } else if (status === 404) {
+      errorMessage = '请求的资源不存在'
+    } else if (!error.response) {
+      errorMessage = '网络异常，请检查网络连接'
+    } else {
+      errorMessage = '请求失败，请稍后重试'
+    }
 
     return Promise.reject(new Error(errorMessage))
   }

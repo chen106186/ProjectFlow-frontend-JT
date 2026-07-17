@@ -310,15 +310,21 @@ const initCharts = () => {
   if (statusChartRef.value && !statusChart) statusChart = echarts.init(statusChartRef.value)
 }
 
-const createDonutOption = (data, colors) => ({
+const createDonutOption = (data, colors, centerText) => ({
   color: colors,
   tooltip: { show: false },
+  graphic: centerText != null ? [{
+    type: 'text',
+    left: 'center',
+    top: 'middle',
+    style: { text: centerText, textAlign: 'center', fill: '#111827', fontSize: 22, fontWeight: 700 },
+  }] : [],
   series: [{
     type: 'pie',
     radius: ['68%', '82%'],
     center: ['50%', '50%'],
     avoidLabelOverlap: true,
-    label: { show: true, position: 'center', formatter: '{d}%', color: '#111827', fontSize: 22, fontWeight: 700 },
+    label: { show: false },
     labelLine: { show: false },
     data,
   }],
@@ -344,18 +350,22 @@ const renderDistCharts = () => {
   const projectData = Object.entries(projectDist).map(([name, value], i) => ({
     value, name, itemStyle: { color: CHART_COLORS[i % CHART_COLORS.length] },
   }))
+  const projectTotal = projectData.reduce((s, d) => s + d.value, 0)
   projectChart.setOption(createDonutOption(
-    projectData.length ? projectData : [{ value: 1, name: '暂无数据', itemStyle: { color: '#c8cfd9' } }],
+    projectData.length ? projectData : [{ value: 1, name: '暂无数据', itemStyle: { color: '#e8e8e8' } }],
     CHART_COLORS,
+    projectData.length ? `${projectTotal} 个` : '0%',
   ), true)
 
   const statusDist = myStats.taskStatusDistribution || {}
   const statusData = Object.entries(statusDist).map(([code, value]) => ({
     value, name: STATUS_LABEL_MAP[code] || code, itemStyle: { color: STATUS_COLOR_MAP[code] || '#c8cfd9' },
   }))
+  const statusTotal = statusData.reduce((s, d) => s + d.value, 0)
   statusChart.setOption(createDonutOption(
-    statusData.length ? statusData : [{ value: 1, name: '暂无数据', itemStyle: { color: '#c8cfd9' } }],
+    statusData.length ? statusData : [{ value: 1, name: '暂无数据', itemStyle: { color: '#e8e8e8' } }],
     Object.values(STATUS_COLOR_MAP),
+    statusData.length ? `${statusTotal} 个` : '0%',
   ), true)
 }
 
