@@ -274,6 +274,7 @@
           <div v-if="selectedBug && !isClosedBug(selectedBug)" class="detail-floating-actions">
             <a-button type="primary" @click="handleEditFromDetail">编辑 Bug</a-button>
             <a-button @click="assignVisible = true">重新指派</a-button>
+            <a-button type="primary" class="resolve-button" @click="openResolveModal">解决</a-button>
             <a-button danger :loading="closeLoading" @click="handleCloseBug">关闭 Bug</a-button>
           </div>
         </a-spin>
@@ -285,6 +286,29 @@
         <a-form-item label="指派给"><a-select v-model:value="assignState.assigneeId" :options="userOptions" placeholder="请选择负责人" show-search option-filter-prop="label" /></a-form-item>
         <a-form-item label="备注"><a-textarea v-model:value="assignState.reason" :rows="5" placeholder="请输入备注" /></a-form-item>
       </a-form>
+    </a-modal>
+    <a-modal v-model:open="resolveVisible" title="解决Bug" :width="760" :footer="null" destroy-on-close @after-close="resetResolveForm">
+      <a-form ref="resolveFormRef" :model="resolveForm" :rules="resolveRules" :label-col="{ span: 4 }" :wrapper-col="{ span: 20 }" class="resolve-form">
+        <a-form-item label="解决方案" name="solution">
+          <a-select v-model:value="resolveForm.solution" :options="resolveSolutionOptions" placeholder="请选择解决方案" />
+        </a-form-item>
+        <a-form-item label="解决日期" name="resolvedDate">
+          <a-date-picker v-model:value="resolveForm.resolvedDate" value-format="YYYY-MM-DD" style="width:100%" />
+        </a-form-item>
+        <a-form-item label="指派给">
+          <a-select v-model:value="resolveForm.assigneeId" :options="userOptions" placeholder="选择指派人（可选）" allow-clear show-search option-filter-prop="label" />
+        </a-form-item>
+        <a-form-item label="备注">
+          <div class="resolve-rich-editor">
+            <Toolbar v-if="resolveEditorRef" :editor="resolveEditorRef" :default-config="toolbarConfig" mode="default" />
+            <Editor :key="resolveEditorKey" v-model="resolveForm.remark" :default-config="resolveEditorConfig" mode="default" @on-created="handleResolveEditorCreated" />
+          </div>
+        </a-form-item>
+      </a-form>
+      <div class="resolve-actions">
+        <a-button type="primary" @click="handleResolveConfirm">确定</a-button>
+        <a-button @click="resolveVisible = false">取消</a-button>
+      </div>
     </a-modal>
     <a-image
       v-if="previewImage"
@@ -301,6 +325,7 @@
 <script setup>
 import { ArrowLeftOutlined, CheckOutlined, CloseOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
+import dayjs from 'dayjs'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
 import '@wangeditor/editor/dist/css/style.css'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, shallowRef, watch } from 'vue'
@@ -637,6 +662,44 @@ const loadRelatedTasks = async projectId => {
   }
 }
 
+const resolveVisible = ref(false)
+const resolveFormRef = ref()
+const resolveEditorRef = shallowRef()
+const resolveEditorKey = ref(0)
+const createDefaultResolveForm = () => ({ solution: undefined, resolvedDate: dayjs().format('YYYY-MM-DD'), assigneeId: undefined, remark: '' })
+const resolveForm = reactive(createDefaultResolveForm())
+const resolveRules = {
+  solution: [{ required: true, message: '请选择解决方案', trigger: 'change' }],
+  resolvedDate: [{ required: true, message: '请选择解决日期', trigger: 'change' }],
+}
+const resolveSolutionOptions = [
+  { label: '已解决', value: 'RESOLVED' },
+  { label: '设计如此', value: 'BY_DESIGN' },
+  { label: '重复bug', value: 'DUPLICATE' },
+  { label: '外部原因', value: 'EXTERNAL_CAUSE' },
+  { label: '代码bug', value: 'CODE_BUG' },
+  { label: '无法重现', value: 'CANNOT_REPRODUCE' },
+  { label: '延期处理', value: 'DEFERRED' },
+  { label: '不予解决', value: 'WONT_FIX' },
+]
+const resolveEditorConfig = { placeholder: '请输入备注信息...', scroll: true, ...richTextImageUploadConf }
+
+const handleResolveEditorCreated = editor => { resolveEditorRef.value = editor }
+const resetResolveForm = () => {
+  Object.assign(resolveForm, createDefaultResolveForm())
+  resolveEditorRef.value = undefined
+  resolveEditorKey.value += 1
+}
+const openResolveModal = () => {
+  resetResolveForm()
+  resolveVisible.value = true
+}
+const handleResolveConfirm = async () => {
+  await resolveFormRef.value?.validate()
+  resolveVisible.value = false
+  message.success('解决信息已填写，待接口对接后提交')
+}
+
 const handleProjectChange = projectId => {
   formState.taskId = undefined
   loadRelatedTasks(projectId)
@@ -747,6 +810,7 @@ watch(() => [route.name, route.params.id], syncRouteState, { immediate: true })
 onBeforeUnmount(() => {
   editorRef.value?.destroy()
   commentEditorRef.value?.destroy()
+  resolveEditorRef.value?.destroy()
   clearRichImageObjectUrls()
 })
 
@@ -1033,6 +1097,15 @@ onMounted(async () => {
 
 .send-row { display: flex; justify-content: flex-end; margin-top: 10px; }
 
+.resolve-form { margin-top: 12px; }
+.resolve-form :deep(.ant-form-item) { margin-bottom: 20px; }
+.resolve-rich-editor { overflow: hidden; background: #fff; border: 1px solid #d9d9d9; border-radius: 4px; }
+.resolve-rich-editor :deep(.w-e-toolbar) { border-bottom: 1px solid #d9d9d9; }
+.resolve-rich-editor :deep(.w-e-text-container) { min-height: 220px; }
+.resolve-rich-editor :deep(.w-e-text-container img) { max-width: 100%; height: auto; }
+.resolve-actions { display: flex; justify-content: center; gap: 16px; margin-top: 28px; }
+.resolve-actions :deep(.ant-btn) { min-width: 72px; }
+
 .detail-floating-actions {
   position: fixed;
   bottom: 20px;
@@ -1056,6 +1129,8 @@ onMounted(async () => {
   font-weight: 600;
   border-radius: 3px;
 }
+.detail-floating-actions .resolve-button { background: #52c41a; border-color: #52c41a; }
+.detail-floating-actions .resolve-button:hover { background: #73d13d; border-color: #73d13d; }
 
 .closed-tip { text-align: center; }
 .closed-tip p { margin: 10px 0 0; color: #8c8c8c; font-size: 13px; }
