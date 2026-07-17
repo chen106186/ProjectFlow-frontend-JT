@@ -62,7 +62,7 @@
                 <a-space>
                   <a-button type="link" size="small" @click="handleDetail(record)">详情</a-button>
                   <a-button v-if="!isClosedBug(record)" type="link" size="small" @click="handleEdit(record)">编辑</a-button>
-                  <a-button v-if="!isClosedBug(record)" type="link" size="small" danger @click="handleDeleteBug(record)">删除</a-button>
+                  <a-button v-if="!isClosedBug(record)" type="link" size="small" danger @click="handleCloseBugFromList(record)">关闭</a-button>
                 </a-space>
               </template>
             </template>
@@ -100,7 +100,7 @@
                     <a-space>
                       <a-button type="link" size="small" @click="handleDetail(record)">详情</a-button>
                       <a-button v-if="!isClosedBug(record)" type="link" size="small" @click="handleEdit(record)">编辑</a-button>
-                      <a-button v-if="!isClosedBug(record)" type="link" size="small" danger @click="handleDeleteBug(record)">删除</a-button>
+                      <a-button v-if="!isClosedBug(record)" type="link" size="small" danger @click="handleCloseBugFromList(record)">关闭</a-button>
                     </a-space>
                   </template>
                 </template>
@@ -333,7 +333,7 @@ import '@wangeditor/editor/dist/css/style.css'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  getProjectBugs, getBugById, createBug, updateBug, deleteBug, closeBug, assignBug,
+  getProjectBugs, getBugById, createBug, updateBug, closeBug, assignBug,
   addBugComment, listBugComments, getProjectList, getProjectTasks, getSystemUsers, resolveBug,
 } from '@/api/managementProject'
 import { formatDateTime } from '@/utils/dateTime'
@@ -762,13 +762,14 @@ const handleDetail = record => router.push({ name: 'BugDetail', params: { id: re
 const handleEditFromDetail = () => router.push({ name: 'BugEdit', params: { id: selectedBug.value.id } })
 const handleBack = () => router.push({ name: 'BugList' })
 
-const handleDeleteBug = async record => {
+const handleCloseBugFromList = async record => {
   try {
-    await deleteBug(record.id)
-    message.success('删除成功')
+    const closed = await closeBug(record.id)
+    Object.assign(record, closed || {}, { status: 'CLOSED' })
+    message.success('Bug已关闭')
     loadBugs()
   } catch (e) {
-    message.error(e.message || '删除失败')
+    message.error(e.message || '关闭失败')
   }
 }
 

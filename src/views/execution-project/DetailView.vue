@@ -185,7 +185,11 @@
                 <a-button type="link" size="small" @click="handleDownloadDocument(record)">下载</a-button>
                 <a-popconfirm title="确定删除该文件吗？" @confirm="handleDeleteDocument(record)"><a-button type="link" size="small" danger>删除</a-button></a-popconfirm>
               </a-space>
-              <span v-else class="document-row-muted">-</span>
+              <a-space v-else>
+                <a-popconfirm title="确定删除该文件夹吗？文件夹内的文件将移至根目录。" @confirm="handleDeleteFolder(record)">
+                  <a-button type="link" size="small" danger>删除</a-button>
+                </a-popconfirm>
+              </a-space>
             </template>
           </template>
         </a-table>
@@ -393,6 +397,7 @@ import {
   updateProjectReport,
   updateGanttNode,
   uploadProjectFile,
+  deleteProjectFolder,
 } from '@/api/managementProject'
 import { formatDateTime } from '@/utils/dateTime'
 import { OPERATION_ACTIONS, OPERATION_MODULES, recordOperationLog } from '@/utils/operationLog'
@@ -522,10 +527,14 @@ const ganttFormRules = {
 }
 
 const taskRiskKey = task => {
-  if (task.statusCode === 'DUE_SOON') return 'due'
-  if (task.statusCode !== 'OVERDUE') return 'normal'
-  const days = task.planEnd && task.planEnd !== '-' ? dayjs().diff(dayjs(task.planEnd), 'day') : 0
-  return days >= 3 ? 'high' : 'medium'
+  if (['COMPLETED', 'PAUSED'].includes(task.statusCode)) return 'normal'
+  const endDate = task.plannedEndDate || task.planEnd
+  if (!endDate || endDate === '-') return 'normal'
+  const today = dayjs().startOf('day')
+  const planEnd = dayjs(endDate).startOf('day')
+  const overdueDays = today.diff(planEnd, 'day')
+  if (overdueDays > 0) return overdueDays >= 3 ? 'high' : 'medium'
+  return planEnd.diff(today, 'day') <= 3 ? 'due' : 'normal'
 }
 const activeRisk = ref('')
 const activeBugFilter = ref('')
@@ -639,18 +648,18 @@ watch(reportFilter, async () => {
   await fetchReportPage()
 })
 const documentCategoryMeta = computed(() => {
-  const fallback = [
-    { label: '合同类', value: 'CONTRACT' },
-    { label: '需求类', value: 'REQUIREMENT' },
-    { label: '设计类', value: 'DESIGN' },
-    { label: '开发类', value: 'DEVELOPMENT' },
-    { label: '验收类', value: 'ACCEPTANCE' },
-  ]
-  return fileCategoryOptions.value.length ? fileCategoryOptions.value : fallback
+  return fileCategoryOptions.value.length ? fileCategoryOptions.value : defaultFileCategories
 })
+const defaultFileCategories = [
+  { label: '合同类', value: 'CONTRACT' },
+  { label: '需求类', value: 'REQUIREMENT' },
+  { label: '设计类', value: 'DESIGN' },
+  { label: '开发类', value: 'DEVELOPMENT' },
+  { label: '验收类', value: 'ACCEPTANCE' },
+]
 const documentCategories = computed(() => {
   const files = documentDisplayRows.value
-  return [{ label: '全部', value: '全部', count: files.length, class: 'category-all', icon: FolderOpenOutlined }, ...documentCategoryMeta.value.map((item, index) => ({ label: item.label, value: item.value, count: files.filter(file => file.categoryCode === item.value || file.category === item.label).length, class: ['category-contract', 'category-requirement', 'category-design', 'category-development', 'category-acceptance'][index], icon: [FileProtectOutlined, FileTextOutlined, SnippetsOutlined, CodeOutlined, FileDoneOutlined][index] }))].map(item => ({ ...item, active: item.value === selectedDocumentCategory.value }))
+  return [{ label: '全部', value: '全部', count: files.length, class: 'category-all', icon: FolderOpenOutlined }, ...documentCategoryMeta.value.map((item, index) => ({ label: item.label, value: item.value, count: files.filter(file => file.categoryCode === item.value).length, class: ['category-contract', 'category-requirement', 'category-design', 'category-development', 'category-acceptance'][index], icon: [FileProtectOutlined, FileTextOutlined, SnippetsOutlined, CodeOutlined, FileDoneOutlined][index] }))].map(item => ({ ...item, active: item.value === selectedDocumentCategory.value }))
 })
 const documentColumns = [{ title: '文件名', dataIndex: 'name' }, { title: '类型', dataIndex: 'type', width: 90 }, { title: '大小', dataIndex: 'size', width: 90 }, { title: '版本', dataIndex: 'version', width: 80 }, { title: '上传人', dataIndex: 'uploader', width: 80 }, { title: '分类', dataIndex: 'category', width: 90 }, { title: '上传时间', dataIndex: 'uploadTime', width: 170 }, { title: '操作', dataIndex: 'operation', width: 120 }]
 const documentPagination = createTablePagination()
@@ -670,7 +679,7 @@ const folderDisplayRows = computed(() => folderRows.value.map(folder => ({
   isFolder: true,
   expanded: isFolderExpanded(folder.id),
 })))
-const matchesDocumentCategory = file => selectedDocumentCategory.value === '全部' || file.categoryCode === selectedDocumentCategory.value || file.category === selectedDocumentCategory.value
+const matchesDocumentCategory = file => selectedDocumentCategory.value === '全部' || file.categoryCode === selectedDocumentCategory.value
 const documentDisplayRows = computed(() => documentRows.value.map(file => ({ ...file, isFolder: false, parentFolderId: file.folderId || null })))
 const rootDocumentRows = computed(() => documentDisplayRows.value.filter(file => !file.parentFolderId && matchesDocumentCategory(file)))
 const filesByFolderId = computed(() => {
@@ -782,7 +791,8 @@ const summaryRows = computed(() => {
 const getDictLabel = (type, value) => dictLabels[type]?.[value] || value || '-'
 const getUserName = id => managerOptions.value.find(item => item.value === id)?.label || (id ? `用户 ${id}` : '-')
 const resolveFileCategory = value => {
-  const matched = fileCategoryOptions.value.find(item => item.value === value || item.label === value)
+  const options = [...defaultFileCategories, ...fileCategoryOptions.value]
+  const matched = options.find(item => item.value === value || item.label === value)
   return { value: matched?.value || value || '-', label: matched?.label || value || '-' }
 }
 
@@ -863,13 +873,15 @@ const fetchReferenceData = async () => {
 }
 
 const getTaskRiskLevel = task => {
-  if (task.status === 'OVERDUE') {
-    const overdueDays = task.plannedEndDate ? dayjs().diff(dayjs(task.plannedEndDate), 'day') : 0
-    return overdueDays >= 3 ? '高风险' : '中风险'
-  }
-  return task.status === 'DUE_SOON' ? '中风险' : '低风险'
+  if (['COMPLETED', 'PAUSED'].includes(task.status)) return '按计划进行'
+  if (!task.plannedEndDate) return '按计划进行'
+  const today = dayjs().startOf('day')
+  const planEnd = dayjs(task.plannedEndDate).startOf('day')
+  const overdueDays = today.diff(planEnd, 'day')
+  if (overdueDays > 0) return overdueDays >= 3 ? '高风险' : '中风险'
+  return planEnd.diff(today, 'day') <= 3 ? '即将到期' : '按计划进行'
 }
-const getTaskRiskColor = riskLevel => ({ 高风险: 'red', 中风险: 'orange', 低风险: 'green' }[riskLevel] || 'default')
+const getTaskRiskColor = riskLevel => ({ 高风险: 'red', 中风险: 'orange', 即将到期: 'gold', 按计划进行: 'green' }[riskLevel] || 'default')
 const getTaskPriorityColor = priority => ({ URGENT: 'red', HIGH: 'orange', MEDIUM: 'blue', LOW: 'default' }[priority] || 'default')
 const mapTaskRow = (task, index) => ({
   id: task.id,
@@ -1237,6 +1249,18 @@ const handleBatchDownload = async () => {
   }
 }
 
+const handleDeleteFolder = async record => {
+  try {
+    await deleteProjectFolder(record.folderId)
+    folderRows.value = folderRows.value.filter(folder => String(folder.id) !== String(record.folderId))
+    documentRows.value = documentRows.value.map(file =>
+      String(file.folderId) === String(record.folderId) ? { ...file, folderId: null } : file
+    )
+    message.success('文件夹已删除，文件夹内文件已移至根目录')
+  } catch (error) {
+    message.error(error.message || '删除失败')
+  }
+}
 const handleDeleteDocument = async record => {
   try {
     await deleteProjectFile(record.id)
