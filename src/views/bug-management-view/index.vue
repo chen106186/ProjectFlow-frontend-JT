@@ -129,7 +129,10 @@
       <a-form ref="formRef" :model="formState" :rules="formRules" :label-col="{ span: 5 }" :wrapper-col="{ span: 19 }">
         <div class="bug-form-fields">
           <a-form-item label="Bug标题" name="title"><a-input v-model:value="formState.title" placeholder="请输入Bug标题" /></a-form-item>
-          <a-form-item label="所属项目" name="projectId"><a-select v-model:value="formState.projectId" :options="projectOptions" placeholder="请选择所属项目" /></a-form-item>
+          <a-form-item label="所属项目" name="projectId"><a-select v-model:value="formState.projectId" :options="projectOptions" placeholder="请选择所属项目" @change="handleProjectChange" /></a-form-item>
+          <a-form-item label="关联任务">
+            <a-select v-model:value="formState.taskId" :options="relatedTaskOptions" placeholder="请选择关联任务（非必填）" allow-clear show-search option-filter-prop="label" :loading="relatedTaskLoading" :disabled="!formState.projectId" />
+          </a-form-item>
           <a-form-item label="指派给" name="assigneeId"><a-select v-model:value="formState.assigneeId" :options="bugFormUserOptions" placeholder="请选择负责人" show-search option-filter-prop="label" /></a-form-item>
           <a-form-item label="严重等级" name="priority"><a-select v-model:value="formState.priority" :options="priorityOptions" /></a-form-item>
           <a-form-item label="问题描述" name="description">
@@ -304,7 +307,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, shallowR
 import { useRoute, useRouter } from 'vue-router'
 import {
   getProjectBugs, getBugById, createBug, updateBug, deleteBug, closeBug, assignBug,
-  addBugComment, listBugComments, getProjectList, getSystemUsers,
+  addBugComment, listBugComments, getProjectList, getProjectTasks, getSystemUsers,
 } from '@/api/managementProject'
 import { formatDateTime } from '@/utils/dateTime'
 
@@ -604,8 +607,10 @@ const submitLoading = ref(false)
 const editorRef = shallowRef()
 const editorConfig = { placeholder: '请输入重现步骤', scroll: true, ...richTextImageUploadConf }
 
-const createDefaultFormState = () => ({ title: '', projectId: undefined, assigneeId: undefined, priority: 'MEDIUM', description: '', reproduceSteps: '' })
+const createDefaultFormState = () => ({ title: '', projectId: undefined, taskId: undefined, assigneeId: undefined, priority: 'MEDIUM', description: '', reproduceSteps: '' })
 const formState = reactive(createDefaultFormState())
+const relatedTaskOptions = ref([])
+const relatedTaskLoading = ref(false)
 const formRules = {
   title: [{ required: true, message: '请输入Bug标题', trigger: 'blur' }],
   projectId: [{ required: true, message: '请选择所属项目', trigger: 'change' }],
@@ -615,6 +620,27 @@ const formRules = {
 }
 
 const handleEditorCreated = editor => { editorRef.value = editor }
+
+const loadRelatedTasks = async projectId => {
+  relatedTaskOptions.value = []
+  if (!projectId) return
+  relatedTaskLoading.value = true
+  try {
+    const result = await getProjectTasks({ projectId, pageNo: 1, pageSize: 200 })
+    if (String(formState.projectId) === String(projectId)) {
+      relatedTaskOptions.value = (result.records || []).map(task => ({ label: task.name, value: task.id }))
+    }
+  } catch (error) {
+    message.error(error.message || '关联任务加载失败')
+  } finally {
+    relatedTaskLoading.value = false
+  }
+}
+
+const handleProjectChange = projectId => {
+  formState.taskId = undefined
+  loadRelatedTasks(projectId)
+}
 
 const handleSubmit = async () => {
   if (submitLoading.value) return
@@ -628,6 +654,7 @@ const handleSubmit = async () => {
     const body = {
       title: formState.title,
       projectId: formState.projectId,
+      taskId: formState.taskId || undefined,
       assigneeId: formState.assigneeId,
       priority: formState.priority,
       description: formState.description,
@@ -669,6 +696,7 @@ const syncRouteState = async () => {
   const id = route.params.id
   if (viewMode.value === 'create') {
     Object.assign(formState, createDefaultFormState())
+    relatedTaskOptions.value = []
     editingId.value = null
     return
   }
@@ -683,6 +711,8 @@ const syncRouteState = async () => {
       }
       formState.title = bug.title || ''
       formState.projectId = bug.projectId
+      await loadRelatedTasks(bug.projectId)
+      formState.taskId = bug.taskId || undefined
       formState.assigneeId = bug.assigneeId
       formState.priority = bug.priority || 'MEDIUM'
       formState.description = bug.description || ''
