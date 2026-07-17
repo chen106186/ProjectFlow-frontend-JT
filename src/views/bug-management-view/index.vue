@@ -7,6 +7,7 @@
           <a-form-item label="所属项目"><a-select v-model:value="queryParams.projectId" :options="projectOptions" placeholder="全部" allow-clear /></a-form-item>
           <a-form-item label="优先级"><a-select v-model:value="queryParams.priority" :options="priorityFilterOptions" placeholder="全部" allow-clear /></a-form-item>
           <a-form-item label="状态"><a-select v-model:value="queryParams.status" :options="statusFilterOptions" placeholder="全部" allow-clear /></a-form-item>
+          <a-form-item label="创建人"><a-select v-model:value="queryParams.creatorId" :options="userOptions" placeholder="全部" allow-clear show-search option-filter-prop="label" /></a-form-item>
           <a-form-item class="bug-filter__actions app-filter-actions">
             <a-space><a-button type="primary" @click="handleSearch">查询</a-button><a-button @click="handleReset">重置</a-button></a-space>
           </a-form-item>
@@ -327,7 +328,7 @@ const pageSize = ref(10)
 const listLoading = ref(false)
 const displayMode = ref('list')
 const groupField = ref('projectName')
-const queryParams = reactive({ keyword: '', projectId: undefined, priority: undefined, status: undefined })
+const queryParams = reactive({ keyword: '', projectId: undefined, priority: undefined, status: undefined, creatorId: undefined })
 
 const columns = [
   { title: '编号', dataIndex: 'bugNo', width: 80 },
@@ -375,6 +376,7 @@ const loadBugs = async () => {
       projectId: queryParams.projectId || undefined,
       priority: queryParams.priority || undefined,
       status: queryParams.status || undefined,
+      creatorId: queryParams.creatorId || undefined,
     })
     bugs.value = res.records || []
     total.value = res.total || 0
@@ -387,7 +389,7 @@ const loadBugs = async () => {
 
 const handleSearch = () => { current.value = 1; loadBugs() }
 const handleReset = () => {
-  Object.assign(queryParams, { keyword: '', projectId: undefined, priority: undefined, status: undefined })
+  Object.assign(queryParams, { keyword: '', projectId: undefined, priority: undefined, status: undefined, creatorId: undefined })
   current.value = 1
   loadBugs()
 }
@@ -704,7 +706,7 @@ onMounted(async () => {
 .bug-filter, .bug-list, .bug-form-card { border: 1px solid #edf0f3; box-shadow: 0 2px 8px rgb(0 0 0 / 3%); }
 .bug-filter { margin-bottom: 16px; }
 .bug-filter :deep(.ant-card-body) { padding: 16px 18px 2px; }
-.bug-filter__form.app-filter-form { display: grid; grid-template-columns: minmax(180px, 1.4fr) repeat(3, minmax(130px, 1fr)) max-content !important; column-gap: 16px !important; align-items: end; }
+.bug-filter__form.app-filter-form { display: grid; grid-template-columns: minmax(180px, 1.4fr) repeat(4, minmax(120px, 1fr)) max-content !important; column-gap: 16px !important; align-items: end; }
 .bug-filter__form :deep(.ant-form-item) { margin: 0 0 14px; }
 .bug-filter__form :deep(.ant-form-item-row) { width: 100%; flex-wrap: nowrap; }
 .bug-filter__form :deep(.ant-form-item-control) { flex: 1; }
@@ -1001,8 +1003,12 @@ onMounted(async () => {
   }
 }
 :deep(.ant-modal-body) { padding-top: 10px; }
-@media (max-width: 960px) {
-  .bug-filter__form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 1100px) {
+  .bug-filter__form.app-filter-form { grid-template-columns: repeat(3, minmax(0, 1fr)) max-content !important; }
+  .bug-filter__actions { grid-column: 4; }
+}
+@media (max-width: 780px) {
+  .bug-filter__form.app-filter-form { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
   .bug-filter__actions { grid-column: 2; }
 }
 </style>

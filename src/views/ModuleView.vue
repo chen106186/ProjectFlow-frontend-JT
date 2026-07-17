@@ -271,6 +271,10 @@
                 :options="Object.entries(BUG_STATUS_LABELS).map(([value, label]) => ({ label, value }))"
                 style="width:7.5rem" />
             </a-form-item>
+            <a-form-item label="创建人">
+              <a-select v-model:value="bugFilter.creatorId" placeholder="全部" allow-clear show-search option-filter-prop="label"
+                :options="bugUsers.map(u => ({ label: u.realName, value: u.id }))" style="width:8rem" />
+            </a-form-item>
             <a-form-item class="filter-buttons app-filter-actions">
               <a-space>
                 <a-button type="primary" @click="handleBugSearch">查询</a-button>
@@ -703,6 +707,7 @@ const bugFilter = ref({
   projectId: undefined,
   priority: undefined,
   status: undefined,
+  creatorId: undefined,
 })
 const taskFilter = ref({
   keyword: '',
@@ -1034,6 +1039,7 @@ async function loadMyBugs() {
       projectId: f.projectId || undefined,
       priority: f.priority || undefined,
       status: f.status || undefined,
+      creatorId: f.creatorId || undefined,
       assigneeId: profile.id || undefined,
     })
     const bugs = result.records || []
@@ -1621,7 +1627,7 @@ const handleBugSearch = () => {
 }
 
 const handleBugReset = () => {
-  bugFilter.value = { keyword: '', projectId: undefined, priority: undefined, status: undefined }
+  bugFilter.value = { keyword: '', projectId: undefined, priority: undefined, status: undefined, creatorId: undefined }
   loadMyBugs()
 }
 
@@ -2053,8 +2059,8 @@ const trendPoints = [
 }
 
 .prototype-filter.bug-filter {
-  grid-template-columns: minmax(180px, 1.2fr) minmax(180px, 1fr) minmax(140px, 0.8fr) minmax(140px, 0.8fr) max-content !important;
-  column-gap: 28px !important;
+  grid-template-columns: minmax(160px, 1.2fr) minmax(150px, 1fr) minmax(110px, 0.8fr) minmax(110px, 0.8fr) minmax(110px, 0.8fr) max-content !important;
+  column-gap: 20px !important;
   row-gap: 0 !important;
 }
 
