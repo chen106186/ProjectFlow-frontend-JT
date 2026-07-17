@@ -42,9 +42,10 @@
                 </span>
                 <span class="todo-card__content">
                   <strong>{{ item.title }}</strong>
-                  <small>{{ item.ownerName || '待分配' }}　|　{{ item.plannedEndDate || '-' }} 截止　|　{{ item.projectName || '-' }}</small>
+                  <small v-if="item.itemType === 'BUG'">{{ item.ownerName || '-' }}　|　{{ item.creatorName || '-' }}　|　{{ item.projectName || '-' }}</small>
+                  <small v-else>{{ item.ownerName || '待分配' }}　|　{{ item.plannedEndDate || '-' }} 截止　|　{{ item.projectName || '-' }}</small>
                 </span>
-                <span class="todo-card__badge" :class="`todo-card__badge--${todoStatus(item)}`">{{ todoStatusLabel(item) }}</span>
+                <span class="todo-card__badge" :class="`todo-card__badge--${todoBadgeStatus(item)}`">{{ todoStatusLabel(item) }}</span>
                 <span class="todo-card__remaining" :class="`todo-card__remaining--${todoStatus(item)}`">{{ todoRemaining(item) }}</span>
               </button>
             </div>
@@ -248,13 +249,23 @@ const todoItemTypeLabel = type => {
   return '任务'
 }
 
+const BUG_STATUS_LABEL = { PENDING_FIX: '待修复', FIXING: '修复中', PENDING_VERIFY: '待验证', CLOSED: '已关闭' }
+const BUG_STATUS_BADGE = { FIXING: 'inProgress', PENDING_VERIFY: 'dueSoon', CLOSED: 'completed' }
+
+const todoBadgeStatus = item => {
+  if (item.itemType === 'BUG') return BUG_STATUS_BADGE[item.status] || 'dueSoon'
+  return todoStatus(item)
+}
+
 const todoStatusLabel = item => {
+  if (item.itemType === 'BUG') return BUG_STATUS_LABEL[item.status] || item.status
   const s = todoStatus(item)
   const map = { overdue: '逾期', urgent: '紧急', dueSoon: '即将到期', inProgress: '进行中', completed: '已完成', notStarted: '未开始' }
   return map[s] || '未开始'
 }
 
 const todoRemaining = item => {
+  if (item.itemType === 'BUG') return '-'
   if (item.overdueDays > 0) return `逾期 ${item.overdueDays} 天`
   if (!item.plannedEndDate) return '-'
   const days = dayjs(item.plannedEndDate).diff(dayjs(), 'day')
