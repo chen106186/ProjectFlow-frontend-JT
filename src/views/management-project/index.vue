@@ -601,8 +601,11 @@ const taskColumns = [
 const taskRows = ref([])
 const taskStatusFilters = toOptions(['全部状态', '未开始', '进行中', '已完成'])
 const personFilterOptions = toOptions(['全部负责人', '全部指定人', '张三', '李四', '王五'])
-const bugSummary = computed(() => [{ key: 'urgent', label: '紧急', value: bugRows.value.filter(item => item.priorityCode === 'URGENT').length, class: 'bug-severe', icon: ExclamationCircleOutlined }, { key: 'pending', label: '待修复', value: bugRows.value.filter(item => item.statusCode === 'PENDING_FIX').length, class: 'bug-submitted', icon: SendOutlined }, { key: 'fixing', label: '修复中', value: bugRows.value.filter(item => item.statusCode === 'FIXING').length, class: 'bug-confirmed', icon: ToolOutlined }, { key: 'closed', label: '已关闭', value: bugRows.value.filter(item => item.statusCode === 'CLOSED').length, class: 'bug-closed', icon: CheckCircleOutlined }])
-const bugColumns = [{ title: 'BUG ID', dataIndex: 'code', width: 130 }, { title: '标题', dataIndex: 'title', width: 220 }, { title: '严重级别', dataIndex: 'severity', width: 100 }, { title: '状态', dataIndex: 'status', width: 100 }, { title: '指定人', dataIndex: 'assignee', width: 90 }, { title: '创建人', dataIndex: 'creator', width: 90 }]
+const bugPriorityLabels = { LOW: '轻微', MEDIUM: '一般', HIGH: '严重', URGENT: '致命' }
+const bugPriorityColors = { LOW: 'blue', MEDIUM: 'orange', HIGH: 'error', URGENT: 'red' }
+const bugStatusColors = { PENDING_FIX: 'gold', FIXING: 'orange', PENDING_VERIFY: 'purple', CLOSED: 'green' }
+const bugSummary = computed(() => [{ key: 'urgent', label: '致命', value: bugRows.value.filter(item => item.priorityCode === 'URGENT').length, class: 'bug-severe', icon: ExclamationCircleOutlined }, { key: 'pending', label: '待修复', value: bugRows.value.filter(item => item.statusCode === 'PENDING_FIX').length, class: 'bug-submitted', icon: SendOutlined }, { key: 'verifying', label: '待验证', value: bugRows.value.filter(item => item.statusCode === 'PENDING_VERIFY').length, class: 'bug-confirmed', icon: ToolOutlined }, { key: 'closed', label: '已关闭', value: bugRows.value.filter(item => item.statusCode === 'CLOSED').length, class: 'bug-closed', icon: CheckCircleOutlined }])
+const bugColumns = [{ title: '编号', dataIndex: 'bugNo', width: 100 }, { title: '标题', dataIndex: 'title', width: 220 }, { title: '严重等级', dataIndex: 'severity', width: 100 }, { title: '状态', dataIndex: 'status', width: 100 }, { title: '指定人', dataIndex: 'assignee', width: 90 }, { title: '创建人', dataIndex: 'creator', width: 90 }]
 const bugRows = ref([])
 const bugStatusFilters = [
   { label: '全部状态', value: '' },
@@ -992,7 +995,7 @@ const mapTaskRow = (task, index) => ({
   actualStart: task.actualStartDate || '-',
   actualEnd: task.actualEndDate || '-',
 })
-const mapBugRow = bug => ({ id: bug.id, code: `BUG-${bug.id}`, title: bug.title, severity: getDictLabel('bugPriority', bug.priority), priorityCode: bug.priority, status: getDictLabel('bugStatus', bug.status), statusCode: bug.status, assignee: getUserName(bug.assigneeId), creator: getUserName(bug.creatorId) })
+const mapBugRow = bug => ({ id: bug.id, bugNo: bug.bugNo, title: bug.title, severity: bugPriorityLabels[bug.priority] || bug.priority || '-', severityColor: bugPriorityColors[bug.priority], priorityCode: bug.priority, status: getDictLabel('bugStatus', bug.status), statusCode: bug.status, statusColor: bugStatusColors[bug.status], assignee: getUserName(bug.assigneeId), creator: getUserName(bug.creatorId) })
 const mapReportRow = report => ({ id: report.id, title: report.title, type: getDictLabel('reportType', report.reportType), typeCode: report.reportType, status: getDictLabel('reportStatus', report.status), statusCode: report.status, planTime: report.plannedDate, actualTime: report.actualDate || '-', target: report.targetAudience, place: report.locationMethod, description: report.description, taskId: report.taskId || report.relatedTaskId || undefined, taskName: report.taskName || report.relatedTaskName || undefined })
 const applyTaskResult = result => {
   taskRows.value = result.records.map(mapTaskRow)

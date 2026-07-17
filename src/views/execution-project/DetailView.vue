@@ -113,9 +113,10 @@
         </div>
         <a-table row-key="id" class="project-bug-table" :columns="bugColumns" :data-source="bugRows" :loading="bugLoading" :pagination="false" size="small" :scroll="{ x: 840, y: 500 }">
           <template #bodyCell="{ column, record, text }">
-            <a-button v-if="column.dataIndex === 'title'" type="link" @click="handleBugDetail(record)">{{ text }}</a-button>
-            <a-tag v-else-if="column.dataIndex === 'severity'" color="red">{{ text }}</a-tag>
-            <a-tag v-else-if="column.dataIndex === 'status'" color="orange">{{ text }}</a-tag>
+            <span v-if="column.dataIndex === 'bugNo'" class="bug-no">{{ text ? '#' + String(text).padStart(3, '0') : '-' }}</span>
+            <a-button v-else-if="column.dataIndex === 'title'" type="link" @click="handleBugDetail(record)">{{ text }}</a-button>
+            <a-tag v-else-if="column.dataIndex === 'severity'" :color="record.severityColor">{{ text }}</a-tag>
+            <a-tag v-else-if="column.dataIndex === 'status'" :color="record.statusColor">{{ text }}</a-tag>
           </template>
         </a-table>
         <a-pagination class="detail-list-pagination" :current="bugPagination.current" :page-size="bugPagination.pageSize" :total="bugPagination.total" :page-size-options="bugPagination.pageSizeOptions" :show-total="bugPagination.showTotal" show-size-changer @change="(page, pageSize) => handleTablePaginationChange(bugPagination, page, pageSize, fetchBugPage)" />
@@ -580,8 +581,11 @@ const taskPagination = createTablePagination()
 const taskRows = ref([])
 const taskStatusFilters = toOptions(['全部状态', '未开始', '进行中', '已完成'])
 const personFilterOptions = computed(() => [{ label: '全部指定人', value: '' }, ...managerOptions.value])
-const bugSummary = computed(() => [{ key: 'urgent', label: '严重', value: bugRows.value.filter(item => item.priorityCode === 'URGENT' || item.severity === '严重').length, class: 'bug-severe', icon: ExclamationCircleOutlined }, { key: 'pending', label: '已提交', value: bugRows.value.filter(item => item.statusCode === 'PENDING_FIX').length, class: 'bug-submitted', icon: SendOutlined }, { key: 'fixing', label: '已确认', value: bugRows.value.filter(item => item.statusCode === 'FIXING').length, class: 'bug-confirmed', icon: ToolOutlined }, { key: 'closed', label: '已关闭', value: bugRows.value.filter(item => item.statusCode === 'CLOSED').length, class: 'bug-closed', icon: CheckCircleOutlined }])
-const bugCardFilters = { urgent: { priority: 'URGENT' }, pending: { status: 'PENDING_FIX' }, fixing: { status: 'FIXING' }, closed: { status: 'CLOSED' } }
+const bugPriorityLabels = { LOW: '轻微', MEDIUM: '一般', HIGH: '严重', URGENT: '致命' }
+const bugPriorityColors = { LOW: 'blue', MEDIUM: 'orange', HIGH: 'error', URGENT: 'red' }
+const bugStatusColors = { PENDING_FIX: 'gold', FIXING: 'orange', PENDING_VERIFY: 'purple', CLOSED: 'green' }
+const bugSummary = computed(() => [{ key: 'urgent', label: '致命', value: bugRows.value.filter(item => item.priorityCode === 'URGENT').length, class: 'bug-severe', icon: ExclamationCircleOutlined }, { key: 'pending', label: '已提交', value: bugRows.value.filter(item => item.statusCode === 'PENDING_FIX').length, class: 'bug-submitted', icon: SendOutlined }, { key: 'verifying', label: '待验证', value: bugRows.value.filter(item => item.statusCode === 'PENDING_VERIFY').length, class: 'bug-confirmed', icon: ToolOutlined }, { key: 'closed', label: '已关闭', value: bugRows.value.filter(item => item.statusCode === 'CLOSED').length, class: 'bug-closed', icon: CheckCircleOutlined }])
+const bugCardFilters = { urgent: { priority: 'URGENT' }, pending: { status: 'PENDING_FIX' }, verifying: { status: 'PENDING_VERIFY' }, closed: { status: 'CLOSED' } }
 const bugQueryParams = computed(() => ({
   ...(bugCardFilters[activeBugFilter.value] || {}),
   ...(bugStatusFilter.value ? { status: bugStatusFilter.value } : {}),
@@ -596,7 +600,7 @@ const resetBugFilters = () => {
   bugStatusFilter.value = ''
   bugAssigneeFilter.value = ''
 }
-const bugColumns = [{ title: 'BUG ID', dataIndex: 'code', width: 130 }, { title: '标题', dataIndex: 'title', width: 220 }, { title: '严重级别', dataIndex: 'severity', width: 100 }, { title: '状态', dataIndex: 'status', width: 100 }, { title: '指定人', dataIndex: 'assignee', width: 90 }, { title: '创建人', dataIndex: 'creator', width: 90 }]
+const bugColumns = [{ title: '编号', dataIndex: 'bugNo', width: 100 }, { title: '标题', dataIndex: 'title', width: 220 }, { title: '严重等级', dataIndex: 'severity', width: 100 }, { title: '状态', dataIndex: 'status', width: 100 }, { title: '指定人', dataIndex: 'assignee', width: 90 }, { title: '创建人', dataIndex: 'creator', width: 90 }]
 const bugPagination = createTablePagination()
 const bugRows = ref([])
 const bugStatusFilters = [
@@ -900,7 +904,7 @@ const mapTaskRow = (task, index) => ({
   actualStart: task.actualStartDate || '-',
   actualEnd: task.actualEndDate || '-',
 })
-const mapBugRow = bug => ({ id: bug.id, code: `BUG-${bug.id}`, title: bug.title, severity: getDictLabel('bugPriority', bug.priority), priorityCode: bug.priority, status: getDictLabel('bugStatus', bug.status), statusCode: bug.status, assignee: getUserName(bug.assigneeId), creator: getUserName(bug.creatorId) })
+const mapBugRow = bug => ({ id: bug.id, bugNo: bug.bugNo, title: bug.title, severity: bugPriorityLabels[bug.priority] || bug.priority || '-', severityColor: bugPriorityColors[bug.priority], priorityCode: bug.priority, status: getDictLabel('bugStatus', bug.status), statusCode: bug.status, statusColor: bugStatusColors[bug.status], assignee: getUserName(bug.assigneeId), creator: getUserName(bug.creatorId) })
 const mapReportRow = report => ({ id: report.id, title: report.title, type: getDictLabel('reportType', report.reportType), status: getDictLabel('reportStatus', report.status), planTime: report.plannedDate, actualTime: report.actualDate || '-', target: report.targetAudience, place: report.locationMethod })
 const applyTaskResult = result => {
   taskRows.value = result.records.map(mapTaskRow)
@@ -1503,6 +1507,7 @@ onMounted(async () => {
 .gantt-scroll :deep(.gantt-completed .gantt-actual-bar), .gantt-scroll :deep(.gantt-milestone .gantt-actual-bar) { fill: #30d158; stroke: #248a3d; }
 .gantt-scroll :deep(.gantt-overdue .gantt-actual-bar) { fill: #ff453a; stroke: #d70015; }
 .gantt-scroll :deep(.bar-label) { fill: #1d1d1f; }
+.bug-no { color: #1677ff; font-family: monospace; font-size: 12px; font-weight: 600; }
 .section-heading, .document-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
 .document-breadcrumb { display: flex; align-items: center; gap: 6px; margin: -2px 0 16px; color: #8c8c8c; font-size: 13px; }
 .document-breadcrumb strong { color: #262626; font-weight: 600; }
