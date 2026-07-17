@@ -306,7 +306,7 @@
         </a-form-item>
       </a-form>
       <div class="resolve-actions">
-        <a-button type="primary" @click="handleResolveConfirm">确定</a-button>
+        <a-button type="primary" :loading="resolveLoading" @click="handleResolveConfirm">确定</a-button>
         <a-button @click="resolveVisible = false">取消</a-button>
       </div>
     </a-modal>
@@ -332,7 +332,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, shallowR
 import { useRoute, useRouter } from 'vue-router'
 import {
   getProjectBugs, getBugById, createBug, updateBug, deleteBug, closeBug, assignBug,
-  addBugComment, listBugComments, getProjectList, getProjectTasks, getSystemUsers,
+  addBugComment, listBugComments, getProjectList, getProjectTasks, getSystemUsers, resolveBug,
 } from '@/api/managementProject'
 import { formatDateTime } from '@/utils/dateTime'
 
@@ -694,10 +694,24 @@ const openResolveModal = () => {
   resetResolveForm()
   resolveVisible.value = true
 }
+const resolveLoading = ref(false)
 const handleResolveConfirm = async () => {
   await resolveFormRef.value?.validate()
-  resolveVisible.value = false
-  message.success('解决信息已填写，待接口对接后提交')
+  resolveLoading.value = true
+  try {
+    selectedBug.value = await resolveBug(selectedBug.value.id, {
+      solution: resolveForm.solution,
+      resolvedDate: resolveForm.resolvedDate,
+      assigneeId: resolveForm.assigneeId || undefined,
+      remark: resolveForm.remark || undefined,
+    })
+    resolveVisible.value = false
+    message.success('Bug已解决，等待验证')
+  } catch (e) {
+    message.error(e.message || '操作失败')
+  } finally {
+    resolveLoading.value = false
+  }
 }
 
 const handleProjectChange = projectId => {
