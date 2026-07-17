@@ -218,8 +218,22 @@
       <a-form :model="uploadForm" :label-col="{ span: 4 }" :wrapper-col="{ span: 20 }" class="upload-form">
         <div class="upload-form__row">
           <a-form-item label="存储位置"><a-select v-model:value="uploadForm.location" :options="storageOptions" /></a-form-item>
-          <a-form-item label="目标文件夹"><a-select v-model:value="uploadForm.folderId" allow-clear :options="folderOptions" placeholder="请选择目标文件夹" /></a-form-item>
-          <a-form-item label="文件分类"><a-select v-model:value="uploadForm.category" :options="documentCategoryOptions" /></a-form-item>
+          <a-form-item label="目标文件夹">
+            <a-select
+              v-model:value="uploadForm.folderId"
+              allow-clear
+              :options="folderOptions"
+              placeholder="请选择目标文件夹"
+              :get-popup-container="trigger => trigger.parentNode"
+            />
+          </a-form-item>
+          <a-form-item label="文件分类">
+            <a-select
+              v-model:value="uploadForm.category"
+              :options="documentCategoryOptions"
+              :get-popup-container="trigger => trigger.parentNode"
+            />
+          </a-form-item>
         </div>
         <a-form-item label="版本说明"><a-textarea v-model:value="uploadForm.description" :rows="4" placeholder="请输入版本更新说明..." /></a-form-item>
       </a-form>
