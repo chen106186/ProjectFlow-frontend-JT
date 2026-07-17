@@ -57,7 +57,11 @@ export const assignBug = (id, data) => request(`/api/bugs/${id}/assign`, { metho
 export const addBugComment = (id, data) => request(`/api/bugs/${id}/comments`, { method: 'POST', body: data })
 export const listBugComments = id => request(`/api/bugs/${id}/comments`)
 
-export const getMyStatistics = period => request('/api/dashboard/my-statistics', { params: { period } })
+export const getMyStatistics = (period, targetUserId = null) => {
+  const params = { period }
+  if (targetUserId != null) params.targetUserId = targetUserId
+  return request('/api/dashboard/my-statistics', { params })
+}
 
 export const getDicts = () => request('/api/dicts')
 export const getSystemUsers = params => request('/api/system/users', { params })

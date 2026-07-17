@@ -11,7 +11,7 @@
     <section class="home-workspace">
       <a-card class="todo-panel" :bordered="false">
         <template #title>
-          <span class="panel-title"><ProfileOutlined />待办事项清单</span>
+          <span class="panel-title"><ProfileOutlined />{{ isGmOffice ? '全部待办事项' : '待办事项清单' }}</span>
         </template>
         <template #extra>
           <a-tabs v-model:active-key="activeTodoTab" class="todo-tabs" size="small">
@@ -85,9 +85,20 @@
 
     <section class="home-stats">
       <div class="stats-header">
-        <span class="panel-title"><BarChartOutlined />我的统计</span>
-        <div class="stats-period">
-          <button v-for="p in periods" :key="p.value" type="button" :class="['period-btn', { active: statsPeriod === p.value }]" @click="handlePeriodChange(p.value)">{{ p.label }}</button>
+        <span class="panel-title"><BarChartOutlined />{{ isGmOffice ? '全员统计' : '我的统计' }}</span>
+        <div class="stats-header__right">
+          <a-select
+            v-if="isGmOffice"
+            v-model:value="statsTargetUserId"
+            placeholder="查看全员"
+            allow-clear
+            style="width: 140px; margin-right: 10px;"
+            :options="userOptions"
+            @change="fetchMyStats"
+          />
+          <div class="stats-period">
+            <button v-for="p in periods" :key="p.value" type="button" :class="['period-btn', { active: statsPeriod === p.value }]" @click="handlePeriodChange(p.value)">{{ p.label }}</button>
+          </div>
         </div>
       </div>
       <div class="stats-kpi">
@@ -180,6 +191,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } 
 import { useRouter } from 'vue-router'
 
 import { getDashboardSummary, getDashboardTodos, getMyStatistics } from '@/api/dashboard'
+import { getUserList } from '@/api/system'
 import TaskCalendarModal from '@/components/TaskCalendarModal.vue'
 
 echarts.use([BarChart, LineChart, PieChart, GridComponent, TooltipComponent, LegendComponent, CanvasRenderer])
@@ -192,6 +204,10 @@ const summaryLoading = ref(false)
 const todoLoading = ref(false)
 const summary = ref({ managementProjectCount: 0, executionProjectCount: 0, inProgressProjectCount: 0, completedProjectCount: 0 })
 const todos = ref([])
+
+const isGmOffice = ref(false)
+const statsTargetUserId = ref(null)
+const userOptions = ref([])
 
 const metrics = computed(() => [
   { title: '管理类项目', path: '/projects/management', icon: FolderOpenOutlined, iconClass: 'metric-card__icon--blue', value: summary.value.managementProjectCount },
@@ -313,12 +329,13 @@ const initCharts = () => {
 const createDonutOption = (data, colors, centerText) => ({
   color: colors,
   tooltip: { show: false },
-  graphic: centerText != null ? [{
+  graphic: [{
+    id: 'center',
     type: 'text',
     left: 'center',
     top: 'middle',
-    style: { text: centerText, textAlign: 'center', fill: '#111827', fontSize: 22, fontWeight: 700 },
-  }] : [],
+    style: { text: centerText ?? '', textAlign: 'center', fill: '#111827', fontSize: 22, fontWeight: 700 },
+  }],
   series: [{
     type: 'pie',
     radius: ['68%', '82%'],
@@ -372,7 +389,7 @@ const renderDistCharts = () => {
 const fetchMyStats = async () => {
   statsLoading.value = true
   try {
-    const data = await getMyStatistics(statsPeriod.value)
+    const data = await getMyStatistics(statsPeriod.value, statsTargetUserId.value)
     Object.assign(myStats, data)
     await nextTick()
     initCharts()
@@ -392,10 +409,15 @@ const handlePeriodChange = period => {
 watch(statsPeriod, fetchMyStats)
 
 onMounted(async () => {
+  const profile = JSON.parse(localStorage.getItem('authProfile') || '{}')
+  isGmOffice.value = !!profile.isGmOffice
+
   summaryLoading.value = true
   todoLoading.value = true
   try {
-    const [summaryResult, todoResult] = await Promise.allSettled([getDashboardSummary(), getDashboardTodos()])
+    const requests = [getDashboardSummary(), getDashboardTodos()]
+    if (isGmOffice.value) requests.push(getUserList({ pageSize: 500, enabled: true }))
+    const [summaryResult, todoResult, userResult] = await Promise.allSettled(requests)
 
     if (summaryResult.status === 'fulfilled') {
       summary.value = summaryResult.value
@@ -403,6 +425,11 @@ onMounted(async () => {
 
     if (todoResult.status === 'fulfilled') {
       todos.value = todoResult.value
+    }
+
+    if (isGmOffice.value && userResult?.status === 'fulfilled') {
+      const records = userResult.value?.records || userResult.value || []
+      userOptions.value = records.map(u => ({ value: u.id, label: u.realName || u.username }))
     }
   } finally {
     summaryLoading.value = false
@@ -800,6 +827,11 @@ const handleTodoClick = item => {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 14px;
+}
+
+.stats-header__right {
+  display: flex;
+  align-items: center;
 }
 
 .stats-period {
