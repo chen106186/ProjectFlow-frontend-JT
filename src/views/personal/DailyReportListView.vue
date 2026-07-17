@@ -73,7 +73,7 @@
 
 <script setup>
 import dayjs from 'dayjs'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, onBeforeMount } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { listMyDailyReports } from '@/api/dailyReports'
@@ -100,12 +100,18 @@ const paginationState = reactive({
   pageSize: 10,
 })
 
-const columns = [
-  { title: '日期', dataIndex: 'reportDate', width: 140 },
-  { title: '内容', dataIndex: 'content', ellipsis: true },
-  { title: '提交时间', dataIndex: 'updatedAt', width: 220 },
-  { title: '操作', dataIndex: 'operation', width: 90 },
-]
+const isGmOffice = ref(false)
+
+const columns = computed(() => {
+  const base = [
+    { title: '日期', dataIndex: 'reportDate', width: 140 },
+    ...(isGmOffice.value ? [{ title: '汇报人', dataIndex: 'reporterName', width: 120 }] : []),
+    { title: '内容', dataIndex: 'content', ellipsis: true },
+    { title: '提交时间', dataIndex: 'updatedAt', width: 220 },
+    { title: '操作', dataIndex: 'operation', width: 90 },
+  ]
+  return base
+})
 
 const filteredReports = computed(() => {
   const keyword = query.keyword.trim().toLowerCase()
@@ -122,6 +128,11 @@ const filteredReports = computed(() => {
 const pagedReports = computed(() => {
   const start = (paginationState.current - 1) * paginationState.pageSize
   return filteredReports.value.slice(start, start + paginationState.pageSize)
+})
+
+onBeforeMount(() => {
+  const profile = JSON.parse(localStorage.getItem('authProfile') || '{}')
+  isGmOffice.value = !!profile.isGmOffice
 })
 
 onMounted(async () => {

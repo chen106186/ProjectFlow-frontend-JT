@@ -77,6 +77,9 @@
             <template v-else-if="column.dataIndex === 'status'">
               <a-tag :color="statusColor(text)">{{ dictLabel('requirementStatus', text) }}</a-tag>
             </template>
+            <template v-else-if="column.dataIndex === 'createdAt'">
+              {{ formatDateTime(text) }}
+            </template>
             <template v-else-if="column.dataIndex === 'ops'">
               <a-space :size="4">
                 <a-button type="link" size="small" @click="openEditModal(record)">编辑</a-button>

@@ -491,9 +491,20 @@
           <a-spin :spinning="statsLoading">
           <div class="stats-title-row">
             <div class="prototype-heading prototype-heading--inline">
-              <h1 class="prototype-title">我的统计</h1>
+              <h1 class="prototype-title">{{ isGmOffice ? '全员统计' : '我的统计' }}</h1>
             </div>
-            <a-select class="daily-select" v-model:value="statsPeriod" :options="STATS_PERIOD_OPTIONS" />
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <a-select
+                v-if="isGmOffice"
+                v-model:value="statsTargetUserId"
+                placeholder="查看全员"
+                allow-clear
+                style="width: 140px;"
+                :options="statsUserOptions"
+                @change="loadMyStatistics"
+              />
+              <a-select class="daily-select" v-model:value="statsPeriod" :options="STATS_PERIOD_OPTIONS" />
+            </div>
           </div>
           <section class="stat-cards">
             <article v-for="card in statCards" :key="card.label" class="stat-card">
@@ -795,6 +806,9 @@ const uploadFiles = ref([])
 const statsPeriod = ref('week')
 const statsData = ref(null)
 const statsLoading = ref(false)
+const statsTargetUserId = ref(null)
+const statsUserOptions = ref([])
+const isGmOffice = ref(false)
 const trendChartRef = ref(null)
 const projectChartRef = ref(null)
 const statusChartRef = ref(null)
@@ -946,6 +960,16 @@ watch(
     }
 
     if (name === 'PersonalStatistics') {
+      const profile = JSON.parse(localStorage.getItem('authProfile') || '{}')
+      isGmOffice.value = !!profile.isGmOffice
+      if (isGmOffice.value && statsUserOptions.value.length === 0) {
+        try {
+          const { getUserList } = await import('@/api/system')
+          const result = await getUserList({ pageSize: 500, enabled: true })
+          const records = result?.records || result || []
+          statsUserOptions.value = records.map(u => ({ value: u.id, label: u.realName || u.username }))
+        } catch { /* ignore */ }
+      }
       loadMyStatistics()
     }
   },
@@ -1177,7 +1201,7 @@ function createDonutOption(data, colors, centerText) {
 async function loadMyStatistics() {
   statsLoading.value = true
   try {
-    statsData.value = await getMyStatistics(statsPeriod.value)
+    statsData.value = await getMyStatistics(statsPeriod.value, statsTargetUserId.value)
     await nextTick()
     renderStatisticsCharts()
   } catch (error) {
