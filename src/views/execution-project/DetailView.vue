@@ -123,7 +123,7 @@
 
       <div v-show="activeTab === 'reports'" class="execution-tab-panel">
         <div class="section-heading">
-          <h2>汇报管理 <small>（共 {{ reportPagination.total }} 条）</small></h2>
+          <h4>汇报管理 <small>（共 {{ reportPagination.total }} 条）</small></h4>
           <a-button type="primary" @click="handleCreateReport"><PlusOutlined />新建汇报</a-button>
         </div>
         <a-form class="report-filter app-filter-form" layout="inline">
@@ -471,10 +471,11 @@ const ganttTableWidth = ganttNodeColumns.reduce((total, column) => total + colum
 const ganttNodeRows = ref([])
 const ganttWorkspaceHeight = computed(() => 86 + ganttNodeRows.value.length * 72)
 const formatDateRange = (start, end) => start === '-' && end === '-' ? '-' : `${start} ~ ${end}`
-const normalizeGanttEnd = (start, end, status) => {
+const normalizeGanttEnd = (start, end) => {
   const startDate = dayjs(start)
   const endDate = dayjs(end)
-  return status === '里程碑' || !endDate.isAfter(startDate) ? endDate.add(1, 'day').format('YYYY-MM-DD') : end
+  const renderEnd = endDate.isAfter(startDate) ? endDate.subtract(1, 'day') : endDate
+  return `${renderEnd.format('YYYY-MM-DD')} 23:59:59`
 }
 const ganttTasks = computed(() => {
   const validRows = ganttNodeRows.value.filter(node => node.planStart !== '-' && node.planEnd !== '-')
@@ -487,18 +488,25 @@ const ganttTasks = computed(() => {
       id: taskId,
       name: node.name,
       start: hasPlanTime ? node.planStart.replaceAll('/', '-') : fallbackStart,
-      end: hasPlanTime ? normalizeGanttEnd(node.planStart.replaceAll('/', '-'), node.planEnd.replaceAll('/', '-'), node.status) : dayjs(fallbackStart).add(1, 'day').format('YYYY-MM-DD'),
+      end: hasPlanTime ? normalizeGanttEnd(node.planStart.replaceAll('/', '-'), node.planEnd.replaceAll('/', '-')) : dayjs(fallbackStart).add(1, 'day').format('YYYY-MM-DD'),
       planStart: node.planStart,
       actualStart: node.actualStart,
       planEnd: node.planEnd,
       actualEnd: node.actualEnd,
-      progress: hasPlanTime ? node.progress : 0,
+      progress: 0,
       dependencies: hasPlanTime && previousVisibleTaskId ? previousVisibleTaskId : undefined,
       custom_class: hasPlanTime ? ganttStatusClasses[node.status] : 'gantt-empty-row',
     }
     if (hasPlanTime) previousVisibleTaskId = taskId
     return task
   })
+})
+const ganttScrollStart = computed(() => {
+  const earliestPlanStart = ganttNodeRows.value
+    .map(node => formatNodeDate(node.planStart))
+    .filter(Boolean)
+    .sort()[0]
+  return earliestPlanStart ? dayjs(earliestPlanStart).subtract(1, 'month').format('YYYY-MM-DD') : 'start'
 })
 const ganttFormRef = ref()
 const ganttForm = reactive({ id: null, name: '', planStart: undefined, planEnd: undefined, actualStart: undefined, actualEnd: undefined, status: undefined, progress: 0 })
@@ -1018,7 +1026,27 @@ const renderGantt = async () => {
       set_subtitle('')
       set_details(`<div class="gantt-popup__dates"><span>计划开始</span><strong>${task.planStart}</strong><span>实际开始</span><strong>${task.actualStart === '-' ? '未填写' : task.actualStart}</strong><span>计划结束</span><strong>${task.planEnd}</strong><span>实际结束</span><strong>${task.actualEnd === '-' ? '未填写' : task.actualEnd}</strong></div>`)
     },
-    scroll_to: 'start',
+    scroll_to: ganttScrollStart.value,
+  })
+  const pixelsPerDay = ganttInstance.config.column_width / 30
+  ganttNodeRows.value.forEach(node => {
+    const planStart = formatNodeDate(node.planStart)
+    const actualStart = formatNodeDate(node.actualStart)
+    const actualEnd = formatNodeDate(node.actualEnd) || (actualStart ? dayjs().format('YYYY-MM-DD') : undefined)
+    if (!planStart || !actualStart || !actualEnd) return
+
+    const bar = ganttInstance.get_bar(String(node.id))
+    if (!bar || dayjs(actualEnd).isBefore(dayjs(actualStart))) return
+
+    const actualBar = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
+    actualBar.setAttribute('class', 'gantt-actual-bar')
+    actualBar.setAttribute('x', bar.x + dayjs(actualStart).diff(dayjs(planStart), 'day') * pixelsPerDay)
+    actualBar.setAttribute('y', bar.y)
+    actualBar.setAttribute('width', Math.max(dayjs(actualEnd).diff(dayjs(actualStart), 'day'), 1) * pixelsPerDay)
+    actualBar.setAttribute('height', bar.height)
+    actualBar.setAttribute('rx', 3)
+    actualBar.setAttribute('ry', 3)
+    bar.bar_group.insertBefore(actualBar, bar.bar_group.querySelector('.bar-label'))
   })
   const todayButton = ganttElement.querySelector('.today-button')
   if (todayButton) todayButton.textContent = '今天'
@@ -1440,7 +1468,7 @@ onMounted(async () => {
 .date-overdue { color: #ff4d4f; }
 .gantt-scroll { width: 100%; min-width: 0; height: 100%; min-height: 0; overflow: hidden; }
 .gantt-scroll :deep(.gantt-container) { height: 100%; overflow-x: auto; overflow-y: hidden; border-radius: 0; }
-.gantt-scroll :deep(.gantt) { display: block; height: 100%; }
+.gantt-scroll :deep(.gantt) { display: block; height: 100%; max-width: none; }
 .gantt-scroll :deep(.popup-wrapper) { padding: 14px 16px; border: 1px solid rgb(0 0 0 / 6%); border-radius: 12px; box-shadow: 0 12px 32px rgb(0 0 0 / 14%); }
 .gantt-scroll :deep(.popup-wrapper .title) { margin-bottom: 10px; font-size: 14px; }
 .gantt-scroll :deep(.gantt-popup__dates) { display: grid; grid-template-columns: 64px 92px; gap: 7px 14px; align-items: center; font-size: 12px; }
@@ -1448,14 +1476,13 @@ onMounted(async () => {
 .gantt-scroll :deep(.gantt-popup__dates strong) { color: #1d1d1f; font-weight: 500; }
 .gantt-scroll :deep(.bar-wrapper) { cursor: default; }
 .gantt-scroll :deep(.bar-wrapper.gantt-empty-row), .gantt-scroll :deep(.gantt-empty-row .bar-wrapper), .gantt-scroll :deep(.gantt-empty-row .bar-group), .gantt-scroll :deep(.gantt-empty-row .bar-label) { visibility: hidden; }
-.gantt-scroll :deep(.gantt-not-started .bar), .gantt-scroll :deep(.gantt-not-started .bar-progress) { fill: #aeaeb2; stroke: #aeaeb2; }
-.gantt-scroll :deep(.gantt-in-progress .bar) { fill: #d6eaff; stroke: #0a84ff; }
-.gantt-scroll :deep(.gantt-in-progress .bar-progress) { fill: #0a84ff; }
-.gantt-scroll :deep(.gantt-due-soon .bar), .gantt-scroll :deep(.gantt-due-soon .bar-progress) { fill: #ffd60a; stroke: #d6a600; }
-.gantt-scroll :deep(.gantt-completed .bar), .gantt-scroll :deep(.gantt-completed .bar-progress), .gantt-scroll :deep(.gantt-milestone .bar), .gantt-scroll :deep(.gantt-milestone .bar-progress) { fill: #30d158; stroke: #248a3d; }
-.gantt-scroll :deep(.gantt-overdue .bar), .gantt-scroll :deep(.gantt-overdue .bar-progress) { fill: #ff453a; stroke: #d70015; }
-.gantt-scroll :deep(.gantt-completed .bar-label), .gantt-scroll :deep(.gantt-overdue .bar-label), .gantt-scroll :deep(.gantt-in-progress .bar-label), .gantt-scroll :deep(.gantt-milestone .bar-label) { fill: #fff; }
-.gantt-scroll :deep(.gantt-due-soon .bar-label), .gantt-scroll :deep(.gantt-not-started .bar-label) { fill: #1d1d1f; }
+.gantt-scroll :deep(.bar-wrapper:not(.gantt-empty-row) .bar) { fill: #d9d9d9; stroke: #c8c8c8; }
+.gantt-scroll :deep(.gantt-not-started .gantt-actual-bar) { fill: #aeaeb2; }
+.gantt-scroll :deep(.gantt-in-progress .gantt-actual-bar) { fill: #0a84ff; }
+.gantt-scroll :deep(.gantt-due-soon .gantt-actual-bar) { fill: #ffd60a; stroke: #d6a600; }
+.gantt-scroll :deep(.gantt-completed .gantt-actual-bar), .gantt-scroll :deep(.gantt-milestone .gantt-actual-bar) { fill: #30d158; stroke: #248a3d; }
+.gantt-scroll :deep(.gantt-overdue .gantt-actual-bar) { fill: #ff453a; stroke: #d70015; }
+.gantt-scroll :deep(.bar-label) { fill: #1d1d1f; }
 .section-heading, .document-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
 .document-breadcrumb { display: flex; align-items: center; gap: 6px; margin: -2px 0 16px; color: #8c8c8c; font-size: 13px; }
 .document-breadcrumb strong { color: #262626; font-weight: 600; }

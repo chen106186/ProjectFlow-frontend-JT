@@ -539,10 +539,11 @@ const ganttTableWidth = ganttNodeColumns.reduce((total, column) => total + colum
 const ganttNodeRows = ref([])
 const ganttWorkspaceHeight = computed(() => 86 + ganttNodeRows.value.length * 72)
 const formatDateRange = (start, end) => start === '-' && end === '-' ? '-' : `${start} ~ ${end}`
-const normalizeGanttEnd = (start, end, status) => {
+const normalizeGanttEnd = (start, end) => {
   const startDate = dayjs(start)
   const endDate = dayjs(end)
-  return status === '里程碑' || !endDate.isAfter(startDate) ? endDate.add(1, 'day').format('YYYY-MM-DD') : end
+  const renderEnd = endDate.isAfter(startDate) ? endDate.subtract(1, 'day') : endDate
+  return `${renderEnd.format('YYYY-MM-DD')} 23:59:59`
 }
 const ganttTasks = computed(() => {
   const validRows = ganttNodeRows.value.filter(node => node.planStart !== '-' && node.planEnd !== '-')
@@ -555,18 +556,25 @@ const ganttTasks = computed(() => {
       id: taskId,
       name: node.name,
       start: hasPlanTime ? node.planStart.replaceAll('/', '-') : fallbackStart,
-      end: hasPlanTime ? normalizeGanttEnd(node.planStart.replaceAll('/', '-'), node.planEnd.replaceAll('/', '-'), node.status) : dayjs(fallbackStart).add(1, 'day').format('YYYY-MM-DD'),
+      end: hasPlanTime ? normalizeGanttEnd(node.planStart.replaceAll('/', '-'), node.planEnd.replaceAll('/', '-')) : dayjs(fallbackStart).add(1, 'day').format('YYYY-MM-DD'),
       planStart: node.planStart,
       actualStart: node.actualStart,
       planEnd: node.planEnd,
       actualEnd: node.actualEnd,
-      progress: hasPlanTime ? node.progress : 0,
+      progress: 0,
       dependencies: hasPlanTime && previousVisibleTaskId ? previousVisibleTaskId : undefined,
       custom_class: hasPlanTime ? ganttStatusClasses[node.status] : 'gantt-empty-row',
     }
     if (hasPlanTime) previousVisibleTaskId = taskId
     return task
   })
+})
+const ganttScrollStart = computed(() => {
+  const earliestPlanStart = ganttNodeRows.value
+    .map(node => formatNodeDate(node.planStart))
+    .filter(Boolean)
+    .sort()[0]
+  return earliestPlanStart ? dayjs(earliestPlanStart).subtract(1, 'month').format('YYYY-MM-DD') : 'start'
 })
 const ganttForm = reactive({ id: null, name: '', planStart: undefined, planEnd: undefined, actualStart: undefined, actualEnd: undefined, status: undefined, progress: 0 })
 const ganttFormRules = {
@@ -1140,7 +1148,27 @@ const renderGantt = async () => {
       set_subtitle('')
       set_details(`<div class="gantt-popup__dates"><span>计划开始</span><strong>${task.planStart}</strong><span>实际开始</span><strong>${task.actualStart === '-' ? '未填写' : task.actualStart}</strong><span>计划结束</span><strong>${task.planEnd}</strong><span>实际结束</span><strong>${task.actualEnd === '-' ? '未填写' : task.actualEnd}</strong></div>`)
     },
-    scroll_to: 'start',
+    scroll_to: ganttScrollStart.value,
+  })
+  const pixelsPerDay = ganttInstance.config.column_width / 30
+  ganttNodeRows.value.forEach(node => {
+    const planStart = formatNodeDate(node.planStart)
+    const actualStart = formatNodeDate(node.actualStart)
+    const actualEnd = formatNodeDate(node.actualEnd) || (actualStart ? dayjs().format('YYYY-MM-DD') : undefined)
+    if (!planStart || !actualStart || !actualEnd) return
+
+    const bar = ganttInstance.get_bar(String(node.id))
+    if (!bar || dayjs(actualEnd).isBefore(dayjs(actualStart))) return
+
+    const actualBar = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
+    actualBar.setAttribute('class', 'gantt-actual-bar')
+    actualBar.setAttribute('x', bar.x + dayjs(actualStart).diff(dayjs(planStart), 'day') * pixelsPerDay)
+    actualBar.setAttribute('y', bar.y)
+    actualBar.setAttribute('width', Math.max(dayjs(actualEnd).diff(dayjs(actualStart), 'day'), 1) * pixelsPerDay)
+    actualBar.setAttribute('height', bar.height)
+    actualBar.setAttribute('rx', 3)
+    actualBar.setAttribute('ry', 3)
+    bar.bar_group.insertBefore(actualBar, bar.bar_group.querySelector('.bar-label'))
   })
   const todayButton = ganttElement.querySelector('.today-button')
   if (todayButton) todayButton.textContent = '今天'
