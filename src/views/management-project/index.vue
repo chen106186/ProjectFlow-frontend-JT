@@ -141,6 +141,7 @@
           @delete-documents="handleDeleteDocuments"
           @download-document="handleDownloadDocument"
           @delete-document="handleDeleteDocument"
+          @delete-folder="handleDeleteFolder"
         />
       </div>
     </template>
@@ -350,6 +351,7 @@ import { useRoute, useRouter } from 'vue-router'
 import ProjectDetailTabs from './components/ProjectDetailTabs.vue'
 import {
   createProjectFolder,
+  deleteProjectFolder,
   createProjectReport,
   createReportItem,
   deleteProject,
@@ -648,18 +650,18 @@ const reportForm = reactive(createDefaultReportForm())
 const reportTaskOptions = computed(() => taskRows.value.map(item => ({ label: item.name, value: item.id })))
 const reportRules = { title: [{ required: true, message: '请输入汇报标题', trigger: 'blur' }], type: [{ required: true, message: '请选择汇报类型', trigger: 'change' }], status: [{ required: true, message: '请选择汇报状态', trigger: 'change' }], planDate: [{ required: true, message: '请选择计划日期', trigger: 'change' }], target: [{ required: true, message: '请输入汇报对象', trigger: 'blur' }], place: [{ required: true, message: '请输入地点或汇报方式', trigger: 'blur' }], description: [{ required: true, message: '请输入汇报描述', trigger: 'blur' }] }
 const documentCategoryMeta = computed(() => {
-  const fallback = [
-    { label: '合同类', value: 'CONTRACT' },
-    { label: '需求类', value: 'REQUIREMENT' },
-    { label: '设计类', value: 'DESIGN' },
-    { label: '开发类', value: 'DEVELOPMENT' },
-    { label: '验收类', value: 'ACCEPTANCE' },
-  ]
-  return fileCategoryOptions.value.length ? fileCategoryOptions.value : fallback
+  return fileCategoryOptions.value.length ? fileCategoryOptions.value : defaultFileCategories
 })
+const defaultFileCategories = [
+  { label: '合同类', value: 'CONTRACT' },
+  { label: '需求类', value: 'REQUIREMENT' },
+  { label: '设计类', value: 'DESIGN' },
+  { label: '开发类', value: 'DEVELOPMENT' },
+  { label: '验收类', value: 'ACCEPTANCE' },
+]
 const documentCategories = computed(() => {
   const files = documentDisplayRows.value
-  return [{ label: '全部', value: '全部', count: files.length, class: 'category-all', icon: FolderOpenOutlined }, ...documentCategoryMeta.value.map((item, index) => ({ label: item.label, value: item.value, count: files.filter(file => file.categoryCode === item.value || file.category === item.label).length, class: ['category-contract', 'category-requirement', 'category-design', 'category-development', 'category-acceptance'][index], icon: [FileProtectOutlined, FileTextOutlined, SnippetsOutlined, CodeOutlined, FileDoneOutlined][index] }))].map(item => ({ ...item, active: item.value === selectedDocumentCategory.value }))
+  return [{ label: '全部', value: '全部', count: files.length, class: 'category-all', icon: FolderOpenOutlined }, ...documentCategoryMeta.value.map((item, index) => ({ label: item.label, value: item.value, count: files.filter(file => file.categoryCode === item.value).length, class: ['category-contract', 'category-requirement', 'category-design', 'category-development', 'category-acceptance'][index], icon: [FileProtectOutlined, FileTextOutlined, SnippetsOutlined, CodeOutlined, FileDoneOutlined][index] }))].map(item => ({ ...item, active: item.value === selectedDocumentCategory.value }))
 })
 const documentColumns = [{ title: '文件名', dataIndex: 'name' }, { title: '类型', dataIndex: 'type', width: 90 }, { title: '大小', dataIndex: 'size', width: 90 }, { title: '版本', dataIndex: 'version', width: 90 }, { title: '上传人', dataIndex: 'uploader', width: 120 }, { title: '分类', dataIndex: 'category', width: 90 }, { title: '上传时间', dataIndex: 'uploadTime', width: 220 }, { title: '操作', dataIndex: 'operation', width: 120 }]
 const documentRows = ref([])
@@ -679,7 +681,7 @@ const folderDisplayRows = computed(() => folderRows.value.map(folder => ({
   isFolder: true,
   expanded: isFolderExpanded(folder.id),
 })))
-const matchesDocumentCategory = file => selectedDocumentCategory.value === '全部' || file.categoryCode === selectedDocumentCategory.value || file.category === selectedDocumentCategory.value
+const matchesDocumentCategory = file => selectedDocumentCategory.value === '全部' || file.categoryCode === selectedDocumentCategory.value
 const documentDisplayRows = computed(() => documentRows.value.map(file => ({ ...file, rowKey: `file-${file.id}`, isFolder: false, parentFolderId: file.folderId || null })))
 const rootDocumentRows = computed(() => documentDisplayRows.value.filter(file => !file.parentFolderId && matchesDocumentCategory(file)))
 const filesByFolderId = computed(() => {
@@ -780,7 +782,8 @@ const summaryRows = computed(() => {
 const getDictLabel = (type, value) => dictLabels[type]?.[value] || value || '-'
 const getUserName = id => managerOptions.value.find(item => item.value === id)?.label || (id ? `用户 ${id}` : '-')
 const resolveFileCategory = value => {
-  const matched = fileCategoryOptions.value.find(item => item.value === value || item.label === value)
+  const options = [...defaultFileCategories, ...fileCategoryOptions.value]
+  const matched = options.find(item => item.value === value || item.label === value)
   return { value: matched?.value || value || '-', label: matched?.label || value || '-' }
 }
 const isFinishedStatus = value => ['COMPLETED', 'DONE', 'FINISHED', '已完成'].includes(value)
@@ -961,11 +964,14 @@ const fetchProjects = async () => {
 }
 
 const getTaskRiskLevel = task => {
-  if (task.status === 'OVERDUE') {
-    const overdueDays = task.plannedEndDate ? dayjs().diff(dayjs(task.plannedEndDate), 'day') : 0
-    return overdueDays >= 3 ? '高风险' : '中风险'
-  }
-  return task.status === 'DUE_SOON' ? '中风险' : '低风险'
+  if (['COMPLETED', 'PAUSED'].includes(task.status)) return '按计划进行'
+  if (!task.plannedEndDate) return '按计划进行'
+  const today = dayjs().startOf('day')
+  const planEnd = dayjs(task.plannedEndDate).startOf('day')
+  const overdueDays = today.diff(planEnd, 'day')
+  if (overdueDays > 0) return overdueDays >= 3 ? '高风险' : '中风险'
+  const daysUntilDue = planEnd.diff(today, 'day')
+  return daysUntilDue <= 3 ? '即将到期' : '按计划进行'
 }
 const mapTaskRow = (task, index) => ({
   id: task.id,
@@ -1423,6 +1429,18 @@ const handleDownloadDocument = async record => {
     URL.revokeObjectURL(link.href)
   } catch (error) {
     message.error(error.message)
+  }
+}
+const handleDeleteFolder = async record => {
+  try {
+    await deleteProjectFolder(record.folderId)
+    folderRows.value = folderRows.value.filter(folder => String(folder.id) !== String(record.folderId))
+    documentRows.value = documentRows.value.map(file =>
+      String(file.folderId) === String(record.folderId) ? { ...file, folderId: null } : file
+    )
+    message.success('文件夹已删除，文件夹内文件已移至根目录')
+  } catch (error) {
+    message.error(error.message || '删除失败')
   }
 }
 const handleDeleteDocument = async record => {

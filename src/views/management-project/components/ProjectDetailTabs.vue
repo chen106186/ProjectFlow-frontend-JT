@@ -206,7 +206,11 @@
                     <a-button type="link" size="small" danger>删除</a-button>
                   </a-popconfirm>
                 </a-space>
-                <span v-else class="document-row-muted">-</span>
+                <a-space v-else>
+                  <a-popconfirm title="确定删除该文件夹吗？文件夹内的文件将移至根目录。" @confirm="emit('delete-folder', record)">
+                    <a-button type="link" size="small" danger>删除</a-button>
+                  </a-popconfirm>
+                </a-space>
               </template>
             </template>
           </a-table>
@@ -281,6 +285,7 @@ const emit = defineEmits([
   'delete-documents',
   'download-document',
   'delete-document',
+  'delete-folder',
 ])
 
 const ganttRef = ref()
@@ -322,7 +327,7 @@ const TASK_STATUS_OPTIONS = [
   { label: '已完成', value: 'COMPLETED' },
   { label: '已暂停', value: 'PAUSED' },
 ]
-const riskColorMap = { 高风险: 'red', 中风险: 'orange', 低风险: 'green' }
+const riskColorMap = { 高风险: 'red', 中风险: 'orange', 即将到期: 'gold', 按计划进行: 'green' }
 const priorityColorMap = { URGENT: 'red', HIGH: 'orange', MEDIUM: 'blue', LOW: 'default' }
 
 const taskPersonOptions = computed(() => {
@@ -338,10 +343,14 @@ const taskPersonOptions = computed(() => {
 })
 
 const riskKey = task => {
-  if (task.statusCode === 'DUE_SOON') return 'due'
-  if (task.statusCode !== 'OVERDUE') return 'normal'
-  const days = task.plannedEndDate ? dayjs().diff(dayjs(task.plannedEndDate), 'day') : 0
-  return days >= 3 ? 'high' : 'medium'
+  if (['COMPLETED', 'PAUSED'].includes(task.statusCode)) return 'normal'
+  const endDate = task.plannedEndDate || task.planEnd
+  if (!endDate || endDate === '-') return 'normal'
+  const today = dayjs().startOf('day')
+  const planEnd = dayjs(endDate).startOf('day')
+  const overdueDays = today.diff(planEnd, 'day')
+  if (overdueDays > 0) return overdueDays >= 3 ? 'high' : 'medium'
+  return planEnd.diff(today, 'day') <= 3 ? 'due' : 'normal'
 }
 
 const computedRisks = computed(() => {

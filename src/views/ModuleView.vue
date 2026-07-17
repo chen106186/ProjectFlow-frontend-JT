@@ -1007,6 +1007,20 @@ async function fetchTaskModuleData() {
   }
 }
 
+function resolveTaskStatusCode(task) {
+  if (!task) return 'NOT_STARTED'
+  if (task.status === 'PAUSED') return 'PAUSED'
+  if (task.actualEndDate) return 'COMPLETED'
+  if (!task.plannedEndDate) return task.actualStartDate ? 'IN_PROGRESS' : 'NOT_STARTED'
+
+  const today = dayjs().startOf('day')
+  const planEnd = dayjs(task.plannedEndDate).startOf('day')
+  if (!planEnd.isValid()) return task.actualStartDate ? 'IN_PROGRESS' : 'NOT_STARTED'
+  if (today.isAfter(planEnd)) return 'OVERDUE'
+  if (planEnd.diff(today, 'day') <= 3) return 'DUE_SOON'
+  return task.actualStartDate ? 'IN_PROGRESS' : 'NOT_STARTED'
+}
+
 async function loadTasks() {
   try {
     const profile = JSON.parse(window.localStorage.getItem('authProfile') || '{}')
@@ -1022,7 +1036,9 @@ async function loadTasks() {
       plannedEndDate: f.plannedEndDate ? f.plannedEndDate.format('YYYY-MM-DD') : undefined,
     })
     taskPaginationTotal.value = result.total || 0
-    taskApiRows.value = (result.records || []).map((task, index) => ({
+    taskApiRows.value = (result.records || []).map((task, index) => {
+      const statusCode = resolveTaskStatusCode(task)
+      return ({
       id: task.id,
       index: index + 1,
       name: task.name,
@@ -1035,8 +1051,8 @@ async function loadTasks() {
       assigneeId: task.assigneeId,
       priority: getTaskLabel('taskPriority', task.priority),
       priorityCode: task.priority,
-      status: getTaskLabel('taskStatus', task.status),
-      statusCode: task.status,
+      status: getTaskLabel('taskStatus', statusCode),
+      statusCode,
       planStart: task.plannedStartDate ? String(task.plannedStartDate) : '-',
       actualStart: task.actualStartDate ? String(task.actualStartDate) : '-',
       planEnd: task.plannedEndDate ? String(task.plannedEndDate) : '-',
@@ -1044,7 +1060,8 @@ async function loadTasks() {
       createdAt: formatDateTime(task.createdAt),
       description: task.description || '',
       tags: task.tags || '',
-    }))
+    })
+    })
     const lastPage = Math.max(1, Math.ceil(visibleTasks.value.length / taskPageSize.value))
     taskCurrentPage.value = Math.min(taskCurrentPage.value, lastPage)
   } catch (error) {
@@ -1293,7 +1310,7 @@ async function loadTaskDetailData(taskId) {
       getTaskById(taskId),
       getProjectFiles({ businessType: 'TASK', businessId: taskId }),
     ])
-    selectedTaskDetail.value = detail
+    selectedTaskDetail.value = { ...detail, status: resolveTaskStatusCode(detail) }
     taskAttachmentRows.value = Array.isArray(files) ? files : []
   } catch (error) {
     message.error(error.message || '任务详情加载失败')
@@ -1929,6 +1946,21 @@ const getTaskFileType = file => {
   return extension ? extension.toUpperCase() : (file?.contentType || '-')
 }
 
+const getCurrentUserName = () => {
+  const profile = JSON.parse(window.localStorage.getItem('authProfile') || '{}')
+  return profile.realName || profile.name || profile.username || profile.nickname || ''
+}
+
+const getTaskUploaderName = file => {
+  if (file.uploaderName) return file.uploaderName
+  const matchedUser = taskUsers.value.find(item => String(item.id) === String(file.uploaderId))
+  if (matchedUser?.realName) return matchedUser.realName
+  const profile = JSON.parse(window.localStorage.getItem('authProfile') || '{}')
+  const profileId = profile.id ?? profile.userId
+  if (file.uploaderId && String(file.uploaderId) === String(profileId)) return getCurrentUserName() || '-'
+  return file.uploaderId ? `用户 ${file.uploaderId}` : '-'
+}
+
 const attachments = computed(() =>
   taskAttachmentRows.value.map(file => ({
     id: file.id,
@@ -1936,7 +1968,7 @@ const attachments = computed(() =>
     type: getTaskFileType(file),
     size: formatFileSize(file.fileSize),
     version: file.versionNo || '-',
-    user: file.uploaderId ? `用户 ${file.uploaderId}` : '-',
+    user: getTaskUploaderName(file),
     time: formatDateTime(file.uploadedAt),
   }))
 )
