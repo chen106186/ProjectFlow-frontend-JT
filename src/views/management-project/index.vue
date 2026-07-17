@@ -518,7 +518,7 @@ const detailTabs = [
 ]
 const ganttSummaryData = reactive({ total: 0, completed: 0, overdue: 0, dueSoon: 0, overallProgress: 0 })
 const ganttSummary = computed(() => [{ label: '项目状态', value: currentProject.value?.status || '-', desc: `整体进度 ${ganttSummaryData.overallProgress}%`, class: 'gantt-progress', icon: ProjectOutlined }, { label: '延期任务', value: `${ganttSummaryData.overdue} 个`, desc: '需重点关注', class: 'risk-high', icon: WarningOutlined }, { label: '即将到期', value: `${ganttSummaryData.dueSoon} 个`, desc: '未来 3 天内到期', class: 'risk-due', icon: ClockCircleOutlined }])
-const ganttStatusColors = { 未开始: 'default', 进行中: 'processing', 即将到期: 'gold', 已完成: 'green', 已逾期: 'red', 里程碑: 'green' }
+const ganttStatusColors = { 未开始: 'default', 启动逾期: 'orange', 进行中: 'processing', 即将到期: 'gold', 已逾期: 'red', 已完成: 'green', 逾期完成: 'volcano', 里程碑: 'green' }
 const ganttStatusClasses = { 未开始: 'gantt-not-started', 进行中: 'gantt-in-progress', 即将到期: 'gantt-due-soon', 已完成: 'gantt-completed', 已逾期: 'gantt-overdue', 里程碑: 'gantt-milestone' }
 const ganttStatusOptions = computed(() => taskStatusOptions.value.length ? taskStatusOptions.value : [
   { label: '未开始', value: 'NOT_STARTED' },
@@ -1102,7 +1102,7 @@ const fetchProjectRelatedData = async projectId => {
       const planEnd = node.plannedEndDate?.replaceAll('-', '/') || '-'
       const actualStart = node.actualStartDate?.replaceAll('-', '/') || '-'
       const actualEnd = node.actualEndDate?.replaceAll('-', '/') || '-'
-      return { id: node.id, name: node.nodeName, planStart, planEnd, planTime: formatDateRange(planStart, planEnd), actualStart, actualEnd, actualTime: formatDateRange(actualStart, actualEnd), status: getDictLabel('taskStatus', node.status), statusCode: node.status, progress: node.progressPercent || 0, isOverdue: node.status === 'OVERDUE' }
+      return { id: node.id, name: node.nodeName, planStart, planEnd, planTime: formatDateRange(planStart, planEnd), actualStart, actualEnd, actualTime: formatDateRange(actualStart, actualEnd), status: getDictLabel('taskStatus', node.status), statusCode: node.status, progress: node.progressPercent || 0, isOverdue: node.status === 'OVERDUE' || node.status === 'OVERDUE_START' || node.status === 'OVERDUE_COMPLETED' }
     })
     applyTaskResult(taskResult)
     applyBugResult(bugResult)
