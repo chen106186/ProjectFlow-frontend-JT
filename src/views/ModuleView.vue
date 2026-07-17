@@ -168,8 +168,8 @@
                   <td>{{ record.role }}</td>
                   <td>{{ record.tag }}</td>
                   <td>{{ record.owner }}</td>
-                  <td><span class="tag-soft tag-priority">{{ record.priority }}</span></td>
-                  <td><span class="tag-soft tag-processing">{{ record.status }}</span></td>
+                  <td><a-tag :color="getTaskPriorityColor(record.priorityCode)">{{ record.priority }}</a-tag></td>
+                  <td><a-tag :color="getTaskStatusColor(record.statusCode)">{{ record.status }}</a-tag></td>
                   <td>{{ record.planStart }}</td>
                   <td v-if="isTaskModule">{{ record.planEnd }}</td>
                   <td>{{ record.actualStart }}</td>
@@ -216,8 +216,8 @@
                       <td>{{ record.role }}</td>
                       <td>{{ record.tag }}</td>
                       <td>{{ record.owner }}</td>
-                      <td><span class="tag-soft tag-priority">{{ record.priority }}</span></td>
-                      <td><span class="tag-soft tag-processing">{{ record.status }}</span></td>
+                      <td><a-tag :color="getTaskPriorityColor(record.priorityCode)">{{ record.priority }}</a-tag></td>
+                      <td><a-tag :color="getTaskStatusColor(record.statusCode)">{{ record.status }}</a-tag></td>
                       <td>{{ record.planStart }}</td>
                       <td v-if="isTaskModule">{{ record.planEnd }}</td>
                       <td>{{ record.actualStart }}</td>
@@ -240,17 +240,14 @@
           </div>
           <div class="prototype-pagination">
             <a-pagination
-              v-if="isTaskModule && taskDisplayMode === 'list'"
               v-model:current="taskCurrentPage"
               v-model:page-size="taskPageSize"
               :total="visibleTasks.length"
               :page-size-options="['10', '50', '100']"
               show-size-changer
-              show-less-items
               :show-total="total => `共 ${total} 条`"
               @change="handleTaskPageChange"
             />
-            <span v-else>共 {{ visibleTasks.length }} 条</span>
           </div>
         </a-card>
       </section>
@@ -262,20 +259,20 @@
           <a-form class="prototype-filter bug-filter app-filter-form" layout="inline">
             <a-form-item label="搜索"><a-input v-model:value="bugFilter.keyword" placeholder="请输入关键字" allow-clear /></a-form-item>
             <a-form-item label="所属项目">
-              <a-select v-model:value="bugFilter.projectId" placeholder="全部" allow-clear :options="bugProjects.map(p => ({ label: p.name, value: p.id }))" style="width:10rem" />
+              <a-select v-model:value="bugFilter.projectId" placeholder="全部" allow-clear :options="bugProjects.map(p => ({ label: p.name, value: p.id }))" style="width:10rem" @change="handleBugSearch" />
             </a-form-item>
             <a-form-item label="严重等级">
               <a-select v-model:value="bugFilter.priority" placeholder="全部" allow-clear
                 :options="Object.entries(BUG_PRIORITY_LABELS).map(([value, label]) => ({ label, value }))"
-                style="width:7.5rem" />
+                style="width:7.5rem" @change="handleBugSearch" />
             </a-form-item>
             <a-form-item label="状态">
               <a-select v-model:value="bugFilter.status" placeholder="全部" allow-clear
-                :options="Object.entries(BUG_STATUS_LABELS).map(([value, label]) => ({ label, value }))"
-                style="width:7.5rem" />
+                :options="Object.entries(BUG_STATUS_LABELS).filter(([value]) => value !== 'FIXING').map(([value, label]) => ({ label, value }))"
+                style="width:7.5rem" @change="handleBugSearch" />
             </a-form-item>
             <a-form-item label="创建人">
-              <a-select v-model:value="bugFilter.creatorId" placeholder="全部" allow-clear :options="bugUserOptions" show-search option-filter-prop="label" />
+              <a-select v-model:value="bugFilter.creatorId" placeholder="全部" allow-clear :options="bugUserOptions" show-search option-filter-prop="label" @change="handleBugSearch" />
             </a-form-item>
             <a-form-item class="filter-buttons app-filter-actions">
               <a-space>
@@ -553,6 +550,7 @@
         <template v-if="isPersonalTasks && editingTaskId">
           <a-form-item label="实际开始时间"><a-date-picker v-model:value="taskFormState.actualStartDate" style="width:100%" /></a-form-item>
           <a-form-item label="实际完成时间"><a-date-picker v-model:value="taskFormState.actualEndDate" style="width:100%" /></a-form-item>
+          <a-form-item label="备注"><a-textarea v-model:value="taskFormState.remark" :rows="3" placeholder="请输入备注" /></a-form-item>
         </template>
       </a-form>
     </a-modal>
@@ -763,6 +761,7 @@ const taskFormState = ref({
   actualEndDate: undefined,
   description: '',
   tags: '',
+  remark: '',
 })
 const dailyForm = ref({
   reportDate: dayjs(),
@@ -812,13 +811,12 @@ const visibleTasks = computed(() => {
   return taskApiRows.value
 })
 const pagedVisibleTasks = computed(() => {
-  if (!isTaskModule.value) return visibleTasks.value
   const start = (taskCurrentPage.value - 1) * taskPageSize.value
   return visibleTasks.value.slice(start, start + taskPageSize.value)
 })
 const groupedTasks = computed(() => {
   const groups = new Map()
-  visibleTasks.value.forEach(task => {
+  pagedVisibleTasks.value.forEach(task => {
     const value = task[taskGroupField.value] || '未设置'
     if (!groups.has(value)) groups.set(value, [])
     groups.get(value).push(task)
@@ -1060,6 +1058,7 @@ async function loadTasks() {
       createdAt: formatDateTime(task.createdAt),
       description: task.description || '',
       tags: task.tags || '',
+      remark: task.remark || '',
     })
     })
     const lastPage = Math.max(1, Math.ceil(visibleTasks.value.length / taskPageSize.value))
@@ -1458,6 +1457,7 @@ const openTaskModal = (mode, record) => {
       actualEndDate: record.actualEnd !== '-' ? dayjs(record.actualEnd) : undefined,
       description: record.description || '',
       tags: record.tags || '',
+      remark: record.remark || '',
     }
   }
   taskEditOpen.value = true
@@ -1525,6 +1525,7 @@ const handleTaskSubmit = async () => {
       body = {
         actualStartDate: fs.actualStartDate ? fs.actualStartDate.format('YYYY-MM-DD') : undefined,
         actualEndDate: fs.actualEndDate ? fs.actualEndDate.format('YYYY-MM-DD') : undefined,
+        remark: fs.remark || undefined,
       }
     } else {
       if (!fs.name) { message.warning('请输入任务名称'); taskSubmitLoading.value = false; return }
