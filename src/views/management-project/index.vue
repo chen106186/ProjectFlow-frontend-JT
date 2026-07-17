@@ -95,6 +95,7 @@
           :gantt-node-rows="ganttNodeRows"
           :gantt-status-colors="ganttStatusColors"
           :gantt-custom-row="handleGanttRow"
+          :gantt-view-mode="ganttViewMode"
           :detail-loading="detailLoading"
           :risks="risks"
           :task-columns="taskColumns"
@@ -142,6 +143,8 @@
           @download-document="handleDownloadDocument"
           @delete-document="handleDeleteDocument"
           @delete-folder="handleDeleteFolder"
+          @change-gantt-view-mode="handleGanttViewModeChange"
+          @zoom-gantt="handleGanttZoom"
         />
       </div>
     </template>
@@ -378,6 +381,7 @@ import {
   getGanttNodes,
   getGanttSummary,
   getProjectBugs,
+  getProjectBugSummary,
   getProjectDetail,
   getProjectFiles,
   getProjectFolders,
@@ -553,6 +557,8 @@ const ganttNodeColumns = [
 const ganttTableWidth = ganttNodeColumns.reduce((total, column) => total + column.width, 0)
 const ganttNodeRows = ref([])
 const ganttWorkspaceHeight = computed(() => 86 + ganttNodeRows.value.length * 72)
+const ganttViewMode = ref('Day')
+const ganttColumnWidth = computed(() => ganttViewMode.value === 'Month' ? 120 : 36)
 const formatDateRange = (start, end) => start === '-' && end === '-' ? '-' : `${start} ~ ${end}`
 const normalizeGanttEnd = (start, end) => {
   const startDate = dayjs(start)
@@ -563,7 +569,6 @@ const normalizeGanttEnd = (start, end) => {
 const ganttTasks = computed(() => {
   const validRows = ganttNodeRows.value.filter(node => node.planStart !== '-' && node.planEnd !== '-')
   const fallbackStart = validRows[0]?.planStart?.replaceAll('/', '-') || dayjs().format('YYYY-MM-DD')
-  let previousVisibleTaskId
   return ganttNodeRows.value.map(node => {
     const hasPlanTime = node.planStart !== '-' && node.planEnd !== '-'
     const taskId = String(node.id)
@@ -577,10 +582,9 @@ const ganttTasks = computed(() => {
       planEnd: node.planEnd,
       actualEnd: node.actualEnd,
       progress: 0,
-      dependencies: hasPlanTime && previousVisibleTaskId ? previousVisibleTaskId : undefined,
+      dependencies: '',
       custom_class: hasPlanTime ? ganttStatusClasses[node.status] : 'gantt-empty-row',
     }
-    if (hasPlanTime) previousVisibleTaskId = taskId
     return task
   })
 })
@@ -589,7 +593,8 @@ const ganttScrollStart = computed(() => {
     .map(node => formatNodeDate(node.planStart))
     .filter(Boolean)
     .sort()[0]
-  return earliestPlanStart ? dayjs(earliestPlanStart).subtract(1, 'month').format('YYYY-MM-DD') : 'start'
+  const offsetUnit = ganttViewMode.value === 'Month' ? 'month' : 'week'
+  return earliestPlanStart ? dayjs(earliestPlanStart).subtract(1, offsetUnit).format('YYYY-MM-DD') : 'start'
 })
 const ganttForm = reactive({ id: null, name: '', planStart: undefined, planEnd: undefined, actualStart: undefined, actualEnd: undefined, progress: 0 })
 const ganttFormRules = {
@@ -615,9 +620,10 @@ const taskColumns = [
 const taskRows = ref([])
 const taskStatusFilters = toOptions(['全部状态', '未开始', '进行中', '已完成'])
 const personFilterOptions = toOptions(['全部负责人', '全部指定人', '张三', '李四', '王五'])
-const bugSummary = computed(() => [{ key: 'urgent', label: '紧急', value: bugRows.value.filter(item => item.priorityCode === 'URGENT').length, class: 'bug-severe', icon: ExclamationCircleOutlined }, { key: 'pending', label: '待修复', value: bugRows.value.filter(item => item.statusCode === 'PENDING_FIX').length, class: 'bug-submitted', icon: SendOutlined }, { key: 'fixing', label: '修复中', value: bugRows.value.filter(item => item.statusCode === 'FIXING').length, class: 'bug-confirmed', icon: ToolOutlined }, { key: 'closed', label: '已关闭', value: bugRows.value.filter(item => item.statusCode === 'CLOSED').length, class: 'bug-closed', icon: CheckCircleOutlined }])
+const bugSummary = computed(() => [{ key: 'urgent', label: '紧急', value: bugSummaryStats.value.byPriority?.URGENT || 0, class: 'bug-severe', icon: ExclamationCircleOutlined }, { key: 'pending', label: '待修复', value: bugSummaryStats.value.byStatus?.PENDING_FIX || 0, class: 'bug-submitted', icon: SendOutlined }, { key: 'fixing', label: '修复中', value: bugSummaryStats.value.byStatus?.FIXING || 0, class: 'bug-confirmed', icon: ToolOutlined }, { key: 'closed', label: '已关闭', value: bugSummaryStats.value.byStatus?.CLOSED || 0, class: 'bug-closed', icon: CheckCircleOutlined }])
 const bugColumns = [{ title: 'BUG ID', dataIndex: 'code', width: 130 }, { title: '标题', dataIndex: 'title', width: 220 }, { title: '严重级别', dataIndex: 'severity', width: 100 }, { title: '状态', dataIndex: 'status', width: 100 }, { title: '指定人', dataIndex: 'assignee', width: 90 }, { title: '创建人', dataIndex: 'creator', width: 90 }]
 const bugRows = ref([])
+const bugSummaryStats = ref({ total: 0, byStatus: {}, byPriority: {} })
 const bugStatusFilters = [
   { label: '全部状态', value: '' },
   { label: '待修复', value: 'PENDING_FIX' },
@@ -1016,6 +1022,9 @@ const applyBugResult = result => {
   bugRows.value = result.records.map(mapBugRow)
   bugPagination.total = result.total ?? result.records.length
 }
+const applyBugSummaryResult = result => {
+  bugSummaryStats.value = result || { total: 0, byStatus: {}, byPriority: {} }
+}
 const applyReportResult = result => {
   reportRows.value = result.records.map(mapReportRow)
   reportPagination.total = result.total ?? result.records.length
@@ -1094,12 +1103,13 @@ const fetchProjectRelatedData = async projectId => {
   reportLoading.value = true
   documentLoading.value = true
   try {
-    const [project, nodes, ganttResult, taskResult, bugResult, reportResult, files, folders] = await Promise.all([
+    const [project, nodes, ganttResult, taskResult, bugResult, bugSummaryResult, reportResult, files, folders] = await Promise.all([
       getProjectDetail(projectId),
       getGanttNodes(projectId),
       getGanttSummary(projectId),
       getProjectTasks({ projectId, pageNo: taskPagination.current, pageSize: taskPagination.pageSize }),
       getProjectBugs({ projectId, pageNo: bugPagination.current, pageSize: bugPagination.pageSize }),
+      getProjectBugSummary({ projectId }),
       getProjectReports(getReportQueryParams(projectId)),
       getProjectFiles({ businessType: 'PROJECT', businessId: projectId }),
       getProjectFolders({ businessType: 'PROJECT', businessId: projectId }),
@@ -1126,6 +1136,7 @@ const fetchProjectRelatedData = async projectId => {
     })
     applyTaskResult(taskResult)
     applyBugResult(bugResult)
+    applyBugSummaryResult(bugSummaryResult)
     applyReportResult(reportResult)
     folderRows.value = folders || []
     expandedFolderIds.value = folderRows.value.map(folder => folder.id)
@@ -1153,7 +1164,9 @@ const renderGantt = async () => {
   ganttElement.innerHTML = ''
   if (!ganttTasks.value.length) return
   ganttInstance = new Gantt(ganttElement, ganttTasks.value, {
-    view_mode: 'Month',
+    view_mode: ganttViewMode.value,
+    view_modes: ['Day', 'Month'],
+    column_width: ganttColumnWidth.value,
     readonly: true,
     language: 'zh',
     popup_on: 'hover',
@@ -1168,7 +1181,7 @@ const renderGantt = async () => {
     },
     scroll_to: ganttScrollStart.value,
   })
-  const pixelsPerDay = ganttInstance.config.column_width / 30
+  const pixelsPerDay = ganttViewMode.value === 'Month' ? ganttInstance.config.column_width / 30 : ganttInstance.config.column_width
   ganttNodeRows.value.forEach(node => {
     const planStart = formatNodeDate(node.planStart)
     const actualStart = formatNodeDate(node.actualStart)
@@ -1190,6 +1203,21 @@ const renderGantt = async () => {
   })
   const todayButton = ganttElement.querySelector('.today-button')
   if (todayButton) todayButton.textContent = '今天'
+
+  ganttElement.onwheel = event => {
+    if (!event.ctrlKey) return
+    event.preventDefault()
+    handleGanttZoom(event.deltaY < 0 ? 'in' : 'out')
+  }
+}
+
+const handleGanttViewModeChange = value => {
+  if (ganttViewMode.value === value) return
+  ganttViewMode.value = value
+}
+
+const handleGanttZoom = direction => {
+  handleGanttViewModeChange(direction === 'in' ? 'Day' : 'Month')
 }
 
 const syncQueryFromRoute = () => {
@@ -1216,6 +1244,7 @@ const syncRoute = async () => {
 }
 watch(() => [route.name, route.params.id, route.query.status], syncRoute)
 watch(activeTab, renderGantt)
+watch(ganttViewMode, renderGantt)
 watch(groupField, () => { collapsedGroups.value = [] })
 onBeforeUnmount(() => { ganttInstance = null })
 onMounted(async () => {

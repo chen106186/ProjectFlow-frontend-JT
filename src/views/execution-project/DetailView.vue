@@ -53,6 +53,15 @@
             <span class="semantic-card__content"><span>{{ item.label }}</span><strong>{{ item.value }}</strong><small>{{ item.desc }}</small></span>
           </div>
         </div>
+        <div class="gantt-view-toolbar">
+          <span>展示粒度：</span>
+          <a-button size="small" :disabled="ganttViewMode === 'Month'" @click="handleGanttZoom('out')">缩小</a-button>
+          <a-radio-group v-model:value="ganttViewMode" button-style="solid" size="small">
+            <a-radio-button value="Day">日</a-radio-button>
+            <a-radio-button value="Month">月</a-radio-button>
+          </a-radio-group>
+          <a-button size="small" :disabled="ganttViewMode === 'Day'" @click="handleGanttZoom('in')">放大</a-button>
+        </div>
         <div class="gantt-workspace" :style="{ gridTemplateColumns: `${$px2rem(ganttTableWidth)} minmax(0, 1fr)`, height: $px2rem(ganttWorkspaceHeight) }">
           <a-table class="gantt-node-table" row-key="id" :columns="ganttNodeColumns" :data-source="ganttNodeRows" :loading="detailLoading" :pagination="false" :custom-row="handleGanttRow" size="small" table-layout="fixed">
             <template #bodyCell="{ column, record, text }">
@@ -401,6 +410,7 @@ import {
   getGanttNodes,
   getGanttSummary,
   getProjectBugs,
+  getProjectBugSummary,
   getProjectDetail,
   getProjectFiles,
   getProjectReportDetail,
@@ -488,6 +498,8 @@ const ganttNodeColumns = [
 const ganttTableWidth = ganttNodeColumns.reduce((total, column) => total + column.width, 0)
 const ganttNodeRows = ref([])
 const ganttWorkspaceHeight = computed(() => 86 + ganttNodeRows.value.length * 72)
+const ganttViewMode = ref('Day')
+const ganttColumnWidth = computed(() => ganttViewMode.value === 'Month' ? 120 : 36)
 const formatDateRange = (start, end) => start === '-' && end === '-' ? '-' : `${start} ~ ${end}`
 const normalizeGanttEnd = (start, end) => {
   const startDate = dayjs(start)
@@ -498,7 +510,6 @@ const normalizeGanttEnd = (start, end) => {
 const ganttTasks = computed(() => {
   const validRows = ganttNodeRows.value.filter(node => node.planStart !== '-' && node.planEnd !== '-')
   const fallbackStart = validRows[0]?.planStart?.replaceAll('/', '-') || dayjs().format('YYYY-MM-DD')
-  let previousVisibleTaskId
   return ganttNodeRows.value.map(node => {
     const hasPlanTime = node.planStart !== '-' && node.planEnd !== '-'
     const taskId = String(node.id)
@@ -512,10 +523,9 @@ const ganttTasks = computed(() => {
       planEnd: node.planEnd,
       actualEnd: node.actualEnd,
       progress: 0,
-      dependencies: hasPlanTime && previousVisibleTaskId ? previousVisibleTaskId : undefined,
+      dependencies: '',
       custom_class: hasPlanTime ? ganttStatusClasses[node.status] : 'gantt-empty-row',
     }
-    if (hasPlanTime) previousVisibleTaskId = taskId
     return task
   })
 })
@@ -524,7 +534,8 @@ const ganttScrollStart = computed(() => {
     .map(node => formatNodeDate(node.planStart))
     .filter(Boolean)
     .sort()[0]
-  return earliestPlanStart ? dayjs(earliestPlanStart).subtract(1, 'month').format('YYYY-MM-DD') : 'start'
+  const offsetUnit = ganttViewMode.value === 'Month' ? 'month' : 'week'
+  return earliestPlanStart ? dayjs(earliestPlanStart).subtract(1, offsetUnit).format('YYYY-MM-DD') : 'start'
 })
 const ganttFormRef = ref()
 const ganttForm = reactive({ id: null, name: '', planStart: undefined, planEnd: undefined, actualStart: undefined, actualEnd: undefined, progress: 0 })
@@ -594,7 +605,7 @@ const taskPagination = createTablePagination()
 const taskRows = ref([])
 const taskStatusFilters = toOptions(['全部状态', '未开始', '进行中', '已完成'])
 const personFilterOptions = computed(() => [{ label: '全部指定人', value: '' }, ...managerOptions.value])
-const bugSummary = computed(() => [{ key: 'urgent', label: '严重', value: bugRows.value.filter(item => item.priorityCode === 'URGENT' || item.severity === '严重').length, class: 'bug-severe', icon: ExclamationCircleOutlined }, { key: 'pending', label: '已提交', value: bugRows.value.filter(item => item.statusCode === 'PENDING_FIX').length, class: 'bug-submitted', icon: SendOutlined }, { key: 'fixing', label: '已确认', value: bugRows.value.filter(item => item.statusCode === 'FIXING').length, class: 'bug-confirmed', icon: ToolOutlined }, { key: 'closed', label: '已关闭', value: bugRows.value.filter(item => item.statusCode === 'CLOSED').length, class: 'bug-closed', icon: CheckCircleOutlined }])
+const bugSummary = computed(() => [{ key: 'urgent', label: '严重', value: bugSummaryStats.value.byPriority?.URGENT || 0, class: 'bug-severe', icon: ExclamationCircleOutlined }, { key: 'pending', label: '已提交', value: bugSummaryStats.value.byStatus?.PENDING_FIX || 0, class: 'bug-submitted', icon: SendOutlined }, { key: 'fixing', label: '已确认', value: bugSummaryStats.value.byStatus?.FIXING || 0, class: 'bug-confirmed', icon: ToolOutlined }, { key: 'closed', label: '已关闭', value: bugSummaryStats.value.byStatus?.CLOSED || 0, class: 'bug-closed', icon: CheckCircleOutlined }])
 const bugCardFilters = { urgent: { priority: 'URGENT' }, pending: { status: 'PENDING_FIX' }, fixing: { status: 'FIXING' }, closed: { status: 'CLOSED' } }
 const bugQueryParams = computed(() => ({
   ...(bugCardFilters[activeBugFilter.value] || {}),
@@ -613,6 +624,7 @@ const resetBugFilters = () => {
 const bugColumns = [{ title: 'BUG ID', dataIndex: 'code', width: 130 }, { title: '标题', dataIndex: 'title', width: 220 }, { title: '严重级别', dataIndex: 'severity', width: 100 }, { title: '状态', dataIndex: 'status', width: 100 }, { title: '指定人', dataIndex: 'assignee', width: 90 }, { title: '创建人', dataIndex: 'creator', width: 90 }]
 const bugPagination = createTablePagination()
 const bugRows = ref([])
+const bugSummaryStats = ref({ total: 0, byStatus: {}, byPriority: {} })
 const bugStatusFilters = [
   { label: '全部状态', value: '' },
   { label: '待修复', value: 'PENDING_FIX' },
@@ -924,6 +936,9 @@ const applyBugResult = result => {
   bugRows.value = result.records.map(mapBugRow)
   bugPagination.total = result.total ?? result.records.length
 }
+const applyBugSummaryResult = result => {
+  bugSummaryStats.value = result || { total: 0, byStatus: {}, byPriority: {} }
+}
 const applyReportResult = result => {
   reportRows.value = result.records.map(mapReportRow)
   reportPagination.total = result.total ?? result.records.length
@@ -979,12 +994,13 @@ const fetchProjectRelatedData = async projectId => {
   documentLoading.value = true
 
   try {
-    const [project, nodes, ganttResult, taskResult, bugResult, reportResult, files, folders] = await Promise.all([
+    const [project, nodes, ganttResult, taskResult, bugResult, bugSummaryResult, reportResult, files, folders] = await Promise.all([
       getProjectDetail(projectId),
       getGanttNodes(projectId),
       getGanttSummary(projectId),
       getProjectTasks({ projectId, pageNo: taskPagination.current, pageSize: taskPagination.pageSize }),
       getProjectBugs({ projectId, pageNo: bugPagination.current, pageSize: bugPagination.pageSize }),
+      getProjectBugSummary({ projectId }),
       getProjectReports(getReportQueryParams(projectId)),
       getProjectFiles({ businessType: 'PROJECT', businessId: projectId }),
       getProjectFolders({ businessType: 'PROJECT', businessId: projectId }),
@@ -1009,6 +1025,7 @@ const fetchProjectRelatedData = async projectId => {
     })
     applyTaskResult(taskResult)
     applyBugResult(bugResult)
+    applyBugSummaryResult(bugSummaryResult)
     applyReportResult(reportResult)
     folderRows.value = folders || []
     expandedFolderIds.value = folderRows.value.map(folder => folder.id)
@@ -1037,7 +1054,9 @@ const renderGantt = async () => {
   ganttElement.innerHTML = ''
   if (!ganttTasks.value.length) return
   ganttInstance = new Gantt(ganttElement, ganttTasks.value, {
-    view_mode: 'Month',
+    view_mode: ganttViewMode.value,
+    view_modes: ['Day', 'Month'],
+    column_width: ganttColumnWidth.value,
     readonly: true,
     language: 'zh',
     popup_on: 'hover',
@@ -1052,7 +1071,7 @@ const renderGantt = async () => {
     },
     scroll_to: ganttScrollStart.value,
   })
-  const pixelsPerDay = ganttInstance.config.column_width / 30
+  const pixelsPerDay = ganttViewMode.value === 'Month' ? ganttInstance.config.column_width / 30 : ganttInstance.config.column_width
   ganttNodeRows.value.forEach(node => {
     const planStart = formatNodeDate(node.planStart)
     const actualStart = formatNodeDate(node.actualStart)
@@ -1074,6 +1093,18 @@ const renderGantt = async () => {
   })
   const todayButton = ganttElement.querySelector('.today-button')
   if (todayButton) todayButton.textContent = '今天'
+
+  ganttElement.onwheel = event => {
+    if (!event.ctrlKey) return
+    event.preventDefault()
+    handleGanttZoom(event.deltaY < 0 ? 'in' : 'out')
+  }
+}
+
+const handleGanttZoom = direction => {
+  const nextMode = direction === 'in' ? 'Day' : 'Month'
+  if (ganttViewMode.value === nextMode) return
+  ganttViewMode.value = nextMode
 }
 
 const refreshFolders = async () => {
@@ -1408,6 +1439,7 @@ watch(activeTab, tab => {
   if (tab === 'bugs') resetBugFilters()
   renderGantt()
 })
+watch(ganttViewMode, renderGantt)
 watch([activeBugFilter, bugStatusFilter, bugAssigneeFilter], () => {
   bugPagination.current = 1
   fetchBugPage()
@@ -1490,6 +1522,7 @@ onMounted(async () => {
 .risk-normal.risk-card--active { box-shadow: 0 0 0 3px rgb(36 138 61 / 15%), 0 4px 16px rgb(0 0 0 / 5%) !important; }
 .section-heading .filter-hint { color: #1677ff; font-size: 13px; }
 .task-table-filters, .bug-table-filters { margin-left: auto; }
+.gantt-view-toolbar { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin: -4px 0 12px; color: #595959; font-size: 13px; }
 .gantt-workspace { display: grid; min-height: 0; overflow: hidden; border: 1px solid #edf0f3; }
 .gantt-node-table { width: 100%; border-right: 1px solid #edf0f3; }
 .gantt-node-table :deep(.ant-table-container), .gantt-node-table :deep(.ant-table), .gantt-node-table :deep(.ant-table-content) { height: 100%; }
@@ -1509,6 +1542,7 @@ onMounted(async () => {
 .gantt-scroll :deep(.gantt-popup__dates span) { color: #86868b; }
 .gantt-scroll :deep(.gantt-popup__dates strong) { color: #1d1d1f; font-weight: 500; }
 .gantt-scroll :deep(.bar-wrapper) { cursor: default; }
+.gantt-scroll :deep(.arrow), .gantt-scroll :deep(.arrow-wrapper) { display: none !important; }
 .gantt-scroll :deep(.bar-wrapper.gantt-empty-row), .gantt-scroll :deep(.gantt-empty-row .bar-wrapper), .gantt-scroll :deep(.gantt-empty-row .bar-group), .gantt-scroll :deep(.gantt-empty-row .bar-label) { visibility: hidden; }
 .gantt-scroll :deep(.bar-wrapper:not(.gantt-empty-row) .bar) { fill: #d9d9d9; stroke: #c8c8c8; }
 .gantt-scroll :deep(.gantt-not-started .gantt-actual-bar) { fill: #aeaeb2; }

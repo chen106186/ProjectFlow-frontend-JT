@@ -683,6 +683,7 @@ import {
 } from '@/api/managementProject'
 import { formatDateTime } from '@/utils/dateTime'
 import { OPERATION_ACTIONS, OPERATION_MODULES, recordOperationLog } from '@/utils/operationLog'
+import { canViewAllStatistics } from '@/utils/authScope'
 
 const route = useRoute()
 const router = useRouter()
@@ -927,7 +928,7 @@ watch(
 
     if (name === 'PersonalStatistics') {
       const profile = JSON.parse(localStorage.getItem('authProfile') || '{}')
-      isGmOffice.value = !!profile.isGmOffice
+      isGmOffice.value = canViewAllStatistics(profile)
       if (isGmOffice.value && statsUserOptions.value.length === 0) {
         try {
           const { getUserList } = await import('@/api/system')
