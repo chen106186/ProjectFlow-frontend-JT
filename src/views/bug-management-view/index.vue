@@ -272,9 +272,11 @@
             </div>
           </div>
           <div v-if="selectedBug && !isClosedBug(selectedBug)" class="detail-floating-actions">
-            <a-button type="primary" @click="handleEditFromDetail">编辑 Bug</a-button>
-            <a-button @click="assignVisible = true">重新指派</a-button>
-            <a-button type="primary" class="resolve-button" @click="openResolveModal">解决</a-button>
+            <template v-if="!isResolvedBug(selectedBug)">
+              <a-button type="primary" @click="handleEditFromDetail">编辑 Bug</a-button>
+              <a-button @click="assignVisible = true">重新指派</a-button>
+              <a-button type="primary" class="resolve-button" @click="openResolveModal">解决</a-button>
+            </template>
             <a-button danger :loading="closeLoading" @click="handleCloseBug">关闭 Bug</a-button>
           </div>
         </a-spin>
@@ -406,6 +408,8 @@ const isClosedBug = bug => {
   if (!bug) return false
   return bug.status === 'CLOSED' || bug.status === '已关闭' || bug.statusCode === 'CLOSED'
 }
+
+const isResolvedBug = bug => bug?.status === 'PENDING_VERIFY' || bug?.status === '待验证' || bug?.statusCode === 'PENDING_VERIFY'
 
 const OPERATION_LABELS = {
   CREATE: '创建', UPDATE: '更新', DELETE: '删除',
