@@ -300,7 +300,7 @@
               </a-radio-group>
             </div>
           </div>
-          <a-table v-if="bugDisplayMode === 'list'" class="personal-bug-table" :columns="personalBugColumns" :data-source="visibleBugs" :pagination="personalBugPagination" :scroll="{ x: 1320, y: 'calc(100vh - 440px)' }" size="middle" row-key="id" table-layout="fixed" @change="handlePersonalBugTableChange">
+          <a-table v-if="bugDisplayMode === 'list'" class="personal-bug-table" :columns="personalBugColumns" :data-source="visibleBugs" :pagination="personalBugPagination" :scroll="{ x: 1100, y: 'calc(100vh - 440px)' }" size="middle" row-key="id" table-layout="fixed" @change="handlePersonalBugTableChange">
             <template #bodyCell="{ column, record, text }">
               <template v-if="column.dataIndex === 'code'">
                 <span class="bug-no">{{ text && text !== '-' ? '#' + String(text).padStart(3, '0') : '-' }}</span>
@@ -316,23 +316,6 @@
               <template v-else-if="column.dataIndex === 'status'">
                 <a-tag :color="record.statusColor">{{ text }}</a-tag>
               </template>
-              <template v-else-if="column.dataIndex === 'operation'">
-                <a-space :size="2" wrap>
-                  <a-button type="link" size="small" @click="handleBugDetail(record)">详情</a-button>
-                  <template v-if="record.creatorId === currentUserId && record.statusCode !== 'CLOSED'">
-                    <a-button type="link" size="small" @click="handleOpenBugEditModal(record)">编辑</a-button>
-                    <a-popconfirm title="确认删除该Bug?" ok-text="删除" cancel-text="取消" @confirm="handleDeleteBug(record)">
-                      <a-button type="link" size="small" danger>删除</a-button>
-                    </a-popconfirm>
-                    <a-button v-if="record.statusCode === 'PENDING_VERIFY'" type="link" size="small" style="color:#52c41a" :loading="bugVerifyLoading" @click="handleVerifyBug(record)">
-                      <CheckOutlined />验证通过
-                    </a-button>
-                  </template>
-                  <a-button v-if="record.assigneeId === currentUserId && record.statusCode !== 'CLOSED'" type="link" size="small" @click="handleOpenFixModal(record)">
-                    <ToolOutlined />填写修复
-                  </a-button>
-                </a-space>
-              </template>
               <template v-else>{{ text }}</template>
             </template>
           </a-table>
@@ -340,7 +323,7 @@
             <div class="personal-bug-group-list">
               <section v-for="group in groupedBugs" :key="group.value" class="personal-bug-group">
               <h4 class="personal-bug-group__title">{{ group.label }} ({{ group.rows.length }})</h4>
-              <a-table :columns="personalBugColumns" :data-source="group.rows" :pagination="false" :scroll="{ x: 1320 }" size="middle" row-key="id" table-layout="fixed">
+              <a-table :columns="personalBugColumns" :data-source="group.rows" :pagination="false" :scroll="{ x: 1100 }" size="middle" row-key="id" table-layout="fixed">
                 <template #bodyCell="{ column, record, text }">
                   <template v-if="column.dataIndex === 'code'">
                     <span class="bug-no">{{ text && text !== '-' ? '#' + String(text).padStart(3, '0') : '-' }}</span>
@@ -355,23 +338,6 @@
                   </template>
                   <template v-else-if="column.dataIndex === 'status'">
                     <a-tag :color="record.statusColor">{{ text }}</a-tag>
-                  </template>
-                  <template v-else-if="column.dataIndex === 'operation'">
-                    <a-space :size="2" wrap>
-                      <a-button type="link" size="small" @click="handleBugDetail(record)">详情</a-button>
-                      <template v-if="record.creatorId === currentUserId && record.statusCode !== 'CLOSED'">
-                        <a-button type="link" size="small" @click="handleOpenBugEditModal(record)">编辑</a-button>
-                        <a-popconfirm title="确认删除该Bug?" ok-text="删除" cancel-text="取消" @confirm="handleDeleteBug(record)">
-                          <a-button type="link" size="small" danger>删除</a-button>
-                        </a-popconfirm>
-                        <a-button v-if="record.statusCode === 'PENDING_VERIFY'" type="link" size="small" style="color:#52c41a" :loading="bugVerifyLoading" @click="handleVerifyBug(record)">
-                          <CheckOutlined />验证通过
-                        </a-button>
-                      </template>
-                      <a-button v-if="record.assigneeId === currentUserId && record.statusCode !== 'CLOSED'" type="link" size="small" @click="handleOpenFixModal(record)">
-                        <ToolOutlined />填写修复
-                      </a-button>
-                    </a-space>
                   </template>
                   <template v-else>{{ text }}</template>
                 </template>
@@ -1940,7 +1906,6 @@ const personalBugColumns = [
   { title: '指定人', dataIndex: 'assignee', width: 100 },
   { title: '创建人', dataIndex: 'creator', width: 100 },
   { title: '创建时间', dataIndex: 'createdAt', width: 170 },
-  { title: '操作', dataIndex: 'operation', fixed: 'right', width: 220 },
 ]
 
 
