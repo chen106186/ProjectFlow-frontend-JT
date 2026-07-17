@@ -352,9 +352,9 @@ const renderDistCharts = () => {
   }))
   const projectTotal = projectData.reduce((s, d) => s + d.value, 0)
   projectChart.setOption(createDonutOption(
-    projectData.length ? projectData : [{ value: 1, name: '暂无数据', itemStyle: { color: '#c8cfd9' } }],
+    projectData.length ? projectData : [{ value: 1, name: '暂无数据', itemStyle: { color: '#e8e8e8' } }],
     CHART_COLORS,
-    projectData.length ? `${projectTotal} 个` : '0 个',
+    projectData.length ? `${projectTotal} 个` : '0%',
   ), true)
 
   const statusDist = myStats.taskStatusDistribution || {}
@@ -363,9 +363,9 @@ const renderDistCharts = () => {
   }))
   const statusTotal = statusData.reduce((s, d) => s + d.value, 0)
   statusChart.setOption(createDonutOption(
-    statusData.length ? statusData : [{ value: 1, name: '暂无数据', itemStyle: { color: '#c8cfd9' } }],
+    statusData.length ? statusData : [{ value: 1, name: '暂无数据', itemStyle: { color: '#e8e8e8' } }],
     Object.values(STATUS_COLOR_MAP),
-    statusData.length ? `${statusTotal} 个` : '0 个',
+    statusData.length ? `${statusTotal} 个` : '0%',
   ), true)
 }
 
