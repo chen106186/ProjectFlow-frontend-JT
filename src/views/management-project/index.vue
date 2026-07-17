@@ -333,7 +333,6 @@
         <a-form-item label="计划结束" name="planEnd"><a-date-picker v-model:value="ganttForm.planEnd" value-format="YYYY-MM-DD" placeholder="请选择计划结束日期" /></a-form-item>
         <a-form-item label="实际开始"><a-date-picker v-model:value="ganttForm.actualStart" value-format="YYYY-MM-DD" placeholder="请选择实际开始日期" allow-clear /></a-form-item>
         <a-form-item label="实际结束"><a-date-picker v-model:value="ganttForm.actualEnd" value-format="YYYY-MM-DD" placeholder="请选择实际结束日期" allow-clear /></a-form-item>
-        <a-form-item label="状态" name="status"><a-select v-model:value="ganttForm.status" :options="ganttStatusOptions" placeholder="请选择节点状态" /></a-form-item>
         <a-form-item label="进度" name="progress"><a-input-number v-model:value="ganttForm.progress" :min="0" :max="100" :precision="0" addon-after="%" /></a-form-item>
       </a-form>
       <div class="gantt-edit-actions"><a-button @click="ganttEditVisible = false">取消</a-button><a-button type="primary" :loading="ganttSubmitLoading" @click="handleSaveGanttNode">保存</a-button></div>
@@ -576,11 +575,10 @@ const ganttScrollStart = computed(() => {
     .sort()[0]
   return earliestPlanStart ? dayjs(earliestPlanStart).subtract(1, 'month').format('YYYY-MM-DD') : 'start'
 })
-const ganttForm = reactive({ id: null, name: '', planStart: undefined, planEnd: undefined, actualStart: undefined, actualEnd: undefined, status: undefined, progress: 0 })
+const ganttForm = reactive({ id: null, name: '', planStart: undefined, planEnd: undefined, actualStart: undefined, actualEnd: undefined, progress: 0 })
 const ganttFormRules = {
   planStart: [{ required: true, message: '请选择计划开始日期', trigger: 'change' }],
   planEnd: [{ required: true, message: '请选择计划结束日期', trigger: 'change' }, { validator: (_, value) => !value || !ganttForm.planStart || !dayjs(value).isBefore(dayjs(ganttForm.planStart)) ? Promise.resolve() : Promise.reject(new Error('计划结束日期不能早于计划开始日期')), trigger: 'change' }],
-  status: [{ required: true, message: '请选择节点状态', trigger: 'change' }],
   progress: [{ required: true, message: '请输入节点进度', trigger: 'change' }],
 }
 
@@ -1240,7 +1238,6 @@ const handleGanttRow = record => ({
       planEnd: formatNodeDate(record.planEnd),
       actualStart: formatNodeDate(record.actualStart),
       actualEnd: formatNodeDate(record.actualEnd),
-      status: record.statusCode,
       progress: record.progress,
     })
     ganttFormRef.value?.clearValidate()
@@ -1252,7 +1249,7 @@ const handleSaveGanttNode = async () => {
   await ganttFormRef.value?.validate()
   ganttSubmitLoading.value = true
   try {
-    await updateGanttNode(route.params.id, ganttForm.id, { nodeName: ganttForm.name, plannedStartDate: ganttForm.planStart, plannedEndDate: ganttForm.planEnd, actualStartDate: ganttForm.actualStart || null, actualEndDate: ganttForm.actualEnd || null, status: ganttForm.status, progressPercent: ganttForm.progress })
+    await updateGanttNode(route.params.id, ganttForm.id, { nodeName: ganttForm.name, plannedStartDate: ganttForm.planStart, plannedEndDate: ganttForm.planEnd, actualStartDate: ganttForm.actualStart || null, actualEndDate: ganttForm.actualEnd || null, progressPercent: ganttForm.progress })
     ganttEditVisible.value = false
     await fetchProjectRelatedData(route.params.id)
     message.success('节点更新成功')
