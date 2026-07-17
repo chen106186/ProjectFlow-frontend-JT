@@ -2041,6 +2041,10 @@ const trendPoints = [
   min-height: 420px;
 }
 
+.bug-list-card {
+  min-height: calc(100vh - 254px);
+}
+
 .task-list-card :deep(.ant-card-body),
 .bug-list-card :deep(.ant-card-body) {
   padding: 18px;
