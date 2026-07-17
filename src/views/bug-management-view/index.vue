@@ -663,6 +663,11 @@ const formRules = {
 
 const handleEditorCreated = editor => { editorRef.value = editor }
 
+const isTestingTask = task => {
+  const roleName = task?.roleName || task?.role || ''
+  return roleName.includes('测试') || /test/i.test(roleName)
+}
+
 const loadRelatedTasks = async projectId => {
   relatedTaskOptions.value = []
   if (!projectId) return
@@ -670,7 +675,9 @@ const loadRelatedTasks = async projectId => {
   try {
     const result = await getProjectTasks({ projectId, pageNo: 1, pageSize: 200 })
     if (String(formState.projectId) === String(projectId)) {
-      relatedTaskOptions.value = (result.records || []).map(task => ({ label: task.name, value: task.id }))
+      relatedTaskOptions.value = (result.records || [])
+        .filter(isTestingTask)
+        .map(task => ({ label: task.name, value: task.id }))
     }
   } catch (error) {
     message.error(error.message || '关联任务加载失败')

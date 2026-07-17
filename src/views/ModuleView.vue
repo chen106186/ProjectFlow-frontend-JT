@@ -681,6 +681,7 @@ import {
 } from '@/api/managementProject'
 import { formatDateTime } from '@/utils/dateTime'
 import { OPERATION_ACTIONS, OPERATION_MODULES, recordOperationLog } from '@/utils/operationLog'
+import { canViewAllStatistics } from '@/utils/authScope'
 
 const route = useRoute()
 const router = useRouter()
@@ -925,7 +926,7 @@ watch(
 
     if (name === 'PersonalStatistics') {
       const profile = JSON.parse(localStorage.getItem('authProfile') || '{}')
-      isGmOffice.value = !!profile.isGmOffice
+      isGmOffice.value = canViewAllStatistics(profile)
       if (isGmOffice.value && statsUserOptions.value.length === 0) {
         try {
           const { getUserList } = await import('@/api/system')
@@ -967,7 +968,7 @@ function getTaskUserName(userId) {
 }
 
 function getTaskProjectName(projectId) {
-  return taskProjects.value.find(item => item.id === projectId)?.name || (projectId ? `项目 ${projectId}` : '-')
+  return taskProjects.value.find(item => String(item.id) === String(projectId))?.name || '-'
 }
 
 function getTaskRoleName(task) {
@@ -990,7 +991,7 @@ async function fetchTaskModuleData() {
     const [dicts, users, projects] = await Promise.all([
       getDicts(),
       getSystemUsers({ pageNo: 1, pageSize: 200, enabled: true }),
-      getProjectList({ pageNo: 1, pageSize: 200, projectType: 'MANAGEMENT' }),
+      getProjectList({ pageNo: 1, pageSize: 200, projectType: 'EXECUTION' }),
     ])
     taskUsers.value = users.records || []
     taskProjects.value = projects.records || []
@@ -1009,14 +1010,17 @@ function resolveTaskStatusCode(task) {
   if (!task) return 'NOT_STARTED'
   if (task.status === 'PAUSED') return 'PAUSED'
   if (task.actualEndDate) return 'COMPLETED'
-  if (!task.plannedEndDate) return task.actualStartDate ? 'IN_PROGRESS' : 'NOT_STARTED'
 
   const today = dayjs().startOf('day')
-  const planEnd = dayjs(task.plannedEndDate).startOf('day')
-  if (!planEnd.isValid()) return task.actualStartDate ? 'IN_PROGRESS' : 'NOT_STARTED'
-  if (today.isAfter(planEnd)) return 'OVERDUE'
-  if (planEnd.diff(today, 'day') <= 3) return 'DUE_SOON'
-  return task.actualStartDate ? 'IN_PROGRESS' : 'NOT_STARTED'
+  const planEnd = task.plannedEndDate ? dayjs(task.plannedEndDate).startOf('day') : null
+  if (planEnd?.isValid()) {
+    if (today.isAfter(planEnd)) return 'OVERDUE'
+    if (planEnd.diff(today, 'day') <= 3) return 'DUE_SOON'
+  }
+
+  const planStart = task.plannedStartDate ? dayjs(task.plannedStartDate).startOf('day') : null
+  if (task.actualStartDate || (planStart?.isValid() && !today.isBefore(planStart))) return 'IN_PROGRESS'
+  return 'NOT_STARTED'
 }
 
 async function loadTasks() {
@@ -1040,7 +1044,7 @@ async function loadTasks() {
       id: task.id,
       index: index + 1,
       name: task.name,
-      project: getTaskProjectName(task.projectId),
+      project: task.projectName || getTaskProjectName(task.projectId),
       projectId: task.projectId,
       role: getTaskRoleName(task),
       roleName: task.roleName || '',
@@ -1055,7 +1059,7 @@ async function loadTasks() {
       actualStart: task.actualStartDate ? String(task.actualStartDate) : '-',
       planEnd: task.plannedEndDate ? String(task.plannedEndDate) : '-',
       actualEnd: task.actualEndDate ? String(task.actualEndDate) : '-',
-      createdAt: formatDateTime(task.createdAt),
+      createdAt: formatDateTime(task.createdAt || task.createTime || task.createdTime || task.createAt),
       description: task.description || '',
       tags: task.tags || '',
       remark: task.remark || '',

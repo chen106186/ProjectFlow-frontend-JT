@@ -1,7 +1,7 @@
 <template>
   <div class="home-view">
     <section class="home-metrics" aria-label="项目概览">
-      <button v-for="metric in metrics" :key="metric.title" class="metric-card" type="button" @click="handleMetricClick(metric.path)">
+      <button v-for="metric in metrics" :key="metric.title" class="metric-card" type="button" @click="handleMetricClick(metric)">
         <span class="metric-card__icon" :class="metric.iconClass"><component :is="metric.icon" /></span>
         <span class="metric-card__label">{{ metric.title }}</span>
         <span class="metric-card__value">{{ summaryLoading ? '--' : metric.value }}</span>
@@ -187,13 +187,16 @@ import * as echarts from 'echarts/core'
 import { BarChart, LineChart, PieChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
+import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { getDashboardSummary, getDashboardTodos, getMyStatistics } from '@/api/dashboard'
+import { getProjectList } from '@/api/managementProject'
 import { getUserList } from '@/api/system'
 import TaskCalendarModal from '@/components/TaskCalendarModal.vue'
+import { canViewAllStatistics } from '@/utils/authScope'
 
 echarts.use([BarChart, LineChart, PieChart, GridComponent, TooltipComponent, LegendComponent, CanvasRenderer])
 
@@ -213,8 +216,8 @@ const userOptions = ref([])
 const metrics = computed(() => [
   { title: '管理类项目', path: '/projects/management', icon: FolderOpenOutlined, iconClass: 'metric-card__icon--blue', value: summary.value.managementProjectCount },
   { title: '执行类项目', path: '/projects/execution', icon: CheckCircleOutlined, iconClass: 'metric-card__icon--green', value: summary.value.executionProjectCount },
-  { title: '进行中项目', path: { path: '/projects/management', query: { status: 'IN_PROGRESS' } }, icon: ClockCircleOutlined, iconClass: 'metric-card__icon--orange', value: summary.value.inProgressProjectCount },
-  { title: '已完成项目', path: { path: '/projects/management', query: { status: 'COMPLETED' } }, icon: CheckCircleOutlined, iconClass: 'metric-card__icon--purple', value: summary.value.completedProjectCount },
+  { title: '进行中项目', path: { path: '/projects/management', query: { status: 'IN_PROGRESS' } }, detailStatus: 'IN_PROGRESS', icon: ClockCircleOutlined, iconClass: 'metric-card__icon--orange', value: summary.value.inProgressProjectCount },
+  { title: '已完成项目', path: { path: '/projects/management', query: { status: 'COMPLETED' } }, detailStatus: 'COMPLETED', icon: CheckCircleOutlined, iconClass: 'metric-card__icon--purple', value: summary.value.completedProjectCount },
 ])
 
 const filteredTodos = computed(() => {
@@ -421,7 +424,7 @@ watch(statsPeriod, fetchMyStats)
 
 onMounted(async () => {
   const profile = JSON.parse(localStorage.getItem('authProfile') || '{}')
-  isGmOffice.value = !!profile.isGmOffice
+  isGmOffice.value = canViewAllStatistics(profile)
 
   summaryLoading.value = true
   todoLoading.value = true
@@ -455,8 +458,32 @@ onBeforeUnmount(() => {
   statusChart?.dispose()
 })
 
-const handleMetricClick = path => {
-  router.push(path)
+const handleMetricClick = async metric => {
+  if (!metric?.detailStatus) {
+    router.push(metric.path)
+    return
+  }
+
+  try {
+    const result = await getProjectList({
+      pageNo: 1,
+      pageSize: 1,
+      projectType: 'MANAGEMENT',
+      status: metric.detailStatus,
+    })
+    const project = result?.records?.[0] || result?.list?.[0]
+
+    if (project?.id) {
+      router.push({ name: 'ManagementProjectDetail', params: { id: String(project.id) } })
+      return
+    }
+
+    message.warning(`暂无${metric.title}`)
+  } catch (error) {
+    message.error(error?.message || '项目跳转失败')
+  }
+
+  if (metric?.path) router.push(metric.path)
 }
 
 const handleCalendarClick = () => {

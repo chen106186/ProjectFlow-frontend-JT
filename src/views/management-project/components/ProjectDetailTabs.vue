@@ -26,6 +26,15 @@
               </span>
             </div>
           </div>
+          <div class="gantt-view-toolbar">
+            <span>展示粒度：</span>
+            <a-button size="small" :disabled="ganttViewMode === 'Month'" @click="emit('zoom-gantt', 'out')">缩小</a-button>
+            <a-radio-group :value="ganttViewMode" button-style="solid" size="small" @change="event => emit('change-gantt-view-mode', event.target.value)">
+              <a-radio-button value="Day">日</a-radio-button>
+              <a-radio-button value="Month">月</a-radio-button>
+            </a-radio-group>
+            <a-button size="small" :disabled="ganttViewMode === 'Day'" @click="emit('zoom-gantt', 'in')">放大</a-button>
+          </div>
           <div class="gantt-workspace" :style="{ gridTemplateColumns: `${$px2rem(ganttTableWidth)} minmax(0, 1fr)`, height: $px2rem(ganttWorkspaceHeight) }">
             <a-table
               class="gantt-node-table"
@@ -237,6 +246,7 @@ const props = defineProps({
   ganttNodeRows: { type: Array, required: true },
   ganttStatusColors: { type: Object, required: true },
   ganttCustomRow: { type: Function, required: true },
+  ganttViewMode: { type: String, default: 'Day' },
   detailLoading: { type: Boolean, default: false },
   taskColumns: { type: Array, required: true },
   taskRows: { type: Array, required: true },
@@ -287,6 +297,8 @@ const emit = defineEmits([
   'download-document',
   'delete-document',
   'delete-folder',
+  'change-gantt-view-mode',
+  'zoom-gantt',
 ])
 
 const ganttRef = ref()
@@ -657,6 +669,16 @@ defineExpose({
   background: linear-gradient(135deg, #fff 0%, #eefbf2 100%);
 }
 
+.gantt-view-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin: -4px 0 12px;
+  color: #595959;
+  font-size: 13px;
+}
+
 .gantt-workspace {
   display: grid;
   min-height: 0;
@@ -767,6 +789,11 @@ defineExpose({
 
 .gantt-scroll :deep(.bar-wrapper) {
   cursor: default;
+}
+
+.gantt-scroll :deep(.arrow),
+.gantt-scroll :deep(.arrow-wrapper) {
+  display: none !important;
 }
 
 .gantt-scroll :deep(.bar-wrapper.gantt-empty-row),
