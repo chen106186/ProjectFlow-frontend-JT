@@ -166,7 +166,7 @@
                   <td>{{ record.tag }}</td>
                   <td>{{ record.owner }}</td>
                   <td><span class="tag-soft tag-priority">{{ record.priority }}</span></td>
-                  <td v-if="!isTaskModule"><span class="tag-soft tag-processing">{{ record.status }}</span></td>
+                  <td><span class="tag-soft tag-processing">{{ record.status }}</span></td>
                   <td>{{ record.planStart }}</td>
                   <td v-if="isTaskModule">{{ record.planEnd }}</td>
                   <td>{{ record.actualStart }}</td>
@@ -214,7 +214,7 @@
                       <td>{{ record.tag }}</td>
                       <td>{{ record.owner }}</td>
                       <td><span class="tag-soft tag-priority">{{ record.priority }}</span></td>
-                      <td v-if="!isTaskModule"><span class="tag-soft tag-processing">{{ record.status }}</span></td>
+                      <td><span class="tag-soft tag-processing">{{ record.status }}</span></td>
                       <td>{{ record.planStart }}</td>
                       <td v-if="isTaskModule">{{ record.planEnd }}</td>
                       <td>{{ record.actualStart }}</td>
@@ -1888,6 +1888,7 @@ const taskModuleColumns = [
   { title: '标签', dataIndex: 'tag', width: 100 },
   { title: '负责人', dataIndex: 'owner', width: 100 },
   { title: '优先级', dataIndex: 'priority', width: 90 },
+  { title: '状态', dataIndex: 'status', width: 100 },
   { title: '计划开始日期', dataIndex: 'planStart', width: 130 },
   { title: '计划结束日期', dataIndex: 'planEnd', width: 130 },
   { title: '实际开始日期', dataIndex: 'actualStart', width: 130 },
