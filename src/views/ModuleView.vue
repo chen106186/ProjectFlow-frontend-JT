@@ -263,7 +263,7 @@
             </a-form-item>
             <a-form-item label="严重等级">
               <a-select v-model:value="bugFilter.priority" placeholder="全部" allow-clear
-                :options="[{ label: '紧急', value: 'URGENT' }, { label: '高', value: 'HIGH' }, { label: '中', value: 'MEDIUM' }, { label: '低', value: 'LOW' }]"
+                :options="Object.entries(BUG_PRIORITY_LABELS).map(([value, label]) => ({ label, value }))"
                 style="width:7.5rem" />
             </a-form-item>
             <a-form-item label="状态">
@@ -1086,11 +1086,12 @@ async function loadTasks() {
 
 const BUG_STATUS_LABELS = { PENDING_FIX: '待修复', FIXING: '修复中', PENDING_VERIFY: '待验证', CLOSED: '已关闭' }
 const BUG_STATUS_COLORS = { PENDING_FIX: 'orange', FIXING: 'blue', PENDING_VERIFY: 'purple', CLOSED: 'green' }
-const BUG_PRIORITY_COLORS = { URGENT: 'red', HIGH: 'orange', MEDIUM: 'blue', LOW: 'default' }
+const BUG_PRIORITY_LABELS = { LOW: '轻微', MEDIUM: '一般', HIGH: '严重', URGENT: '致命' }
+const BUG_PRIORITY_COLORS = { LOW: 'blue', MEDIUM: 'orange', HIGH: 'error', URGENT: 'red' }
 
 function getBugStatusLabel(status) { return BUG_STATUS_LABELS[status] || status || '-' }
 function getBugStatusColor(status) { return BUG_STATUS_COLORS[status] || 'default' }
-function getBugPriorityLabel(priority) { return taskDictLabels.value.taskPriority?.[priority] || priority || '-' }
+function getBugPriorityLabel(priority) { return BUG_PRIORITY_LABELS[priority] || priority || '-' }
 function getBugPriorityColor(priority) { return BUG_PRIORITY_COLORS[priority] || 'default' }
 function getBugUserName(userId) { return bugUsers.value.find(u => u.id === userId)?.realName || '-' }
 function getBugProjectName(projectId) { return bugProjects.value.find(p => p.id === projectId)?.name || '-' }
