@@ -274,9 +274,6 @@
             <a-form-item label="创建人">
               <a-select v-model:value="bugFilter.creatorId" placeholder="全部" allow-clear :options="bugUserOptions" show-search option-filter-prop="label" />
             </a-form-item>
-            <a-form-item label="指定人">
-              <a-select v-model:value="bugFilter.assigneeId" placeholder="全部" allow-clear :options="bugUserOptions" show-search option-filter-prop="label" />
-            </a-form-item>
             <a-form-item class="filter-buttons app-filter-actions">
               <a-space>
                 <a-button type="primary" @click="handleBugSearch">查询</a-button>
@@ -1134,7 +1131,7 @@ async function loadMyBugs() {
       priority: f.priority || undefined,
       status: f.status || undefined,
       creatorId: f.creatorId || undefined,
-      assigneeId: f.assigneeId || profile.id || undefined,
+      assigneeId: profile.id || undefined,
     })
     const bugs = result.records || []
     bugApiRows.value = bugs.map((bug, index) => ({
@@ -2173,7 +2170,7 @@ const trendPoints = [
 }
 
 .prototype-filter.bug-filter {
-  grid-template-columns: minmax(180px, 1.2fr) minmax(180px, 1fr) repeat(4, minmax(140px, 0.8fr)) max-content !important;
+  grid-template-columns: minmax(180px, 1.2fr) minmax(180px, 1fr) repeat(3, minmax(140px, 0.8fr)) max-content !important;
   column-gap: 28px !important;
   row-gap: 0 !important;
 }
