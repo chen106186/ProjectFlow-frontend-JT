@@ -254,7 +254,7 @@
     </template>
 
     <template v-else-if="isPersonalBugs">
-      <section class="personal-page">
+      <section class="personal-page personal-bug-page">
         <a-card class="prototype-card filter-panel app-filter-card" :bordered="false">
           <a-form class="prototype-filter bug-filter app-filter-form" layout="inline">
             <a-form-item label="搜索"><a-input v-model:value="bugFilter.keyword" placeholder="请输入关键字" allow-clear /></a-form-item>
@@ -272,8 +272,10 @@
                 style="width:7.5rem" />
             </a-form-item>
             <a-form-item label="创建人">
-              <a-select v-model:value="bugFilter.creatorId" placeholder="全部" allow-clear show-search option-filter-prop="label"
-                :options="bugUsers.map(u => ({ label: u.realName, value: u.id }))" style="width:8rem" />
+              <a-select v-model:value="bugFilter.creatorId" placeholder="全部" allow-clear :options="bugUserOptions" show-search option-filter-prop="label" />
+            </a-form-item>
+            <a-form-item label="指定人">
+              <a-select v-model:value="bugFilter.assigneeId" placeholder="全部" allow-clear :options="bugUserOptions" show-search option-filter-prop="label" />
             </a-form-item>
             <a-form-item class="filter-buttons app-filter-actions">
               <a-space>
@@ -290,19 +292,26 @@
               <template #icon><PlusOutlined /></template>
               新增Bug
             </a-button>
-            <a-space>
-              <span class="muted">分组条件：</span>
-              <a-select class="group-select" value="所属项目" :options="projectGroupOptions" />
-              <a-button type="link">列表</a-button>
-              <a-button>分组</a-button>
-            </a-space>
+            <div class="bug-list__display">
+              <template v-if="bugDisplayMode === 'group'">
+                <span>分组条件：</span>
+                <a-select v-model:value="bugGroupField" :options="bugGroupOptions" />
+              </template>
+              <a-radio-group v-model:value="bugDisplayMode" button-style="solid">
+                <a-radio-button value="list">列表</a-radio-button>
+                <a-radio-button value="group">分组</a-radio-button>
+              </a-radio-group>
+            </div>
           </div>
-          <a-table :columns="personalBugColumns" :data-source="visibleBugs" :pagination="{ pageSize: 10, pageSizeOptions: ['10', '50', '100'], showTotal: total => `共 ${total} 条` }" :scroll="{ x: 1320, y: 330 }" size="middle" row-key="id">
+          <a-table v-if="bugDisplayMode === 'list'" class="personal-bug-table" :columns="personalBugColumns" :data-source="visibleBugs" :pagination="personalBugPagination" :scroll="{ x: 1320, y: 'calc(100vh - 440px)' }" size="middle" row-key="id" table-layout="fixed" @change="handlePersonalBugTableChange">
             <template #bodyCell="{ column, record, text }">
-              <template v-if="column.dataIndex === 'title'">
-                <a-button type="link" class="cell-link bug-title" @click="handleBugDetail(record)">
-                  <BugOutlined />{{ text }}
-                </a-button>
+              <template v-if="column.dataIndex === 'code'">
+                <span class="bug-no">{{ text && text !== '-' ? '#' + String(text).padStart(3, '0') : '-' }}</span>
+              </template>
+              <template v-else-if="column.dataIndex === 'title'">
+                <a-tooltip :title="text">
+                  <span class="bug-title-text" @click="handleBugDetail(record)">{{ text }}</span>
+                </a-tooltip>
               </template>
               <template v-else-if="column.dataIndex === 'level'">
                 <a-tag :color="record.levelColor">{{ text }}</a-tag>
@@ -330,6 +339,59 @@
               <template v-else>{{ text }}</template>
             </template>
           </a-table>
+          <div v-else class="personal-bug-group-view">
+            <div class="personal-bug-group-list">
+              <section v-for="group in groupedBugs" :key="group.value" class="personal-bug-group">
+              <h4 class="personal-bug-group__title">{{ group.label }} ({{ group.rows.length }})</h4>
+              <a-table :columns="personalBugColumns" :data-source="group.rows" :pagination="false" :scroll="{ x: 1320 }" size="middle" row-key="id" table-layout="fixed">
+                <template #bodyCell="{ column, record, text }">
+                  <template v-if="column.dataIndex === 'code'">
+                    <span class="bug-no">{{ text && text !== '-' ? '#' + String(text).padStart(3, '0') : '-' }}</span>
+                  </template>
+                  <template v-else-if="column.dataIndex === 'title'">
+                    <a-tooltip :title="text">
+                      <span class="bug-title-text" @click="handleBugDetail(record)">{{ text }}</span>
+                    </a-tooltip>
+                  </template>
+                  <template v-else-if="column.dataIndex === 'level'">
+                    <a-tag :color="record.levelColor">{{ text }}</a-tag>
+                  </template>
+                  <template v-else-if="column.dataIndex === 'status'">
+                    <a-tag :color="record.statusColor">{{ text }}</a-tag>
+                  </template>
+                  <template v-else-if="column.dataIndex === 'operation'">
+                    <a-space :size="2" wrap>
+                      <a-button type="link" size="small" @click="handleBugDetail(record)">详情</a-button>
+                      <template v-if="record.creatorId === currentUserId && record.statusCode !== 'CLOSED'">
+                        <a-button type="link" size="small" @click="handleOpenBugEditModal(record)">编辑</a-button>
+                        <a-popconfirm title="确认删除该Bug?" ok-text="删除" cancel-text="取消" @confirm="handleDeleteBug(record)">
+                          <a-button type="link" size="small" danger>删除</a-button>
+                        </a-popconfirm>
+                        <a-button v-if="record.statusCode === 'PENDING_VERIFY'" type="link" size="small" style="color:#52c41a" :loading="bugVerifyLoading" @click="handleVerifyBug(record)">
+                          <CheckOutlined />验证通过
+                        </a-button>
+                      </template>
+                      <a-button v-if="record.assigneeId === currentUserId && record.statusCode !== 'CLOSED'" type="link" size="small" @click="handleOpenFixModal(record)">
+                        <ToolOutlined />填写修复
+                      </a-button>
+                    </a-space>
+                  </template>
+                  <template v-else>{{ text }}</template>
+                </template>
+              </a-table>
+              </section>
+              <a-empty v-if="!groupedBugs.length" />
+            </div>
+            <a-pagination
+              v-model:current="bugCurrentPage"
+              v-model:page-size="bugPageSize"
+              :total="visibleBugs.length"
+              :page-size-options="['10', '50', '100']"
+              :show-total="total => `共 ${total} 条`"
+              show-size-changer
+              @change="handlePersonalBugPageChange"
+            />
+          </div>
         </a-card>
       </section>
     </template>
@@ -702,12 +764,17 @@ const taskPageSize = ref(10)
 const bugApiRows = ref([])
 const bugUsers = ref([])
 const bugProjects = ref([])
+const bugDisplayMode = ref('list')
+const bugGroupField = ref('project')
+const bugCurrentPage = ref(1)
+const bugPageSize = ref(10)
 const bugFilter = ref({
   keyword: '',
   projectId: undefined,
   priority: undefined,
   status: undefined,
   creatorId: undefined,
+  assigneeId: undefined,
 })
 const taskFilter = ref({
   keyword: '',
@@ -813,6 +880,33 @@ const taskStatusSelectOptions = computed(() =>
   Object.entries(taskDictLabels.value.taskStatus).map(([value, label]) => ({ label, value }))
 )
 const visibleBugs = computed(() => bugApiRows.value)
+const bugUserOptions = computed(() => bugUsers.value.map(user => ({ label: user.realName, value: user.id })))
+const personalBugPagination = computed(() => ({
+  current: bugCurrentPage.value,
+  pageSize: bugPageSize.value,
+  total: visibleBugs.value.length,
+  pageSizeOptions: ['10', '50', '100'],
+  showSizeChanger: true,
+  showTotal: total => `共 ${total} 条`,
+}))
+const pagedVisibleBugs = computed(() => {
+  const start = (bugCurrentPage.value - 1) * bugPageSize.value
+  return visibleBugs.value.slice(start, start + bugPageSize.value)
+})
+const bugGroupOptions = [
+  { label: '所属项目', value: 'project' },
+  { label: '优先级', value: 'level' },
+  { label: '状态', value: 'status' },
+]
+const groupedBugs = computed(() => {
+  const groups = new Map()
+  pagedVisibleBugs.value.forEach(bug => {
+    const value = bug[bugGroupField.value] || '未分组'
+    if (!groups.has(value)) groups.set(value, [])
+    groups.get(value).push(bug)
+  })
+  return Array.from(groups, ([value, rows]) => ({ value, label: value, rows }))
+})
 const selectedDailyDateText = computed(() => selectedDailyDate.value.format('YYYY-MM-DD'))
 const currentDailyReport = computed(() => dailyReports.value[0])
 const dailyProjectText = computed(() => {
@@ -1040,7 +1134,7 @@ async function loadMyBugs() {
       priority: f.priority || undefined,
       status: f.status || undefined,
       creatorId: f.creatorId || undefined,
-      assigneeId: profile.id || undefined,
+      assigneeId: f.assigneeId || profile.id || undefined,
     })
     const bugs = result.records || []
     bugApiRows.value = bugs.map((bug, index) => ({
@@ -1623,12 +1717,24 @@ const handleFixSubmit = async () => {
 }
 
 const handleBugSearch = () => {
+  bugCurrentPage.value = 1
   loadMyBugs()
 }
 
 const handleBugReset = () => {
-  bugFilter.value = { keyword: '', projectId: undefined, priority: undefined, status: undefined, creatorId: undefined }
+  bugFilter.value = { keyword: '', projectId: undefined, priority: undefined, status: undefined, creatorId: undefined, assigneeId: undefined }
+  bugCurrentPage.value = 1
   loadMyBugs()
+}
+
+const handlePersonalBugTableChange = pagination => {
+  bugCurrentPage.value = pagination.current
+  bugPageSize.value = pagination.pageSize
+}
+
+const handlePersonalBugPageChange = (page, pageSize) => {
+  bugCurrentPage.value = page
+  bugPageSize.value = pageSize
 }
 
 const selectDailyDate = date => {
@@ -1774,7 +1880,6 @@ const selectOptions = [
   { label: '张三', value: '张三' },
   { label: '李四', value: '李四' },
 ]
-const projectGroupOptions = [{ label: '所属项目', value: '所属项目' }]
 const projectOptions = [
   { label: 'XX企业数字化管理系统', value: 'XX企业数字化管理系统' },
   { label: 'YY电子商务平台建设', value: 'YY电子商务平台建设' },
@@ -1829,7 +1934,7 @@ const taskModuleColumns = [
 const taskTableColumns = computed(() => isTaskModule.value ? taskModuleColumns : personalTaskColumns)
 
 const personalBugColumns = [
-  { title: 'Bug编号', dataIndex: 'code', width: 160 },
+  { title: '编号', dataIndex: 'code', width: 80 },
   { title: 'Bug标题', dataIndex: 'title', width: 240 },
   { title: '所属项目', dataIndex: 'project', width: 220 },
   { title: '严重等级', dataIndex: 'level', width: 110 },
@@ -1943,6 +2048,15 @@ const trendPoints = [
   scrollbar-color: #b8b8b8 transparent;
   scrollbar-width: thin;
 }
+
+.personal-bug-page {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 126px);
+  min-height: 0;
+}
+
+.personal-bug-page .filter-panel { flex: none; }
 
 .statistics-page {
 
@@ -2059,8 +2173,8 @@ const trendPoints = [
 }
 
 .prototype-filter.bug-filter {
-  grid-template-columns: minmax(160px, 1.2fr) minmax(150px, 1fr) minmax(110px, 0.8fr) minmax(110px, 0.8fr) minmax(110px, 0.8fr) max-content !important;
-  column-gap: 20px !important;
+  grid-template-columns: minmax(180px, 1.2fr) minmax(180px, 1fr) repeat(4, minmax(140px, 0.8fr)) max-content !important;
+  column-gap: 28px !important;
   row-gap: 0 !important;
 }
 
@@ -2072,9 +2186,84 @@ const trendPoints = [
   min-height: 420px;
 }
 
+.bug-list-card {
+  flex: 1;
+  min-height: 0;
+}
+
 .task-list-card :deep(.ant-card-body),
 .bug-list-card :deep(.ant-card-body) {
   padding: 18px;
+}
+
+.bug-list-card :deep(.ant-card-body) {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.personal-bug-table {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.personal-bug-table :deep(.ant-spin-nested-loading) {
+  flex: 1;
+  min-height: 0;
+}
+
+.personal-bug-table :deep(.ant-pagination) {
+  flex: none;
+  align-self: flex-end;
+  margin: 12px 0 0;
+}
+
+.personal-bug-group-view {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.personal-bug-group-list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.personal-bug-group-view > :deep(.ant-pagination) {
+  flex: none;
+  align-self: flex-end;
+  margin: 12px 0 0;
+}
+
+.personal-bug-group + .personal-bug-group { margin-top: 24px; }
+
+.personal-bug-group__title {
+  margin: 0 0 10px;
+  color: #333;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.bug-no {
+  color: #1677ff;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: monospace;
+}
+
+.bug-title-text {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  color: #1677ff;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
 }
 
 .list-toolbar {
@@ -2095,9 +2284,8 @@ const trendPoints = [
   width: 130px;
 }
 
-.group-select {
-  width: 126px;
-}
+.bug-list__display { display: flex; align-items: center; gap: 12px; color: #666; }
+.bug-list__display :deep(.ant-select) { width: 130px; }
 
 .muted,
 .modal-note,

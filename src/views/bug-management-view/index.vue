@@ -1,13 +1,14 @@
 <template>
-  <div class="bug-page">
+  <div :class="['bug-page', { 'bug-page--list': viewMode === 'list' }]">
     <template v-if="viewMode === 'list'">
       <a-card class="bug-filter app-filter-card" :bordered="false">
         <a-form :model="queryParams" class="bug-filter__form app-filter-form" layout="inline">
-          <a-form-item label="搜索"><a-input v-model:value="queryParams.keyword" allow-clear /></a-form-item>
+          <a-form-item label="搜索"><a-input v-model:value="queryParams.keyword" allow-clear placeholder="请输入关键字"  /></a-form-item>
           <a-form-item label="所属项目"><a-select v-model:value="queryParams.projectId" :options="projectOptions" placeholder="全部" allow-clear /></a-form-item>
-          <a-form-item label="优先级"><a-select v-model:value="queryParams.priority" :options="priorityFilterOptions" placeholder="全部" allow-clear /></a-form-item>
+          <a-form-item label="严重等级"><a-select v-model:value="queryParams.priority" :options="priorityFilterOptions" placeholder="全部" allow-clear /></a-form-item>
           <a-form-item label="状态"><a-select v-model:value="queryParams.status" :options="statusFilterOptions" placeholder="全部" allow-clear /></a-form-item>
           <a-form-item label="创建人"><a-select v-model:value="queryParams.creatorId" :options="userOptions" placeholder="全部" allow-clear show-search option-filter-prop="label" /></a-form-item>
+          <a-form-item label="指定人"><a-select v-model:value="queryParams.assigneeId" :options="userOptions" placeholder="全部" allow-clear show-search option-filter-prop="label" /></a-form-item>
           <a-form-item class="bug-filter__actions app-filter-actions">
             <a-space><a-button type="primary" @click="handleSearch">查询</a-button><a-button @click="handleReset">重置</a-button></a-space>
           </a-form-item>
@@ -31,20 +32,24 @@
 
         <template v-if="displayMode === 'list'">
           <a-table
+            class="bug-list__table"
             row-key="id"
             :columns="columns"
             :data-source="bugs"
             :pagination="{ current, pageSize, total, showSizeChanger: true, showTotal: t => `共 ${t} 条`, pageSizeOptions: ['10', '50', '100'] }"
             :loading="listLoading"
-            :scroll="{ x: 1260 }"
+            :scroll="{ x: 1260, y: 'calc(100vh - 440px)' }"
             size="middle"
+            table-layout="fixed"
             @change="handleTableChange"
           >
             <template #bodyCell="{ column, record, text, index }">
               <template v-if="column.dataIndex === 'index'">{{ (current - 1) * pageSize + index + 1 }}</template>
               <template v-else-if="column.dataIndex === 'bugNo'"><span class="bug-no">{{ text ? '#' + String(text).padStart(3, '0') : '-' }}</span></template>
               <template v-else-if="column.dataIndex === 'title'">
-                <a-button type="link" class="bug-title-link" @click="handleDetail(record)">{{ text }}</a-button>
+                <a-tooltip :title="text">
+                  <span class="bug-title-text" @click="handleDetail(record)">{{ text }}</span>
+                </a-tooltip>
               </template>
               <template v-else-if="column.dataIndex === 'priority'">
                 <a-tag :color="priorityColors[text]">{{ priorityLabels[text] || text }}</a-tag>
@@ -65,39 +70,54 @@
         </template>
 
         <template v-else>
-          <div v-for="(group, key) in groupedBugs" :key="key" class="bug-group">
-            <h4 class="bug-group__title">{{ key || '未分组' }} ({{ group.length }})</h4>
-            <a-table
-              row-key="id"
-              :columns="columns.filter(c => c.dataIndex !== 'index')"
-              :data-source="group"
-              :pagination="false"
-              :scroll="{ x: 1200 }"
-              size="middle"
-            >
-              <template #bodyCell="{ column, record, text }">
-                <template v-if="column.dataIndex === 'bugNo'"><span class="bug-no">{{ text ? '#' + String(text).padStart(3, '0') : '-' }}</span></template>
-                <template v-else-if="column.dataIndex === 'title'">
-                  <a-button type="link" class="bug-title-link" @click="handleDetail(record)">{{ text }}</a-button>
+          <div class="bug-group-list">
+            <div v-for="(group, key) in groupedBugs" :key="key" class="bug-group">
+              <h4 class="bug-group__title">{{ key || '未分组' }} ({{ group.length }})</h4>
+              <a-table
+                row-key="id"
+                :columns="columns.filter(c => c.dataIndex !== 'index')"
+                :data-source="group"
+                :pagination="false"
+                :scroll="{ x: 1200 }"
+                size="middle"
+                table-layout="fixed"
+              >
+                <template #bodyCell="{ column, record, text }">
+                  <template v-if="column.dataIndex === 'bugNo'"><span class="bug-no">{{ text ? '#' + String(text).padStart(3, '0') : '-' }}</span></template>
+                  <template v-else-if="column.dataIndex === 'title'">
+                    <a-tooltip :title="text">
+                      <span class="bug-title-text" @click="handleDetail(record)">{{ text }}</span>
+                    </a-tooltip>
+                  </template>
+                  <template v-else-if="column.dataIndex === 'priority'">
+                    <a-tag :color="priorityColors[text]">{{ priorityLabels[text] || text }}</a-tag>
+                  </template>
+                  <template v-else-if="column.dataIndex === 'status'">
+                    <a-tag :color="statusColors[text]">{{ statusLabels[text] || text }}</a-tag>
+                  </template>
+                  <template v-else-if="column.dataIndex === 'createdAt'">{{ formatDateTime(text) }}</template>
+                  <template v-else-if="column.dataIndex === 'operation'">
+                    <a-space>
+                      <a-button type="link" size="small" @click="handleDetail(record)">详情</a-button>
+                      <a-button v-if="!isClosedBug(record)" type="link" size="small" @click="handleEdit(record)">编辑</a-button>
+                      <a-button v-if="!isClosedBug(record)" type="link" size="small" danger @click="handleDeleteBug(record)">删除</a-button>
+                    </a-space>
+                  </template>
                 </template>
-                <template v-else-if="column.dataIndex === 'priority'">
-                  <a-tag :color="priorityColors[text]">{{ priorityLabels[text] || text }}</a-tag>
-                </template>
-                <template v-else-if="column.dataIndex === 'status'">
-                  <a-tag :color="statusColors[text]">{{ statusLabels[text] || text }}</a-tag>
-                </template>
-                <template v-else-if="column.dataIndex === 'createdAt'">{{ formatDateTime(text) }}</template>
-                <template v-else-if="column.dataIndex === 'operation'">
-                  <a-space>
-                    <a-button type="link" size="small" @click="handleDetail(record)">详情</a-button>
-                    <a-button v-if="!isClosedBug(record)" type="link" size="small" @click="handleEdit(record)">编辑</a-button>
-                    <a-button v-if="!isClosedBug(record)" type="link" size="small" danger @click="handleDeleteBug(record)">删除</a-button>
-                  </a-space>
-                </template>
-              </template>
-            </a-table>
+              </a-table>
+            </div>
+            <a-empty v-if="!bugs.length" />
           </div>
-          <a-empty v-if="!bugs.length" />
+          <a-pagination
+            class="bug-list__pagination"
+            :current="current"
+            :page-size="pageSize"
+            :total="total"
+            :page-size-options="['10', '50', '100']"
+            :show-total="t => `共 ${t} 条`"
+            show-size-changer
+            @change="handleGroupPageChange"
+          />
         </template>
       </a-card>
     </template>
@@ -111,7 +131,7 @@
           <a-form-item label="Bug标题" name="title"><a-input v-model:value="formState.title" placeholder="请输入Bug标题" /></a-form-item>
           <a-form-item label="所属项目" name="projectId"><a-select v-model:value="formState.projectId" :options="projectOptions" placeholder="请选择所属项目" /></a-form-item>
           <a-form-item label="指派给" name="assigneeId"><a-select v-model:value="formState.assigneeId" :options="bugFormUserOptions" placeholder="请选择负责人" show-search option-filter-prop="label" /></a-form-item>
-          <a-form-item label="优先级" name="priority"><a-select v-model:value="formState.priority" :options="priorityOptions" /></a-form-item>
+          <a-form-item label="严重等级" name="priority"><a-select v-model:value="formState.priority" :options="priorityOptions" /></a-form-item>
           <a-form-item label="问题描述" name="description">
             <a-textarea v-model:value="formState.description" :rows="8" placeholder="请输入问题描述" />
           </a-form-item>
@@ -222,7 +242,7 @@
                 <template v-if="!isClosedBug(selectedBug)">
                   <div class="comment-rich-editor">
                     <Toolbar v-if="commentEditorRef" :editor="commentEditorRef" :default-config="toolbarConfig" mode="default" />
-                    <Editor v-model="commentContent" :default-config="commentEditorConfig" mode="default" @on-created="handleCommentEditorCreated" />
+                    <Editor :key="commentEditorKey" v-model="commentContent" :default-config="commentEditorConfig" mode="default" @on-created="handleCommentEditorCreated" />
                   </div>
                   <div class="send-row"><a-button type="primary" :loading="commentLoading" @click="handleSendComment">发送</a-button></div>
                 </template>
@@ -328,15 +348,15 @@ const pageSize = ref(10)
 const listLoading = ref(false)
 const displayMode = ref('list')
 const groupField = ref('projectName')
-const queryParams = reactive({ keyword: '', projectId: undefined, priority: undefined, status: undefined, creatorId: undefined })
+const queryParams = reactive({ keyword: '', projectId: undefined, priority: undefined, status: undefined, creatorId: undefined, assigneeId: undefined })
 
 const columns = [
   { title: '编号', dataIndex: 'bugNo', width: 80 },
   { title: 'Bug标题', dataIndex: 'title', width: 240 },
   { title: '所属项目', dataIndex: 'projectName', width: 210 },
-  { title: '优先级', dataIndex: 'priority', width: 110 },
+  { title: '严重等级', dataIndex: 'priority', width: 110 },
   { title: '状态', dataIndex: 'status', width: 110 },
-  { title: '负责人', dataIndex: 'assigneeName', width: 90 },
+  { title: '指定人', dataIndex: 'assigneeName', width: 90 },
   { title: '创建人', dataIndex: 'creatorName', width: 90 },
   { title: '创建时间', dataIndex: 'createdAt', width: 170 },
   { title: '操作', dataIndex: 'operation', width: 120, fixed: 'right' },
@@ -377,6 +397,7 @@ const loadBugs = async () => {
       priority: queryParams.priority || undefined,
       status: queryParams.status || undefined,
       creatorId: queryParams.creatorId || undefined,
+      assigneeId: queryParams.assigneeId || undefined,
     })
     bugs.value = res.records || []
     total.value = res.total || 0
@@ -389,11 +410,12 @@ const loadBugs = async () => {
 
 const handleSearch = () => { current.value = 1; loadBugs() }
 const handleReset = () => {
-  Object.assign(queryParams, { keyword: '', projectId: undefined, priority: undefined, status: undefined, creatorId: undefined })
+  Object.assign(queryParams, { keyword: '', projectId: undefined, priority: undefined, status: undefined, creatorId: undefined, assigneeId: undefined })
   current.value = 1
   loadBugs()
 }
 const handleTableChange = ({ current: c, pageSize: ps }) => { current.value = c; pageSize.value = ps; loadBugs() }
+const handleGroupPageChange = (page, size) => { current.value = page; pageSize.value = size; loadBugs() }
 
 const selectedBug = ref(null)
 const detailLoading = ref(false)
@@ -402,6 +424,7 @@ const commentsLoading = ref(false)
 const commentContent = ref('')
 const commentLoading = ref(false)
 const commentEditorRef = shallowRef()
+const commentEditorKey = ref(0)
 const previewImage = ref('')
 const previewVisible = ref(false)
 const richImageObjectUrls = new Set()
@@ -509,6 +532,12 @@ const toolbarConfig = {
 const commentEditorConfig = { placeholder: '请输入评论内容', scroll: true, ...richTextImageUploadConf }
 
 const handleCommentEditorCreated = editor => { commentEditorRef.value = editor }
+const resetCommentEditor = () => {
+  commentEditorRef.value?.clear()
+  commentContent.value = ''
+  commentEditorRef.value = undefined
+  commentEditorKey.value += 1
+}
 
 const loadComments = async (id) => {
   commentsLoading.value = true
@@ -527,8 +556,7 @@ const handleSendComment = async () => {
   try {
     const comment = await addBugComment(selectedBug.value.id, { content: commentContent.value })
     comments.value.unshift(comment)
-    commentEditorRef.value.clear()
-    commentContent.value = ''
+    resetCommentEditor()
     message.success('评论发送成功')
   } catch (e) {
     message.error(e.message || '发送失败')
@@ -582,7 +610,7 @@ const formRules = {
   title: [{ required: true, message: '请输入Bug标题', trigger: 'blur' }],
   projectId: [{ required: true, message: '请选择所属项目', trigger: 'change' }],
   assigneeId: [{ required: true, message: '请选择负责人', trigger: 'change' }],
-  priority: [{ required: true, message: '请选择优先级', trigger: 'change' }],
+  priority: [{ required: true, message: '请选择严重等级', trigger: 'change' }],
   description: [{ required: true, message: '请输入问题描述', trigger: 'blur' }],
 }
 
@@ -667,6 +695,7 @@ const syncRouteState = async () => {
     return
   }
   if (viewMode.value === 'detail') {
+    resetCommentEditor()
     detailLoading.value = true
     selectedBug.value = null
     comments.value = []
@@ -702,11 +731,12 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.bug-page { height: 100%;width: min(1600px, 100%);margin: 0 auto; overflow-x: hidden; overflow-y: auto; color: #262626; }
+.bug-page { height: 100%; width: min(1600px, 100%); margin: 0 auto; overflow-x: hidden; overflow-y: auto; color: #262626; }
+.bug-page--list { display: flex; flex-direction: column; height: calc(100vh - 126px); min-height: 0; overflow: hidden; }
 .bug-filter, .bug-list, .bug-form-card { border: 1px solid #edf0f3; box-shadow: 0 2px 8px rgb(0 0 0 / 3%); }
-.bug-filter { margin-bottom: 16px; }
+.bug-filter { flex: none; margin-bottom: 16px; }
 .bug-filter :deep(.ant-card-body) { padding: 16px 18px 2px; }
-.bug-filter__form.app-filter-form { display: grid; grid-template-columns: minmax(180px, 1.4fr) repeat(4, minmax(120px, 1fr)) max-content !important; column-gap: 16px !important; align-items: end; }
+.bug-filter__form.app-filter-form { display: grid; grid-template-columns: minmax(180px, 1.4fr) repeat(5, minmax(130px, 1fr)) max-content !important; column-gap: 16px !important; align-items: end; }
 .bug-filter__form :deep(.ant-form-item) { margin: 0 0 14px; }
 .bug-filter__form :deep(.ant-form-item-row) { width: 100%; flex-wrap: nowrap; }
 .bug-filter__form :deep(.ant-form-item-control) { flex: 1; }
@@ -715,9 +745,15 @@ onMounted(async () => {
 .bug-list__toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .bug-list__group { display: flex; align-items: center; gap: 12px; color: #666; }
 .bug-list__group :deep(.ant-select) { width: 130px; }
-.bug-list :deep(.ant-card-body) { padding: 18px; }
+.bug-list { flex: 1; min-height: 0; }
+.bug-list :deep(.ant-card-body) { display: flex; flex-direction: column; height: 100%; min-height: 0; padding: 18px; overflow: hidden; }
+.bug-list__toolbar { flex: none; }
+.bug-list__table { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.bug-list__table :deep(.ant-spin-nested-loading) { flex: 1; min-height: 0; }
+.bug-list__table :deep(.ant-pagination), .bug-list__pagination { flex: none; align-self: flex-end; margin: 12px 0 0; }
+.bug-group-list { flex: 1; min-height: 0; overflow: auto; }
 .bug-list :deep(.ant-table-cell) { white-space: nowrap; }
-.bug-title-link { height: auto; padding: 0; }
+.bug-title-text { display: block; width: 100%; overflow: hidden; color: #1677ff; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 .bug-no { color: #1677ff; font-size: 12px; font-weight: 600; font-family: monospace; }
 .bug-group { margin-bottom: 24px; }
 .bug-group__title { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: #333; }
@@ -1003,12 +1039,8 @@ onMounted(async () => {
   }
 }
 :deep(.ant-modal-body) { padding-top: 10px; }
-@media (max-width: 1100px) {
-  .bug-filter__form.app-filter-form { grid-template-columns: repeat(3, minmax(0, 1fr)) max-content !important; }
-  .bug-filter__actions { grid-column: 4; }
-}
-@media (max-width: 780px) {
-  .bug-filter__form.app-filter-form { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+@media (max-width: 960px) {
+  .bug-filter__form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .bug-filter__actions { grid-column: 2; }
 }
 </style>

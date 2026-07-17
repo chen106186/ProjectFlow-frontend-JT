@@ -571,7 +571,7 @@ const handleUserMenuClick = ({ key }) => {
   padding: 0 24px 0 20px;
   line-height: normal;
   background: #ffffff8c;
-  //box-shadow: 0 2px 8px rgb(0 0 0 / 12%);
+  /* box-shadow: 0 2px 8px rgb(0 0 0 / 12%); */
 }
 
 .app-brand {

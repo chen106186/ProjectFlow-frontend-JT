@@ -129,7 +129,7 @@
 
         <section v-if="activeTab === 'reports'" class="detail-panel">
           <div class="section-heading">
-            <h2>汇报管理 <small>（共 {{ reportPagination.total }} 条）</small></h2>
+            <h4>汇报管理 <small>（共 {{ reportPagination.total }} 条）</small></h4>
             <a-button type="primary" @click="emit('create-report')">
               <PlusOutlined />
               新建汇报
@@ -723,6 +723,7 @@ defineExpose({
 .gantt-scroll :deep(.gantt) {
   display: block;
   height: 100%;
+  max-width: none;
 }
 
 .gantt-scroll :deep(.popup-wrapper) {
@@ -765,50 +766,36 @@ defineExpose({
   visibility: hidden;
 }
 
-.gantt-scroll :deep(.gantt-not-started .bar),
-.gantt-scroll :deep(.gantt-not-started .bar-progress) {
+.gantt-scroll :deep(.bar-wrapper:not(.gantt-empty-row) .bar) {
+  fill: #d9d9d9;
+  stroke: #c8c8c8;
+}
+
+.gantt-scroll :deep(.gantt-not-started .gantt-actual-bar) {
   fill: #aeaeb2;
-  stroke: #aeaeb2;
 }
 
-.gantt-scroll :deep(.gantt-in-progress .bar) {
-  fill: #d6eaff;
-  stroke: #0a84ff;
-}
-
-.gantt-scroll :deep(.gantt-in-progress .bar-progress) {
+.gantt-scroll :deep(.gantt-in-progress .gantt-actual-bar) {
   fill: #0a84ff;
 }
 
-.gantt-scroll :deep(.gantt-due-soon .bar),
-.gantt-scroll :deep(.gantt-due-soon .bar-progress) {
+.gantt-scroll :deep(.gantt-due-soon .gantt-actual-bar) {
   fill: #ffd60a;
   stroke: #d6a600;
 }
 
-.gantt-scroll :deep(.gantt-completed .bar),
-.gantt-scroll :deep(.gantt-completed .bar-progress),
-.gantt-scroll :deep(.gantt-milestone .bar),
-.gantt-scroll :deep(.gantt-milestone .bar-progress) {
+.gantt-scroll :deep(.gantt-completed .gantt-actual-bar),
+.gantt-scroll :deep(.gantt-milestone .gantt-actual-bar) {
   fill: #30d158;
   stroke: #248a3d;
 }
 
-.gantt-scroll :deep(.gantt-overdue .bar),
-.gantt-scroll :deep(.gantt-overdue .bar-progress) {
+.gantt-scroll :deep(.gantt-overdue .gantt-actual-bar) {
   fill: #ff453a;
   stroke: #d70015;
 }
 
-.gantt-scroll :deep(.gantt-completed .bar-label),
-.gantt-scroll :deep(.gantt-overdue .bar-label),
-.gantt-scroll :deep(.gantt-in-progress .bar-label),
-.gantt-scroll :deep(.gantt-milestone .bar-label) {
-  fill: #fff;
-}
-
-.gantt-scroll :deep(.gantt-due-soon .bar-label),
-.gantt-scroll :deep(.gantt-not-started .bar-label) {
+.gantt-scroll :deep(.bar-label) {
   fill: #1d1d1f;
 }
 

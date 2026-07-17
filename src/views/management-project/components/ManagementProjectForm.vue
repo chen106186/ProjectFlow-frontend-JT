@@ -16,10 +16,11 @@
             <a-tag v-for="node in displayNodeOptions" :key="node.value">{{ node.label }}</a-tag>
           </div>
         </a-form-item>
-        <a-form-item label="项目状态"><a-select v-model:value="formState.status" :options="projectStatusOptions" /></a-form-item>
+        <a-form-item v-if="!isEdit" label="项目状态"><a-select v-model:value="formState.status" :options="projectStatusOptions" /></a-form-item>
         <a-form-item label="合同状态"><a-select v-model:value="formState.contractStatus" :options="contractOptions" /></a-form-item>
         <a-form-item label="计划开始时间"><a-date-picker v-model:value="formState.plannedStartDate" value-format="YYYY-MM-DD" placeholder="请选择计划开始时间" /></a-form-item>
         <a-form-item label="计划结束时间"><a-date-picker v-model:value="formState.plannedEndDate" value-format="YYYY-MM-DD" placeholder="请选择计划结束时间" /></a-form-item>
+        <a-form-item v-if="isEdit" label="项目状态"><a-select v-model:value="formState.status" :options="editableProjectStatusOptions" /></a-form-item>
         <a-form-item label="回款金额"><a-input-number v-model:value="formState.amount" :min="0" :precision="2" addon-after="万元" /></a-form-item>
         <a-form-item label="项目描述" name="description"><a-textarea v-model:value="formState.description" :rows="5" placeholder="请输入项目描述" /></a-form-item>
       </a-form>
@@ -100,6 +101,17 @@ const displayNodeOptions = computed(() => {
   const codes = isEdit.value ? formState.nodes : getProjectNodeCodes(formState.type)
   return codes.map(code => ({ label: getProjectNodeName(code), value: code }))
 })
+const editableProjectStatusOptions = computed(() => {
+  const statusMap = new Map([
+    ...dictStore.getDictItems('taskStatus'),
+    ...projectStatusOptions.value,
+  ].map(item => [item.value, item.label]))
+  return ['NOT_STARTED', 'IN_PROGRESS', 'DUE_SOON', 'OVERDUE', 'COMPLETED', 'PAUSED'].map(value => ({
+    label: statusMap.get(value) || value,
+    value,
+    disabled: value !== 'PAUSED',
+  }))
+})
 
 const loadReferenceData = async () => {
   const [userPage] = await Promise.all([
@@ -171,7 +183,6 @@ const handleSubmit = async () => {
       projectBusinessType: formState.type,
       name: formState.name,
       stage: formState.stage,
-      status: formState.status,
       contractStatus: formState.contractStatus,
       plannedStartDate: formState.plannedStartDate || null,
       plannedEndDate: formState.plannedEndDate || null,
@@ -181,6 +192,9 @@ const handleSubmit = async () => {
       businessSupervisor: formState.supervisor,
       receivableAmount: formState.amount,
       description: formState.description,
+    }
+    if (!isEdit.value || formState.status === 'PAUSED') {
+      projectData.status = formState.status
     }
     if (!isEdit.value) {
       projectData.nodes = formState.nodes.map(code => ({ nodeName: getProjectNodeName(code) }))

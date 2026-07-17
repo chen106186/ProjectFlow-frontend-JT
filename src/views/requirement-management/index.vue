@@ -27,15 +27,26 @@
     </a-card>
 
     <a-card class="req-list-card" :bordered="false">
-      <template #title>
+      <div class="req-list-toolbar">
         <a-button type="primary" @click="openCreateModal">
           <template #icon><PlusOutlined /></template>
           新增需求
         </a-button>
-      </template>
+        <div class="req-list-display">
+          <template v-if="displayMode === 'group'">
+            <span>分组条件：</span>
+            <a-select v-model:value="groupField" :options="groupOptions" />
+          </template>
+          <a-radio-group v-model:value="displayMode" button-style="solid">
+            <a-radio-button value="list">列表</a-radio-button>
+            <a-radio-button value="group">分组</a-radio-button>
+          </a-radio-group>
+        </div>
+      </div>
 
       <div class="req-table-wrap">
         <a-table
+          v-if="displayMode === 'list'"
           row-key="id"
           :columns="columns"
           :data-source="rows"
@@ -99,6 +110,63 @@
             <template v-else>{{ text || '-' }}</template>
           </template>
         </a-table>
+
+        <div v-else class="req-group-list">
+          <section v-for="(group, groupIndex) in groupedRows" :key="group.value" class="req-group">
+            <header class="req-group__header">
+              <button type="button" @click="handleToggleGroup(group.value)">
+                <RightOutlined v-if="isGroupCollapsed(group.value)" />
+                <DownOutlined v-else />
+                {{ group.label }}
+              </button>
+              <a-tag>{{ group.rows.length }}</a-tag>
+            </header>
+            <a-table
+              v-if="!isGroupCollapsed(group.value)"
+              row-key="id"
+              :columns="columns"
+              :data-source="group.rows"
+              :pagination="false"
+              :scroll="{ x: 1440 }"
+              :show-header="groupIndex === 0"
+              size="middle"
+            >
+              <template #bodyCell="{ column, record, text, index }">
+                <template v-if="column.dataIndex === 'rowIndex'">{{ index + 1 }}</template>
+                <template v-else-if="column.dataIndex === 'requirementNo'">
+                  <span class="req-no">{{ formatNo(record) }}</span>
+                </template>
+                <template v-else-if="column.dataIndex === 'title'">
+                  <a-button type="link" class="req-title-link" @click="handleDetail(record)">{{ text }}</a-button>
+                </template>
+                <template v-else-if="column.dataIndex === 'projectId'">
+                  {{ projectMap[text] || '-' }}
+                </template>
+                <template v-else-if="column.dataIndex === 'requirementType'">
+                  <a-tag color="blue">{{ dictLabel('requirementType', text) }}</a-tag>
+                </template>
+                <template v-else-if="column.dataIndex === 'priority'">
+                  <a-tag :color="priorityColor(text)">{{ dictLabel('requirementPriority', text) }}</a-tag>
+                </template>
+                <template v-else-if="column.dataIndex === 'status'">
+                  <a-tag :color="statusColor(text)">{{ dictLabel('requirementStatus', text) }}</a-tag>
+                </template>
+                <template v-else-if="column.dataIndex === 'ops'">
+                  <a-space :size="4">
+                    <a-button type="link" size="small" @click="openEditModal(record)">编辑</a-button>
+                    <template v-if="record.status === 'PENDING_REVIEW'">
+                      <a-divider type="vertical" style="margin: 0;" />
+                      <a-button type="link" size="small" :loading="opRecord === record.id + '_ACCEPTED'" @click="handleStatusChange(record, 'ACCEPTED')">采纳</a-button>
+                      <a-button type="link" size="small" danger :loading="opRecord === record.id + '_REJECTED'" @click="handleStatusChange(record, 'REJECTED')">未采纳</a-button>
+                      <a-button type="link" size="small" :loading="opRecord === record.id + '_SHELVED'" @click="handleStatusChange(record, 'SHELVED')">搁置</a-button>
+                    </template>
+                  </a-space>
+                </template>
+                <template v-else>{{ text || '-' }}</template>
+              </template>
+            </a-table>
+          </section>
+        </div>
       </div>
       <div class="req-pagination">
         <a-pagination
@@ -167,10 +235,10 @@
 </template>
 
 <script setup>
-import { PlusOutlined } from '@ant-design/icons-vue'
+import { DownOutlined, PlusOutlined, RightOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { getProjectList } from '@/api/managementProject'
@@ -189,6 +257,9 @@ const modalVisible = ref(false)
 const modalLoading = ref(false)
 const editId = ref(null)
 const modalFormRef = ref()
+const displayMode = ref('list')
+const groupField = ref('projectId')
+const collapsedGroups = ref([])
 
 const query = reactive({
   keyword: '',
@@ -229,10 +300,50 @@ const statusOptions = computed(() => dictStore.getDictItems('requirementStatus')
 const projectOptions = computed(() =>
   Object.entries(projectMap.value).map(([value, label]) => ({ value, label }))
 )
+const groupOptions = [
+  { label: '所属项目', value: 'projectId' },
+  { label: '需求类型', value: 'requirementType' },
+  { label: '优先级', value: 'priority' },
+  { label: '需求状态', value: 'status' },
+  { label: '负责人', value: 'creatorName' },
+]
 const dictLabel = (type, value) => dictStore.getDictLabel(type, value) || value || '-'
 const priorityColor = v => ({ URGENT: 'red', HIGH: 'orange', MEDIUM: 'gold', LOW: 'default' }[v] || 'default')
 const statusColor = v => ({ PENDING_REVIEW: 'blue', ACCEPTED: 'green', REJECTED: 'red', SHELVED: 'orange' }[v] || 'default')
 const statusSuccessText = status => ({ ACCEPTED: '已采纳', REJECTED: '未采纳', SHELVED: '已搁置' }[status] || '状态已更新')
+
+const groupValueLabel = (field, value) => {
+  if (!value || value === '未设置') return '未设置'
+  if (field === 'projectId') return projectMap.value[value] || '未设置'
+  if (field === 'requirementType') return dictLabel('requirementType', value)
+  if (field === 'priority') return dictLabel('requirementPriority', value)
+  if (field === 'status') return dictLabel('requirementStatus', value)
+  return value
+}
+
+const groupedRows = computed(() => {
+  const labelMap = { projectId: '所属项目', requirementType: '需求类型', priority: '优先级', status: '需求状态', creatorName: '负责人' }
+  const groups = new Map()
+  rows.value.forEach(item => {
+    const value = item[groupField.value] || '未设置'
+    if (!groups.has(value)) groups.set(value, [])
+    groups.get(value).push(item)
+  })
+  return Array.from(groups, ([value, groupRows]) => ({
+    value,
+    label: `${labelMap[groupField.value]}：${groupValueLabel(groupField.value, value)}`,
+    rows: groupRows,
+  }))
+})
+
+const isGroupCollapsed = value => collapsedGroups.value.includes(value)
+const handleToggleGroup = value => {
+  collapsedGroups.value = isGroupCollapsed(value)
+    ? collapsedGroups.value.filter(item => item !== value)
+    : [...collapsedGroups.value, value]
+}
+
+watch(groupField, () => { collapsedGroups.value = [] })
 
 const formatNo = record => {
   if (record.requirementNo != null) {
@@ -423,10 +534,52 @@ onMounted(initPage)
   overflow: hidden;
 }
 
+.req-list-toolbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.req-list-display {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #666;
+}
+
+.req-list-display :deep(.ant-select) { width: 130px; }
+
 .req-table-wrap {
   flex: 1;
   min-height: 0;
   overflow: auto;
+}
+
+.req-group-list { min-height: 100%; }
+.req-group + .req-group { margin-top: 8px; }
+.req-group__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 40px;
+  padding: 0 14px;
+  font-weight: 600;
+  background: #fafafa;
+  border-top: 1px solid #edf0f3;
+  border-bottom: 1px solid #edf0f3;
+}
+.req-group__header button {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  padding: 0;
+  font-weight: 600;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
 }
 
 .req-pagination {
