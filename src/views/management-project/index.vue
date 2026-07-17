@@ -519,7 +519,7 @@ const detailTabs = [
 const ganttSummaryData = reactive({ total: 0, completed: 0, overdue: 0, dueSoon: 0, overallProgress: 0 })
 const ganttSummary = computed(() => [{ label: '项目状态', value: currentProject.value?.status || '-', desc: `整体进度 ${ganttSummaryData.overallProgress}%`, class: 'gantt-progress', icon: ProjectOutlined }, { label: '延期任务', value: `${ganttSummaryData.overdue} 个`, desc: '需重点关注', class: 'risk-high', icon: WarningOutlined }, { label: '即将到期', value: `${ganttSummaryData.dueSoon} 个`, desc: '未来 3 天内到期', class: 'risk-due', icon: ClockCircleOutlined }])
 const ganttStatusColors = { 未开始: 'default', 启动逾期: 'orange', 进行中: 'processing', 即将到期: 'gold', 已逾期: 'red', 已完成: 'green', 逾期完成: 'volcano', 里程碑: 'green' }
-const ganttStatusClasses = { 未开始: 'gantt-not-started', 进行中: 'gantt-in-progress', 即将到期: 'gantt-due-soon', 已完成: 'gantt-completed', 已逾期: 'gantt-overdue', 里程碑: 'gantt-milestone' }
+const ganttStatusClasses = { 未开始: 'gantt-not-started', 启动逾期: 'gantt-overdue', 进行中: 'gantt-in-progress', 即将到期: 'gantt-due-soon', 已逾期: 'gantt-overdue', 已完成: 'gantt-completed', 逾期完成: 'gantt-overdue', 里程碑: 'gantt-milestone' }
 const ganttStatusOptions = computed(() => taskStatusOptions.value.length ? taskStatusOptions.value : [
   { label: '未开始', value: 'NOT_STARTED' },
   { label: '进行中', value: 'IN_PROGRESS' },
@@ -1791,15 +1791,13 @@ const handleDeleteReport = async record => {
 .gantt-scroll :deep(.gantt-popup__dates span) { color: #86868b; }
 .gantt-scroll :deep(.gantt-popup__dates strong) { color: #1d1d1f; font-weight: 500; }
 .gantt-scroll :deep(.bar-wrapper) { cursor: default; }
-.gantt-scroll :deep(.gantt-not-started .bar), .gantt-scroll :deep(.gantt-not-started .bar-progress) { fill: #aeaeb2; stroke: #aeaeb2; }
-.gantt-scroll :deep(.gantt-in-progress .bar) { fill: #d6eaff; stroke: #0a84ff; }.gantt-scroll :deep(.gantt-in-progress .bar-progress) { fill: #0a84ff; }
-.gantt-scroll :deep(.gantt-due-soon .bar), .gantt-scroll :deep(.gantt-due-soon .bar-progress) { fill: #ffd60a; stroke: #d6a600; }
-.gantt-scroll :deep(.gantt-completed .bar), .gantt-scroll :deep(.gantt-completed .bar-progress) { fill: #30d158; stroke: #248a3d; }
-.gantt-scroll :deep(.gantt-overdue .bar), .gantt-scroll :deep(.gantt-overdue .bar-progress) { fill: #ff453a; stroke: #d70015; }
-.gantt-scroll :deep(.gantt-milestone .bar), .gantt-scroll :deep(.gantt-milestone .bar-progress) { fill: #30d158; stroke: #248a3d; }
-.gantt-scroll :deep(.gantt-completed .bar-label), .gantt-scroll :deep(.gantt-overdue .bar-label), .gantt-scroll :deep(.gantt-in-progress .bar-label) { fill: #fff; }
-.gantt-scroll :deep(.gantt-due-soon .bar-label), .gantt-scroll :deep(.gantt-not-started .bar-label) { fill: #1d1d1f; }
-.gantt-scroll :deep(.gantt-milestone .bar-label) { fill: #fff; }
+.gantt-scroll :deep(.bar-wrapper:not(.gantt-empty-row) .bar) { fill: #d9d9d9; stroke: #c8c8c8; }
+.gantt-scroll :deep(.gantt-not-started .gantt-actual-bar) { fill: #aeaeb2; }
+.gantt-scroll :deep(.gantt-in-progress .gantt-actual-bar) { fill: #0a84ff; }
+.gantt-scroll :deep(.gantt-due-soon .gantt-actual-bar) { fill: #ffd60a; stroke: #d6a600; }
+.gantt-scroll :deep(.gantt-completed .gantt-actual-bar), .gantt-scroll :deep(.gantt-milestone .gantt-actual-bar) { fill: #30d158; stroke: #248a3d; }
+.gantt-scroll :deep(.gantt-overdue .gantt-actual-bar) { fill: #ff453a; stroke: #d70015; }
+.gantt-scroll :deep(.bar-label) { fill: #1d1d1f; }
 .risk-grid, .bug-summary, .document-categories { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 22px; }
 .risk-grid .semantic-card, .bug-summary .semantic-card { display: flex; gap: 12px; align-items: center; width: 100%; height: 86px; padding: 14px 15px; text-align: left; border: 1px solid rgb(0 0 0 / 5%); border-radius: 16px; box-shadow: 0 4px 16px rgb(0 0 0 / 5%); transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.28s ease; }
 .risk-grid .semantic-card:hover, .bug-summary .semantic-card:hover { box-shadow: 0 14px 28px rgb(0 0 0 / 10%); transform: translateY(-4px); }

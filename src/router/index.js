@@ -17,6 +17,7 @@ import DailyReportView from '@/views/personal/DailyReportView.vue'
 import PersonalRequirementDetailView from '@/views/personal/PersonalRequirementDetailView.vue'
 import PersonalRequirementView from '@/views/personal/PersonalRequirementView.vue'
 import TaskDetailView from '@/views/personal/TaskDetailView.vue'
+import BatchCreateTaskView from '@/views/BatchCreateTaskView.vue'
 import OperationLogManagement from '@/views/system-settings/OperationLogManagement.vue'
 import RoleManagement from '@/views/system-settings/RoleManagement.vue'
 import UserManagement from '@/views/system-settings/UserManagement.vue'
@@ -160,6 +161,12 @@ const router = createRouter({
             title: '操作日志',
             group: '系统设置',
           },
+        },
+        {
+          path: 'tasks/batch-create',
+          name: 'TaskBatchCreate',
+          component: BatchCreateTaskView,
+          meta: { title: '批量创建任务', group: '任务列表', parentTitle: '全部任务', parentPath: '/tasks/all', hideInMenu: true },
         },
         {
           path: 'personal/daily',

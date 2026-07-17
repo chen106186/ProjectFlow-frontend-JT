@@ -212,6 +212,20 @@
                   <h3>重现步骤</h3>
                 <div class="detail-rich" v-html="bugReproduceStepsHtml" @click="handleRichImageClick"></div>
                 </section>
+                <section v-if="isResolvedBug(selectedBug)" class="detail-section">
+                  <h3>解决方案</h3>
+                  <table class="native-info-table">
+                    <tbody>
+                      <tr>
+                        <th>方案</th>
+                        <td>{{ resolveSolutionLabels[selectedBug.solution] || selectedBug.solution || '-' }}</td>
+                        <th>解决日期</th>
+                        <td>{{ selectedBug.resolvedDate || '-' }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <div v-if="selectedBug.remark" class="detail-rich resolve-remark" v-html="bugResolveRemarkHtml" @click="handleRichImageClick"></div>
+                </section>
               </a-card>
 
               <!-- 修复记录 -->
@@ -510,6 +524,7 @@ const hydratePrivateRichImages = async () => {
 }
 const bugDescriptionHtml = computed(() => normalizeRichHtml(selectedBug.value?.description))
 const bugReproduceStepsHtml = computed(() => normalizeRichHtml(selectedBug.value?.reproduceSteps))
+const bugResolveRemarkHtml = computed(() => normalizeRichHtml(selectedBug.value?.remark))
 const handleRichImageClick = event => {
   const image = event.target?.closest?.('img')
   if (!image?.src || image.classList.contains('rich-image--failed')) return
@@ -686,6 +701,7 @@ const resolveSolutionOptions = [
   { label: '延期处理', value: 'DEFERRED' },
   { label: '不予解决', value: 'WONT_FIX' },
 ]
+const resolveSolutionLabels = Object.fromEntries(resolveSolutionOptions.map(item => [item.value, item.label]))
 const resolveEditorConfig = { placeholder: '请输入备注信息...', scroll: true, ...richTextImageUploadConf }
 
 const handleResolveEditorCreated = editor => { resolveEditorRef.value = editor }
@@ -1044,6 +1060,7 @@ onMounted(async () => {
 }
 
 .detail-rich { color: #434343; font-size: 14px; line-height: 1.75; word-break: break-word; }
+.resolve-remark { margin-top: 12px; }
 .detail-rich :deep(p) { margin: 0 0 10px; }
 .detail-rich :deep(img),
 .detail-rich :deep(.rich-image) {

@@ -131,10 +131,13 @@
 
         <a-card class="prototype-card list-card task-list-card" :bordered="false">
           <div class="list-toolbar">
-            <a-button v-if="isTaskModule" type="primary" @click="openTaskModal('create')">
-              <template #icon><PlusOutlined /></template>
-              新建任务
-            </a-button>
+            <a-space v-if="isTaskModule">
+              <a-button type="primary" @click="openTaskModal('create')">
+                <template #icon><PlusOutlined /></template>
+                新建任务
+              </a-button>
+              <a-button v-if="route.name === 'AllTasks'" @click="router.push({ name: 'TaskBatchCreate' })">批量创建任务</a-button>
+            </a-space>
             <span v-else></span>
             <div class="task-list__display">
               <template v-if="taskDisplayMode === 'group'">
