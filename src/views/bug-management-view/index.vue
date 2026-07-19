@@ -1005,7 +1005,7 @@ onMounted(async () => {
   border-bottom: 1px solid #f2f4f6;
 }
 
-.detail-card :deep(.ant-card-body) { padding: 16px 18px; }
+.detail-card :deep(.ant-card-body) { margin: 16px 18px; }
 
 .detail-card__title { font-size: 14px; font-weight: 600; color: #1f1f1f; }
 
