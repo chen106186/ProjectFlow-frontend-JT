@@ -100,6 +100,7 @@
           <template #bodyCell="{ column, record, text }">
             <a-button v-if="column.dataIndex === 'name'" type="link" @click="handleTaskDetail(record)">{{ text }}</a-button>
             <a-tag v-else-if="column.dataIndex === 'priority'" :color="getTaskPriorityColor(record.priorityCode)">{{ text }}</a-tag>
+            <a-tag v-else-if="column.dataIndex === 'status'" :color="getTaskStatusColor(record.statusCode)">{{ text }}</a-tag>
             <a-tag v-else-if="column.dataIndex === 'riskLevel'" :color="getTaskRiskColor(text)">{{ text }}</a-tag>
           </template>
         </a-table>
@@ -375,7 +376,6 @@ import {
   CodeOutlined,
   DeleteOutlined,
   DownloadOutlined,
-  ExclamationCircleOutlined,
   FileDoneOutlined,
   FileOutlined,
   FileProtectOutlined,
@@ -389,7 +389,6 @@ import {
   ProjectOutlined,
   SendOutlined,
   SnippetsOutlined,
-  ToolOutlined,
   UploadOutlined,
   WarningOutlined,
 } from '@ant-design/icons-vue'
@@ -597,6 +596,7 @@ const taskColumns = [
   { title: '标签', dataIndex: 'tag', width: 120 },
   { title: '负责人', dataIndex: 'owner', width: 100 },
   { title: '优先级', dataIndex: 'priority', width: 90 },
+  { title: '状态', dataIndex: 'status', width: 100 },
   { title: '计划开始日期', dataIndex: 'planStart', width: 130 },
   { title: '计划结束日期', dataIndex: 'planEnd', width: 130 },
   { title: '实际开始日期', dataIndex: 'actualStart', width: 130 },
@@ -609,8 +609,8 @@ const personFilterOptions = computed(() => [{ label: '全部指定人', value: '
 const bugPriorityLabels = { LOW: '轻微', MEDIUM: '一般', HIGH: '严重', URGENT: '致命' }
 const bugPriorityColors = { LOW: 'blue', MEDIUM: 'orange', HIGH: 'error', URGENT: 'red' }
 const bugStatusColors = { PENDING_FIX: 'gold', FIXING: 'orange', PENDING_VERIFY: 'purple', CLOSED: 'green' }
-const bugSummary = computed(() => [{ key: 'urgent', label: '严重', value: bugSummaryStats.value.byPriority?.URGENT || 0, class: 'bug-severe', icon: ExclamationCircleOutlined }, { key: 'pending', label: '已提交', value: bugSummaryStats.value.byStatus?.PENDING_FIX || 0, class: 'bug-submitted', icon: SendOutlined }, { key: 'fixing', label: '已确认', value: bugSummaryStats.value.byStatus?.FIXING || 0, class: 'bug-confirmed', icon: ToolOutlined }, { key: 'closed', label: '已关闭', value: bugSummaryStats.value.byStatus?.CLOSED || 0, class: 'bug-closed', icon: CheckCircleOutlined }])
-const bugCardFilters = { urgent: { priority: 'URGENT' }, pending: { status: 'PENDING_FIX' }, fixing: { status: 'FIXING' }, closed: { status: 'CLOSED' } }
+const bugSummary = computed(() => [{ key: 'pending', label: '待修复', value: bugSummaryStats.value.byStatus?.PENDING_FIX || 0, class: 'bug-submitted', icon: SendOutlined }, { key: 'verifying', label: '待验证', value: bugSummaryStats.value.byStatus?.PENDING_VERIFY || 0, class: 'bug-verifying', icon: FileDoneOutlined }, { key: 'closed', label: '已关闭', value: bugSummaryStats.value.byStatus?.CLOSED || 0, class: 'bug-closed', icon: CheckCircleOutlined }])
+const bugCardFilters = { pending: { status: 'PENDING_FIX' }, verifying: { status: 'PENDING_VERIFY' }, closed: { status: 'CLOSED' } }
 
 const bugQueryParams = computed(() => ({
   ...(bugCardFilters[activeBugFilter.value] || {}),
@@ -914,6 +914,7 @@ const getTaskRiskLevel = task => {
 }
 const getTaskRiskColor = riskLevel => ({ 高风险: 'red', 中风险: 'orange', 即将到期: 'gold', 按计划进行: 'green' }[riskLevel] || 'default')
 const getTaskPriorityColor = priority => ({ URGENT: 'red', HIGH: 'orange', MEDIUM: 'blue', LOW: 'default' }[priority] || 'default')
+const getTaskStatusColor = status => ({ NOT_STARTED: 'default', OVERDUE_START: 'orange', IN_PROGRESS: 'processing', DUE_SOON: 'gold', OVERDUE: 'red', COMPLETED: 'green', OVERDUE_COMPLETED: 'volcano', PAUSED: 'purple' }[status] || 'default')
 const mapTaskRow = (task, index) => ({
   id: task.id,
   index: (taskPagination.current - 1) * taskPagination.pageSize + index + 1,
@@ -1062,6 +1063,7 @@ const renderGantt = async () => {
     view_mode: ganttViewMode.value,
     view_modes: ['Day', 'Month'],
     column_width: ganttColumnWidth.value,
+    infinite_padding: false,
     readonly: true,
     language: 'zh',
     popup_on: 'hover',
@@ -1494,6 +1496,7 @@ onMounted(async () => {
 .gantt-panel { padding: 12px; }
 .execution-stat-row, .risk-grid, .bug-summary, .document-categories { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 22px; }
 .execution-stat-row { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 16px; }
+.bug-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .project-bug-table :deep(.ant-table-body),
 .project-task-table :deep(.ant-table-body),
 .project-report-table :deep(.ant-table-body),
@@ -1519,6 +1522,7 @@ onMounted(async () => {
 .risk-high, .bug-severe { color: #d70015; background: linear-gradient(135deg, #fff 0%, #fff0f1 100%); }
 .risk-medium, .bug-submitted { color: #c93400; background: linear-gradient(135deg, #fff 0%, #fff5e8 100%); }
 .risk-normal, .bug-closed { color: #248a3d; background: linear-gradient(135deg, #fff 0%, #eefbf2 100%); }
+.bug-verifying { color: #7c3aed; background: linear-gradient(135deg, #fff 0%, #f5f0ff 100%); }
 .risk-grid .semantic-card, .bug-summary .semantic-card { cursor: pointer; border: 2px solid transparent; font: inherit; }
 .risk-card--active { border-color: currentColor !important; box-shadow: 0 0 0 3px rgb(currentcolor / 15%), 0 4px 16px rgb(0 0 0 / 5%) !important; transform: translateY(-2px); }
 .risk-high.risk-card--active { box-shadow: 0 0 0 3px rgb(215 0 21 / 15%), 0 4px 16px rgb(0 0 0 / 5%) !important; }

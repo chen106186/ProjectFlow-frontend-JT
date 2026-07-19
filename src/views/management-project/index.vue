@@ -359,7 +359,7 @@
 </template>
 
 <script setup>
-import { ArrowLeftOutlined, BugOutlined, CheckCircleOutlined, CheckOutlined, ClockCircleOutlined, CodeOutlined, DeleteOutlined, DownOutlined, EditOutlined, ExclamationCircleOutlined, FileDoneOutlined, FileOutlined, FileProtectOutlined, FileTextOutlined, FireOutlined, FlagOutlined, FolderOpenOutlined, InboxOutlined, PlusOutlined, ProfileOutlined, ProjectOutlined, RightOutlined, SendOutlined, SnippetsOutlined, ToolOutlined, WarningOutlined } from '@ant-design/icons-vue'
+import { ArrowLeftOutlined, BugOutlined, CheckCircleOutlined, CheckOutlined, ClockCircleOutlined, CodeOutlined, DeleteOutlined, DownOutlined, EditOutlined, ExclamationCircleOutlined, FileDoneOutlined, FileOutlined, FileProtectOutlined, FileTextOutlined, FireOutlined, FlagOutlined, FolderOpenOutlined, InboxOutlined, PlusOutlined, ProfileOutlined, ProjectOutlined, RightOutlined, SendOutlined, SnippetsOutlined, WarningOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import Gantt from 'frappe-gantt'
@@ -612,6 +612,7 @@ const taskColumns = [
   { title: '标签', dataIndex: 'tag', width: 120 },
   { title: '负责人', dataIndex: 'owner', width: 100 },
   { title: '优先级', dataIndex: 'priority', width: 90 },
+  { title: '状态', dataIndex: 'status', width: 100 },
   { title: '计划开始日期', dataIndex: 'planStart', width: 130 },
   { title: '计划结束日期', dataIndex: 'planEnd', width: 130 },
   { title: '实际开始日期', dataIndex: 'actualStart', width: 130 },
@@ -623,7 +624,7 @@ const personFilterOptions = toOptions(['全部负责人', '全部指定人', '�
 const bugPriorityLabels = { LOW: '轻微', MEDIUM: '一般', HIGH: '严重', URGENT: '致命' }
 const bugPriorityColors = { LOW: 'blue', MEDIUM: 'orange', HIGH: 'error', URGENT: 'red' }
 const bugStatusColors = { PENDING_FIX: 'gold', FIXING: 'orange', PENDING_VERIFY: 'purple', CLOSED: 'green' }
-const bugSummary = computed(() => [{ key: 'pending', label: '待修复', value: bugSummaryStats.value.byStatus?.PENDING_FIX || 0, class: 'bug-submitted', icon: SendOutlined }, { key: 'fixing', label: '修复中', value: bugSummaryStats.value.byStatus?.FIXING || 0, class: 'bug-confirmed', icon: ToolOutlined }, { key: 'verifying', label: '待验证', value: bugSummaryStats.value.byStatus?.PENDING_VERIFY || 0, class: 'bug-verifying', icon: FileDoneOutlined }, { key: 'closed', label: '已关闭', value: bugSummaryStats.value.byStatus?.CLOSED || 0, class: 'bug-closed', icon: CheckCircleOutlined }])
+const bugSummary = computed(() => [{ key: 'pending', label: '待修复', value: bugSummaryStats.value.byStatus?.PENDING_FIX || 0, class: 'bug-submitted', icon: SendOutlined }, { key: 'verifying', label: '待验证', value: bugSummaryStats.value.byStatus?.PENDING_VERIFY || 0, class: 'bug-verifying', icon: FileDoneOutlined }, { key: 'closed', label: '已关闭', value: bugSummaryStats.value.byStatus?.CLOSED || 0, class: 'bug-closed', icon: CheckCircleOutlined }])
 const bugColumns = [{ title: 'BUG ID', dataIndex: 'bugNo', width: 90 }, { title: '标题', dataIndex: 'title', width: 220 }, { title: '严重级别', dataIndex: 'severity', width: 100 }, { title: '状态', dataIndex: 'status', width: 100 }, { title: '指定人', dataIndex: 'assignee', width: 90 }, { title: '创建人', dataIndex: 'creator', width: 90 }]
 
 const bugRows = ref([])
@@ -1171,6 +1172,7 @@ const renderGantt = async () => {
     view_mode: ganttViewMode.value,
     view_modes: ['Day', 'Month'],
     column_width: ganttColumnWidth.value,
+    infinite_padding: false,
     readonly: true,
     language: 'zh',
     popup_on: 'hover',

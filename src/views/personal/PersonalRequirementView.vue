@@ -49,7 +49,7 @@
         :data-source="pagedRows"
         :pagination="pagination"
         :loading="loading"
-        :scroll="{ x: 1220 }"
+        :scroll="{ x: 1440 }"
         @change="handleTableChange"
       >
         <template #bodyCell="{ column, record, text }">
@@ -68,6 +68,17 @@
           <template v-else-if="column.dataIndex === 'status'">
             <a-tag :color="statusColor(record.statusCode)">{{ text }}</a-tag>
           </template>
+          <template v-else-if="column.dataIndex === 'ops'">
+            <a-space :size="4">
+              <a-button type="link" size="small" @click="openEditModal(record)">编辑</a-button>
+              <template v-if="record.statusCode === 'PENDING_REVIEW'">
+                <a-divider type="vertical" style="margin: 0;" />
+                <a-button type="link" size="small" :loading="opRecord === record.id + '_ACCEPTED'" @click="handleStatusChange(record, 'ACCEPTED')">采纳</a-button>
+                <a-button type="link" size="small" danger :loading="opRecord === record.id + '_REJECTED'" @click="handleStatusChange(record, 'REJECTED')">未采纳</a-button>
+                <a-button type="link" size="small" :loading="opRecord === record.id + '_SHELVED'" @click="handleStatusChange(record, 'SHELVED')">搁置</a-button>
+              </template>
+            </a-space>
+          </template>
           <template v-else>{{ text || '-' }}</template>
         </template>
       </a-table>
@@ -75,10 +86,14 @@
       <div v-else class="requirement-group-list">
         <section v-for="group in groupedRows" :key="group.value" class="requirement-group">
           <header class="requirement-group__header">
-            <strong>{{ group.label }}</strong>
+            <button type="button" @click="handleToggleGroup(group.value)">
+              <RightOutlined v-if="isGroupCollapsed(group.value)" />
+              <DownOutlined v-else />
+              {{ group.label }}
+            </button>
             <a-tag>{{ group.rows.length }}</a-tag>
           </header>
-          <a-table row-key="id" :columns="columns" :data-source="group.rows" :pagination="false" :scroll="{ x: 1220 }">
+          <a-table v-if="!isGroupCollapsed(group.value)" row-key="id" :columns="columns" :data-source="group.rows" :pagination="false" :scroll="{ x: 1440 }">
             <template #bodyCell="{ column, record, text }">
               <template v-if="column.dataIndex === 'title'">
                 <a-button type="link" class="table-link" @click="handleDetail(record)">{{ text }}</a-button>
@@ -92,6 +107,17 @@
               <template v-else-if="column.dataIndex === 'status'">
                 <a-tag :color="statusColor(record.statusCode)">{{ text }}</a-tag>
               </template>
+              <template v-else-if="column.dataIndex === 'ops'">
+                <a-space :size="4">
+                  <a-button type="link" size="small" @click="openEditModal(record)">编辑</a-button>
+                  <template v-if="record.statusCode === 'PENDING_REVIEW'">
+                    <a-divider type="vertical" style="margin: 0;" />
+                    <a-button type="link" size="small" :loading="opRecord === record.id + '_ACCEPTED'" @click="handleStatusChange(record, 'ACCEPTED')">采纳</a-button>
+                    <a-button type="link" size="small" danger :loading="opRecord === record.id + '_REJECTED'" @click="handleStatusChange(record, 'REJECTED')">未采纳</a-button>
+                    <a-button type="link" size="small" :loading="opRecord === record.id + '_SHELVED'" @click="handleStatusChange(record, 'SHELVED')">搁置</a-button>
+                  </template>
+                </a-space>
+              </template>
               <template v-else>{{ text || '-' }}</template>
             </template>
           </a-table>
@@ -101,7 +127,7 @@
 
     <a-modal
       v-model:open="createVisible"
-      title="新增需求"
+      :title="editId ? '编辑需求' : '新增需求'"
       width="45rem"
       :confirm-loading="submitLoading"
       ok-text="确定"
@@ -124,6 +150,9 @@
         <a-form-item label="需求类型" name="requirementType">
           <a-select v-model:value="formState.requirementType" :options="typeOptions" placeholder="请选择需求类型" />
         </a-form-item>
+        <a-form-item v-if="editId" label="需求状态" name="status">
+          <a-select v-model:value="formState.status" :options="statusOptions" placeholder="请选择需求状态" />
+        </a-form-item>
         <a-form-item label="优先级" name="priority">
           <a-select v-model:value="formState.priority" :options="priorityOptions" placeholder="请选择优先级" />
         </a-form-item>
@@ -139,14 +168,14 @@
 </template>
 
 <script setup>
-import { PlusOutlined } from '@ant-design/icons-vue'
+import { DownOutlined, PlusOutlined, RightOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { getProjectList } from '@/api/managementProject'
-import { createRequirement, listMyRequirements } from '@/api/requirements'
+import { createRequirement, listMyRequirements, updateRequirement, updateRequirementStatus } from '@/api/requirements'
 import { useDictStore } from '@/store/dictStore'
 import { formatDateTime } from '@/utils/dateTime'
 
@@ -155,7 +184,9 @@ const dictStore = useDictStore()
 
 const loading = ref(false)
 const submitLoading = ref(false)
+const opRecord = ref('')
 const createVisible = ref(false)
+const editId = ref(null)
 const formRef = ref()
 const requirementRows = ref([])
 const projectRows = ref([])
@@ -179,12 +210,14 @@ const pagination = reactive({
 
 const displayMode = ref('list')
 const groupField = ref('projectName')
+const collapsedGroups = ref([])
 const groupOptions = [{ label: '所属项目', value: 'projectName' }]
 
 const createDefaultForm = () => ({
   title: '',
   projectId: undefined,
   requirementType: undefined,
+  status: undefined,
   priority: undefined,
   description: '',
   tags: '',
@@ -267,6 +300,7 @@ const formatRequirementNo = item => {
 
 const mapRequirement = item => ({
   id: item.id,
+  createdBy: item.createdBy,
   requirementNo: formatRequirementNo(item),
   title: item.title,
   projectId: item.projectId,
@@ -277,6 +311,8 @@ const mapRequirement = item => ({
   priorityCode: item.priority,
   status: optionLabel(statusOptions.value, item.status),
   statusCode: item.status,
+  description: item.description,
+  tags: item.tags,
   submitter: currentUserName(),
   createdAt: formatDateTime(item.createdAt),
 })
@@ -315,6 +351,15 @@ const groupedRows = computed(() => {
   return Array.from(groups, ([value, rows]) => ({ value, label: value, rows }))
 })
 
+const isGroupCollapsed = value => collapsedGroups.value.includes(value)
+const handleToggleGroup = value => {
+  collapsedGroups.value = isGroupCollapsed(value)
+    ? collapsedGroups.value.filter(item => item !== value)
+    : [...collapsedGroups.value, value]
+}
+
+watch(groupField, () => { collapsedGroups.value = [] })
+
 const columns = [
   { title: '需求编号', dataIndex: 'requirementNo', width: 150 },
   { title: '需求标题', dataIndex: 'title', minWidth: 260 },
@@ -324,6 +369,7 @@ const columns = [
   { title: '状态', dataIndex: 'status', width: 110 },
   { title: '提交人', dataIndex: 'submitter', width: 110 },
   { title: '创建时间', dataIndex: 'createdAt', width: 200 },
+  { title: '操作', dataIndex: 'ops', width: 220, fixed: 'right' },
 ]
 
 const priorityColor = value => ({ URGENT: 'red', HIGH: 'orange', MEDIUM: 'gold', LOW: 'default' }[value] || 'default')
@@ -382,7 +428,23 @@ const handleDetail = record => {
 }
 
 const openCreateModal = () => {
+  editId.value = null
   Object.assign(formState, createDefaultForm())
+  formRef.value?.clearValidate()
+  createVisible.value = true
+}
+
+const openEditModal = record => {
+  editId.value = record.id
+  Object.assign(formState, {
+    title: record.title || '',
+    projectId: record.projectId,
+    requirementType: record.requirementTypeCode,
+    status: record.statusCode,
+    priority: record.priorityCode,
+    description: record.description || '',
+    tags: record.tags || '',
+  })
   formRef.value?.clearValidate()
   createVisible.value = true
 }
@@ -392,15 +454,22 @@ const handleSubmit = async () => {
   await formRef.value?.validate()
   submitLoading.value = true
   try {
-    const created = await createRequirement({
+    let created
+    const payload = {
       title: formState.title,
       projectId: formState.projectId,
       requirementType: formState.requirementType,
       priority: formState.priority,
       description: formState.description,
       tags: formState.tags || undefined,
-    })
-    message.success('需求创建成功')
+    }
+    if (editId.value) {
+      await updateRequirement(editId.value, { ...payload, status: formState.status })
+      message.success('需求已更新')
+    } else {
+      created = await createRequirement(payload)
+      message.success('需求创建成功')
+    }
     createVisible.value = false
     await loadRequirements()
     if (created?.id) {
@@ -410,6 +479,20 @@ const handleSubmit = async () => {
     message.error(error.message || '需求创建失败')
   } finally {
     submitLoading.value = false
+  }
+}
+
+const handleStatusChange = async (record, status) => {
+  const key = `${record.id}_${status}`
+  opRecord.value = key
+  try {
+    await updateRequirementStatus(record.id, status)
+    message.success({ ACCEPTED: '已采纳', REJECTED: '未采纳', SHELVED: '已搁置' }[status] || '状态已更新')
+    await loadRequirements()
+  } catch (error) {
+    message.error(error.message || '操作失败')
+  } finally {
+    opRecord.value = ''
   }
 }
 
@@ -503,7 +586,21 @@ onMounted(initPage)
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 10px;
+  height: 40px;
+  padding: 0 14px;
+  background: #fafafa;
+  border-block: 1px solid #edf0f3;
+}
+
+.requirement-group__header button {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  padding: 0;
+  font-weight: 600;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
 }
 
 @media (max-width: 1100px) {

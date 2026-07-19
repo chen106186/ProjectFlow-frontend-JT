@@ -100,6 +100,7 @@
             <template #bodyCell="{ column, record, text }">
               <a-button v-if="column.dataIndex === 'name'" type="link" @click="emit('view-task', record)">{{ text }}</a-button>
               <a-tag v-else-if="column.dataIndex === 'priority'" :color="priorityColorMap[record.priorityCode] || 'default'">{{ text }}</a-tag>
+              <a-tag v-else-if="column.dataIndex === 'status'" :color="taskStatusColorMap[record.statusCode] || 'default'">{{ text }}</a-tag>
               <a-tag v-else-if="column.dataIndex === 'riskLevel'" :color="riskColorMap[text] || 'default'">{{ text }}</a-tag>
             </template>
           </a-table>
@@ -342,6 +343,7 @@ const TASK_STATUS_OPTIONS = [
 ]
 const riskColorMap = { 高风险: 'red', 中风险: 'orange', 即将到期: 'gold', 按计划进行: 'green' }
 const priorityColorMap = { URGENT: 'red', HIGH: 'orange', MEDIUM: 'blue', LOW: 'default' }
+const taskStatusColorMap = { NOT_STARTED: 'default', OVERDUE_START: 'orange', IN_PROGRESS: 'processing', DUE_SOON: 'gold', OVERDUE: 'red', COMPLETED: 'green', OVERDUE_COMPLETED: 'volcano', PAUSED: 'purple' }
 
 const taskPersonOptions = computed(() => {
   const seen = new Set()
@@ -391,7 +393,7 @@ const resetTaskFilters = () => {
   taskStatusFilter.value = ''
   taskPersonFilter.value = ''
 }
-const bugCardFilters = { pending: { status: 'PENDING_FIX' }, fixing: { status: 'FIXING' }, verifying: { status: 'PENDING_VERIFY' }, closed: { status: 'CLOSED' } }
+const bugCardFilters = { pending: { status: 'PENDING_FIX' }, verifying: { status: 'PENDING_VERIFY' }, closed: { status: 'CLOSED' } }
 const bugFilterParams = computed(() => ({
   ...(bugCardFilters[activeBugFilter.value] || {}),
   ...(bugStatusFilter.value ? { status: bugStatusFilter.value } : {}),
@@ -564,6 +566,10 @@ defineExpose({
 .project-stat-row {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-bottom: 16px;
+}
+
+.bug-summary {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .project-bug-table :deep(.ant-table-body),
