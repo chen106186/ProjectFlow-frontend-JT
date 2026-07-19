@@ -79,12 +79,13 @@
             </template>
             <template v-else-if="column.dataIndex === 'ops'">
               <a-space :size="4">
-                <a-button type="link" size="small" @click="openEditModal(record)">编辑</a-button>
+                <a-button type="link" size="small" :disabled="!canOperate(record)" @click="openEditModal(record)">编辑</a-button>
                 <template v-if="record.status === 'PENDING_REVIEW'">
                   <a-divider type="vertical" style="margin: 0;" />
                   <a-button
                     type="link"
                     size="small"
+                    :disabled="!canOperate(record)"
                     :loading="opRecord === record.id + '_ACCEPTED'"
                     @click="handleStatusChange(record, 'ACCEPTED')"
                   >采纳</a-button>
@@ -92,12 +93,14 @@
                     type="link"
                     size="small"
                     danger
+                    :disabled="!canOperate(record)"
                     :loading="opRecord === record.id + '_REJECTED'"
                     @click="handleStatusChange(record, 'REJECTED')"
                   >未采纳</a-button>
                   <a-button
                     type="link"
                     size="small"
+                    :disabled="!canOperate(record)"
                     :loading="opRecord === record.id + '_SHELVED'"
                     @click="handleStatusChange(record, 'SHELVED')"
                   >搁置</a-button>
@@ -149,12 +152,12 @@
                 </template>
                 <template v-else-if="column.dataIndex === 'ops'">
                   <a-space :size="4">
-                    <a-button type="link" size="small" @click="openEditModal(record)">编辑</a-button>
+                    <a-button type="link" size="small" :disabled="!canOperate(record)" @click="openEditModal(record)">编辑</a-button>
                     <template v-if="record.status === 'PENDING_REVIEW'">
                       <a-divider type="vertical" style="margin: 0;" />
-                      <a-button type="link" size="small" :loading="opRecord === record.id + '_ACCEPTED'" @click="handleStatusChange(record, 'ACCEPTED')">采纳</a-button>
-                      <a-button type="link" size="small" danger :loading="opRecord === record.id + '_REJECTED'" @click="handleStatusChange(record, 'REJECTED')">未采纳</a-button>
-                      <a-button type="link" size="small" :loading="opRecord === record.id + '_SHELVED'" @click="handleStatusChange(record, 'SHELVED')">搁置</a-button>
+                      <a-button type="link" size="small" :disabled="!canOperate(record)" :loading="opRecord === record.id + '_ACCEPTED'" @click="handleStatusChange(record, 'ACCEPTED')">采纳</a-button>
+                      <a-button type="link" size="small" danger :disabled="!canOperate(record)" :loading="opRecord === record.id + '_REJECTED'" @click="handleStatusChange(record, 'REJECTED')">未采纳</a-button>
+                      <a-button type="link" size="small" :disabled="!canOperate(record)" :loading="opRecord === record.id + '_SHELVED'" @click="handleStatusChange(record, 'SHELVED')">搁置</a-button>
                     </template>
                   </a-space>
                 </template>
@@ -307,6 +310,14 @@ const dictLabel = (type, value) => dictStore.getDictLabel(type, value) || value 
 const priorityColor = v => ({ URGENT: 'red', HIGH: 'orange', MEDIUM: 'gold', LOW: 'default' }[v] || 'default')
 const statusColor = v => ({ PENDING_REVIEW: 'blue', ACCEPTED: 'green', REJECTED: 'red', SHELVED: 'orange' }[v] || 'default')
 const statusSuccessText = status => ({ ACCEPTED: '已采纳', REJECTED: '未采纳', SHELVED: '已搁置' }[status] || '状态已更新')
+const currentUserId = (() => {
+  try {
+    return JSON.parse(localStorage.getItem('userInfo') || '{}').userId
+  } catch {
+    return null
+  }
+})()
+const canOperate = record => currentUserId != null && String(record.createdBy) === String(currentUserId)
 
 const groupValueLabel = (field, value) => {
   if (!value || value === '未设置') return '未设置'
@@ -413,6 +424,7 @@ const openCreateModal = () => {
 }
 
 const openEditModal = record => {
+  if (!canOperate(record)) return
   editId.value = record.id
   Object.assign(modalForm, {
     title: record.title || '',
@@ -465,6 +477,7 @@ const handleModalSubmit = async () => {
 }
 
 const handleStatusChange = async (record, status) => {
+  if (!canOperate(record)) return
   const key = `${record.id}_${status}`
   opRecord.value = key
   try {
