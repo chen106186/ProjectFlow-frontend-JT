@@ -103,7 +103,7 @@
                   option-filter-prop="label"
                 />
               </td>
-              <td><a-input v-model:value="row.description" placeholder="请输入项目描述" /></td>
+              <td><a-input v-model:value="row.description" placeholder="请输入任务描述" /></td>
               <td><a-input v-model:value="row.tags" placeholder="请输入标签" /></td>
               <td>
                 <a-space :size="4">

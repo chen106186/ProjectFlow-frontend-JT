@@ -391,7 +391,7 @@ const resetTaskFilters = () => {
   taskStatusFilter.value = ''
   taskPersonFilter.value = ''
 }
-const bugCardFilters = { urgent: { priority: 'URGENT' }, pending: { status: 'PENDING_FIX' }, verifying: { status: 'PENDING_VERIFY' }, closed: { status: 'CLOSED' } }
+const bugCardFilters = { pending: { status: 'PENDING_FIX' }, fixing: { status: 'FIXING' }, verifying: { status: 'PENDING_VERIFY' }, closed: { status: 'CLOSED' } }
 const bugFilterParams = computed(() => ({
   ...(bugCardFilters[activeBugFilter.value] || {}),
   ...(bugStatusFilter.value ? { status: bugStatusFilter.value } : {}),
@@ -667,6 +667,11 @@ defineExpose({
 .bug-closed {
   color: #248a3d;
   background: linear-gradient(135deg, #fff 0%, #eefbf2 100%);
+}
+
+.bug-verifying {
+  color: #7c3aed;
+  background: linear-gradient(135deg, #fff 0%, #f5f0ff 100%);
 }
 
 .gantt-view-toolbar {

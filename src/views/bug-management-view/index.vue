@@ -103,6 +103,7 @@
                       <a-button v-if="!isClosedBug(record)" type="link" size="small" danger @click="handleCloseBugFromList(record)">关闭</a-button>
                     </a-space>
                   </template>
+                  <template v-else>{{ text || '-' }}</template>
                 </template>
               </a-table>
             </div>
@@ -367,7 +368,11 @@ const statusFilterOptions = [
   { label: '待验证', value: 'PENDING_VERIFY' }, { label: '已关闭', value: 'CLOSED' },
 ]
 const groupOptions = [
-  { label: '所属项目', value: 'projectName' }, { label: '优先级', value: 'priority' }, { label: '状态', value: 'status' },
+  { label: '所属项目', value: 'projectName' },
+  { label: '优先级', value: 'priority' },
+  { label: '状态', value: 'status' },
+  { label: '创建人', value: 'creatorName' },
+  { label: '指定人', value: 'assigneeName' },
 ]
 
 const projects = ref([])
