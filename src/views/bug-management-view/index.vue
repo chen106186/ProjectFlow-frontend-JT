@@ -72,8 +72,16 @@
         <template v-else>
           <div class="bug-group-list">
             <div v-for="(group, key) in groupedBugs" :key="key" class="bug-group">
-              <h4 class="bug-group__title">{{ key || '未分组' }} ({{ group.length }})</h4>
+              <header class="bug-group__header">
+                <button type="button" @click="handleToggleGroup(key)">
+                  <RightOutlined v-if="isGroupCollapsed(key)" />
+                  <DownOutlined v-else />
+                  {{ key || '未分组' }}
+                </button>
+                <a-tag>{{ group.length }}</a-tag>
+              </header>
               <a-table
+                v-if="!isGroupCollapsed(key)"
                 row-key="id"
                 :columns="columns.filter(c => c.dataIndex !== 'index')"
                 :data-source="group"
@@ -336,7 +344,7 @@
 </template>
 
 <script setup>
-import { ArrowLeftOutlined, CheckOutlined, CloseOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { ArrowLeftOutlined, CheckOutlined, CloseOutlined, DownOutlined, PlusOutlined, RightOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
@@ -393,6 +401,7 @@ const pageSize = ref(10)
 const listLoading = ref(false)
 const displayMode = ref('list')
 const groupField = ref('projectName')
+const collapsedGroups = ref([])
 const queryParams = reactive({ keyword: '', projectId: undefined, priority: undefined, status: undefined, creatorId: undefined, assigneeId: undefined })
 
 const columns = [
@@ -418,6 +427,15 @@ const groupedBugs = computed(() => {
   }
   return result
 })
+
+const isGroupCollapsed = value => collapsedGroups.value.includes(value)
+const handleToggleGroup = value => {
+  collapsedGroups.value = isGroupCollapsed(value)
+    ? collapsedGroups.value.filter(item => item !== value)
+    : [...collapsedGroups.value, value]
+}
+
+watch(groupField, () => { collapsedGroups.value = [] })
 
 const isClosedBug = bug => {
   if (!bug) return false
@@ -895,7 +913,8 @@ onMounted(async () => {
 .bug-title-text { display: block; width: 100%; overflow: hidden; color: #1677ff; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 .bug-no { color: #1677ff; font-size: 12px; font-weight: 600; font-family: monospace; }
 .bug-group { margin-bottom: 24px; }
-.bug-group__title { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: #333; }
+.bug-group__header { display: flex; align-items: center; justify-content: space-between; height: 40px; padding: 0 14px; background: #fafafa; border-block: 1px solid #edf0f3; }
+.bug-group__header button { display: inline-flex; align-items: center; gap: 8px; padding: 0; font-weight: 600; background: transparent; border: 0; cursor: pointer; }
 .bug-form-card { width: min(1100px, 100%); min-height: 538px; margin: 0 auto; }
 .bug-form-card :deep(.ant-card-body) { padding: 22px 30px 24px; }
 .panel-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }

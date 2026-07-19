@@ -322,8 +322,15 @@
           <div v-else class="personal-bug-group-view">
             <div class="personal-bug-group-list">
               <section v-for="group in groupedBugs" :key="group.value" class="personal-bug-group">
-              <h4 class="personal-bug-group__title">{{ group.label }} ({{ group.rows.length }})</h4>
-              <a-table :columns="personalBugColumns" :data-source="group.rows" :pagination="false" :scroll="{ x: 1100 }" size="middle" row-key="id" table-layout="fixed">
+              <header class="personal-bug-group__header">
+                <button type="button" @click="handleToggleBugGroup(group.value)">
+                  <RightOutlined v-if="isBugGroupCollapsed(group.value)" />
+                  <DownOutlined v-else />
+                  {{ group.label }}
+                </button>
+                <a-tag>{{ group.rows.length }}</a-tag>
+              </header>
+              <a-table v-if="!isBugGroupCollapsed(group.value)" :columns="personalBugColumns" :data-source="group.rows" :pagination="false" :scroll="{ x: 1100 }" size="middle" row-key="id" table-layout="fixed">
                 <template #bodyCell="{ column, record, text }">
                   <template v-if="column.dataIndex === 'code'">
                     <span class="bug-no">{{ text && text !== '-' ? '#' + String(text).padStart(3, '0') : '-' }}</span>
@@ -731,6 +738,7 @@ const bugUsers = ref([])
 const bugProjects = ref([])
 const bugDisplayMode = ref('list')
 const bugGroupField = ref('project')
+const collapsedBugGroups = ref([])
 const bugCurrentPage = ref(1)
 const bugPageSize = ref(10)
 const bugFilter = ref({
@@ -957,6 +965,10 @@ watch(
 
 watch([taskGroupField, () => route.name], () => {
   collapsedTaskGroups.value = []
+})
+
+watch(bugGroupField, () => {
+  collapsedBugGroups.value = []
 })
 
 function getTaskLabel(type, value) {
@@ -1509,6 +1521,13 @@ const handleToggleTaskGroup = value => {
   collapsedTaskGroups.value = isTaskGroupCollapsed(value)
     ? collapsedTaskGroups.value.filter(item => item !== value)
     : [...collapsedTaskGroups.value, value]
+}
+
+const isBugGroupCollapsed = value => collapsedBugGroups.value.includes(value)
+const handleToggleBugGroup = value => {
+  collapsedBugGroups.value = isBugGroupCollapsed(value)
+    ? collapsedBugGroups.value.filter(item => item !== value)
+    : [...collapsedBugGroups.value, value]
 }
 
 const handleTaskSubmit = async () => {
@@ -2246,11 +2265,25 @@ const trendPoints = [
 
 .personal-bug-group + .personal-bug-group { margin-top: 24px; }
 
-.personal-bug-group__title {
-  margin: 0 0 10px;
-  color: #333;
-  font-size: 14px;
+.personal-bug-group__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 40px;
+  padding: 0 14px;
+  background: #fafafa;
+  border-block: 1px solid #edf0f3;
+}
+
+.personal-bug-group__header button {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  padding: 0;
   font-weight: 600;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
 }
 
 .bug-no {
