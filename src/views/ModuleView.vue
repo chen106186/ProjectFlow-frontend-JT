@@ -1925,8 +1925,8 @@ const personalBugColumns = [
   { title: '所属项目', dataIndex: 'project', width: 220 },
   { title: '严重等级', dataIndex: 'level', width: 110 },
   { title: '状态', dataIndex: 'status', width: 110 },
-  { title: '指定人', dataIndex: 'assignee', width: 100 },
   { title: '创建人', dataIndex: 'creator', width: 100 },
+  { title: '指定人', dataIndex: 'assignee', width: 100 },
   { title: '创建时间', dataIndex: 'createdAt', width: 170 },
 ]
 

@@ -60,9 +60,18 @@
               <template v-else-if="column.dataIndex === 'createdAt'">{{ formatDateTime(text) }}</template>
               <template v-else-if="column.dataIndex === 'operation'">
                 <a-space>
-                  <a-button type="link" size="small" @click="handleDetail(record)">详情</a-button>
-                  <a-button v-if="!isClosedBug(record)" type="link" size="small" @click="handleEdit(record)">编辑</a-button>
-                  <a-button v-if="!isClosedBug(record)" type="link" size="small" danger @click="handleCloseBugFromList(record)">关闭</a-button>
+                  <a-tooltip title="详情">
+                    <a-button type="link" size="small" class="bug-operation-button" aria-label="详情" @click="handleDetail(record)"><EyeOutlined /></a-button>
+                  </a-tooltip>
+                  <a-tooltip v-if="!isClosedBug(record)" title="编辑">
+                    <a-button type="link" size="small" class="bug-operation-button" aria-label="编辑" @click="handleEdit(record)"><EditOutlined /></a-button>
+                  </a-tooltip>
+                  <a-tooltip v-if="!isClosedBug(record)" title="关闭">
+                    <a-button type="link" size="small" class="bug-operation-button" aria-label="关闭" danger @click="handleCloseBugFromList(record)"><CloseCircleOutlined /></a-button>
+                  </a-tooltip>
+                  <a-tooltip v-else-if="isBugCreator(record)" title="重新打开">
+                    <a-button type="link" size="small" class="bug-operation-button" aria-label="重新打开" @click="handleReopenBug(record)"><RedoOutlined /></a-button>
+                  </a-tooltip>
                 </a-space>
               </template>
             </template>
@@ -106,9 +115,18 @@
                   <template v-else-if="column.dataIndex === 'createdAt'">{{ formatDateTime(text) }}</template>
                   <template v-else-if="column.dataIndex === 'operation'">
                     <a-space>
-                      <a-button type="link" size="small" @click="handleDetail(record)">详情</a-button>
-                      <a-button v-if="!isClosedBug(record)" type="link" size="small" @click="handleEdit(record)">编辑</a-button>
-                      <a-button v-if="!isClosedBug(record)" type="link" size="small" danger @click="handleCloseBugFromList(record)">关闭</a-button>
+                      <a-tooltip title="详情">
+                        <a-button type="link" size="small" class="bug-operation-button" aria-label="详情" @click="handleDetail(record)"><EyeOutlined /></a-button>
+                      </a-tooltip>
+                      <a-tooltip v-if="!isClosedBug(record)" title="编辑">
+                        <a-button type="link" size="small" class="bug-operation-button" aria-label="编辑" @click="handleEdit(record)"><EditOutlined /></a-button>
+                      </a-tooltip>
+                      <a-tooltip v-if="!isClosedBug(record)" title="关闭">
+                        <a-button type="link" size="small" class="bug-operation-button" aria-label="关闭" danger @click="handleCloseBugFromList(record)"><CloseCircleOutlined /></a-button>
+                      </a-tooltip>
+                      <a-tooltip v-else-if="isBugCreator(record)" title="重新打开">
+                        <a-button type="link" size="small" class="bug-operation-button" aria-label="重新打开" @click="handleReopenBug(record)"><RedoOutlined /></a-button>
+                      </a-tooltip>
                     </a-space>
                   </template>
                   <template v-else>{{ text || '-' }}</template>
@@ -296,13 +314,16 @@
               </a-card>
             </div>
           </div>
-          <div v-if="selectedBug && !isClosedBug(selectedBug) && (!isResolvedBug(selectedBug) || isBugCreator(selectedBug))" class="detail-floating-actions">
-            <template v-if="!isResolvedBug(selectedBug)">
-              <a-button type="primary" @click="handleEditFromDetail">编辑 Bug</a-button>
-              <a-button @click="assignVisible = true">重新指派</a-button>
-              <a-button type="primary" class="resolve-button" @click="openResolveModal">解决</a-button>
+          <div v-if="selectedBug && (isClosedBug(selectedBug) ? isBugCreator(selectedBug) : (!isResolvedBug(selectedBug) || isBugCreator(selectedBug)))" class="detail-floating-actions">
+            <a-button v-if="isClosedBug(selectedBug)" type="primary" @click="handleReopenBug(selectedBug)"><RedoOutlined />重新打开</a-button>
+            <template v-else>
+              <template v-if="!isResolvedBug(selectedBug)">
+                <a-button type="primary" @click="handleEditFromDetail">编辑 Bug</a-button>
+                <a-button @click="assignVisible = true">重新指派</a-button>
+                <a-button type="primary" class="resolve-button" @click="openResolveModal">解决</a-button>
+              </template>
+              <a-button v-if="isBugCreator(selectedBug)" danger :loading="closeLoading" @click="handleCloseBug">关闭 Bug</a-button>
             </template>
-            <a-button v-if="isBugCreator(selectedBug)" danger :loading="closeLoading" @click="handleCloseBug">关闭 Bug</a-button>
           </div>
         </a-spin>
       </div>
@@ -350,7 +371,7 @@
 </template>
 
 <script setup>
-import { ArrowLeftOutlined, CheckCircleFilled, CheckOutlined, CloseOutlined, DownOutlined, PlusOutlined, RightOutlined } from '@ant-design/icons-vue'
+import { ArrowLeftOutlined, CheckCircleFilled, CheckOutlined, CloseCircleOutlined, CloseOutlined, DownOutlined, EditOutlined, EyeOutlined, PlusOutlined, RedoOutlined, RightOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
@@ -416,8 +437,8 @@ const columns = [
   { title: '所属项目', dataIndex: 'projectName', width: 210 },
   { title: '严重等级', dataIndex: 'priority', width: 110 },
   { title: '状态', dataIndex: 'status', width: 110 },
-  { title: '指定人', dataIndex: 'assigneeName', width: 90 },
   { title: '创建人', dataIndex: 'creatorName', width: 90 },
+  { title: '指定人', dataIndex: 'assigneeName', width: 90 },
   { title: '创建时间', dataIndex: 'createdAt', width: 170 },
   { title: '操作', dataIndex: 'operation', width: 120, fixed: 'right' },
 ]
@@ -811,6 +832,7 @@ const handleEdit = record => router.push({ name: 'BugEdit', params: { id: record
 const handleDetail = record => router.push({ name: 'BugDetail', params: { id: record.id } })
 const handleEditFromDetail = () => router.push({ name: 'BugEdit', params: { id: selectedBug.value.id } })
 const handleBack = () => router.back()
+const handleReopenBug = () => message.info('重新打开接口暂未对接')
 
 const handleCloseBugFromList = async record => {
   try {
@@ -918,6 +940,8 @@ onMounted(async () => {
 .bug-list :deep(.ant-table-cell) { white-space: nowrap; }
 .bug-title-text { display: block; width: 100%; overflow: hidden; color: #1677ff; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 .bug-no { color: #1677ff; font-size: 12px; font-weight: 600; font-family: monospace; }
+.bug-operation-button { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border-radius: 6px; }
+.bug-operation-button :deep(svg) { width: 15px; height: 15px; }
 .bug-group { margin-bottom: 24px; }
 .bug-group__header { display: flex; align-items: center; justify-content: space-between; height: 40px; padding: 0 14px; background: #fafafa; border-block: 1px solid #edf0f3; }
 .bug-group__header button { display: inline-flex; align-items: center; gap: 8px; padding: 0; font-weight: 600; background: transparent; border: 0; cursor: pointer; }
