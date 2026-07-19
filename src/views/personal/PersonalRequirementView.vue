@@ -42,16 +42,17 @@
         </div>
       </div>
 
-      <a-table
-        v-if="displayMode === 'list'"
-        row-key="id"
-        :columns="columns"
-        :data-source="pagedRows"
-        :pagination="pagination"
-        :loading="loading"
-        :scroll="{ x: 1440 }"
-        @change="handleTableChange"
-      >
+      <div class="requirement-table-wrap">
+        <a-table
+          v-if="displayMode === 'list'"
+          class="requirement-table"
+          row-key="id"
+          :columns="columns"
+          :data-source="pagedRows"
+          :pagination="false"
+          :loading="loading"
+          :scroll="{ x: 1440, y: '100%' }"
+        >
         <template #bodyCell="{ column, record, text }">
           <template v-if="column.dataIndex === 'requirementNo'">
             <span class="requirement-no">{{ text }}</span>
@@ -89,9 +90,9 @@
           </template>
           <template v-else>{{ text || '-' }}</template>
         </template>
-      </a-table>
+        </a-table>
 
-      <div v-else class="requirement-group-list">
+        <div v-else class="requirement-group-list">
         <section v-for="group in groupedRows" :key="group.value" class="requirement-group">
           <header class="requirement-group__header">
             <button type="button" @click="handleToggleGroup(group.value)">
@@ -138,6 +139,18 @@
             </template>
           </a-table>
         </section>
+        </div>
+      </div>
+      <div class="requirement-pagination">
+        <a-pagination
+          v-model:current="pagination.current"
+          v-model:page-size="pagination.pageSize"
+          :total="pagination.total"
+          :show-size-changer="pagination.showSizeChanger"
+          :page-size-options="pagination.pageSizeOptions"
+          :show-total="pagination.showTotal"
+          @change="handlePageChange"
+        />
       </div>
     </a-card>
 
@@ -358,7 +371,7 @@ const pagedRows = computed(() => {
 const groupedRows = computed(() => {
   const groups = new Map()
 
-  filteredRows.value.forEach(item => {
+  pagedRows.value.forEach(item => {
     const key = item[groupField.value] || '未分组'
     if (!groups.has(key)) groups.set(key, [])
     groups.get(key).push(item)
@@ -434,9 +447,9 @@ const handleReset = () => {
   pagination.current = 1
 }
 
-const handleTableChange = page => {
-  pagination.current = page.current
-  pagination.pageSize = page.pageSize
+const handlePageChange = (current, pageSize) => {
+  pagination.current = current
+  pagination.pageSize = pageSize
 }
 
 const handleDetail = record => {
@@ -518,7 +531,12 @@ onMounted(initPage)
 <style scoped>
 .requirement-page {
   width: min(1600px, 100%);
+  height: 100%;
+  min-height: 0;
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   color: #262626;
 }
 
@@ -529,6 +547,7 @@ onMounted(initPage)
 }
 
 .requirement-filter {
+  flex: none;
   margin-bottom: 16px;
 }
 
@@ -567,11 +586,25 @@ onMounted(initPage)
   justify-self: end;
 }
 
+.requirement-list {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .requirement-list :deep(.ant-card-body) {
-  padding: 22px 30px 18px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 22px 30px 10px;
+  overflow: hidden;
 }
 
 .requirement-list__toolbar {
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -592,6 +625,45 @@ onMounted(initPage)
 .table-link,
 .requirement-no {
   font-family: 'Segoe UI', 'PingFang SC', sans-serif;
+}
+
+.requirement-table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.requirement-table {
+  height: 100%;
+  min-height: 0;
+}
+
+.requirement-table :deep(.ant-spin-nested-loading),
+.requirement-table :deep(.ant-spin-container),
+.requirement-table :deep(.ant-table),
+.requirement-table :deep(.ant-table-container) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.requirement-table :deep(.ant-table-header) { flex: none; }
+.requirement-table :deep(.ant-table-body) { flex: 1; min-height: 0; max-height: none !important; overflow-y: auto !important; }
+
+.requirement-group-list {
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+}
+
+.requirement-pagination {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 32px;
+  margin-top: 10px;
 }
 
 .operation-icon-button { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border-radius: 6px; }

@@ -178,13 +178,14 @@ function goDetail(target) {
 
 <style scoped>
 .daily-list-page {
-  height: calc(100vh - 180px);
+  height: 100%;
   min-height: 0;
   width: min(1600px, 100%);
   margin: 0 auto;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 500px;
   gap: 16px;
+  overflow: hidden;
 }
 
 .daily-list-main {
@@ -200,7 +201,8 @@ function goDetail(target) {
 
 .daily-list-main {
   min-width: 0;
-  padding: 16px 16px 20px;
+  padding: 16px 16px 10px;
+  overflow: hidden;
 }
 
 .daily-list-toolbar {
@@ -265,6 +267,8 @@ function goDetail(target) {
   flex-direction: column;
 }
 
+.daily-report-table :deep(.ant-table-header) { flex: none; }
+
 .daily-report-table :deep(.ant-table-body) {
   flex: 1;
   min-height: 0;
@@ -276,7 +280,8 @@ function goDetail(target) {
   display: flex;
   flex-shrink: 0;
   justify-content: flex-end;
-  margin-top: 16px;
+  height: 32px;
+  margin-top: 10px;
 }
 
 @media (max-width: 1100px) {

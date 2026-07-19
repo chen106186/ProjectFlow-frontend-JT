@@ -1,5 +1,5 @@
 <template>
-  <div class="module-view">
+  <div :class="['module-view', { 'module-view--fixed-list': ((isPersonalTasks || isTaskModule) && personalMode !== 'task-detail') || isPersonalBugs }]">
     <template v-if="isPersonalTasks || isTaskModule">
       <section v-if="personalMode === 'task-detail'" class="personal-page">
         <div class="detail-actions">
@@ -111,7 +111,7 @@
         </section>
       </section>
 
-      <section v-else class="personal-page">
+      <section v-else class="personal-page task-list-page">
         <a-card class="prototype-card filter-panel app-filter-card" :bordered="false">
           <a-form class="prototype-filter app-filter-form" layout="inline">
             <a-form-item label="任务名称"><a-input v-model:value="taskFilter.keyword" placeholder="请输入任务名称" /></a-form-item>
@@ -2034,6 +2034,12 @@ const trendPoints = [
   min-height: calc(100vh - 126px);
 }
 
+.module-view--fixed-list {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .personal-page,
 .module-fallback {
   width: 100%;
@@ -2048,13 +2054,16 @@ const trendPoints = [
   scrollbar-width: thin;
 }
 
+.task-list-page,
 .personal-bug-page {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 126px);
+  height: 100%;
   min-height: 0;
+  overflow: hidden;
 }
 
+.task-list-page .filter-panel,
 .personal-bug-page .filter-panel { flex: none; }
 
 .statistics-page {
@@ -2185,6 +2194,7 @@ const trendPoints = [
   min-height: 420px;
 }
 
+.task-list-card,
 .bug-list-card {
   flex: 1;
   min-height: 0;
@@ -2192,16 +2202,15 @@ const trendPoints = [
 
 .task-list-card :deep(.ant-card-body),
 .bug-list-card :deep(.ant-card-body) {
-  padding: 18px;
-}
-
-.bug-list-card :deep(.ant-card-body) {
   display: flex;
   flex-direction: column;
   height: 100%;
   min-height: 0;
+  padding: 18px 18px 10px;
+  overflow: hidden;
 }
 
+.task-list-card .list-toolbar,
 .bug-list-card .list-toolbar {
   flex: none;
 }
@@ -2243,7 +2252,7 @@ const trendPoints = [
 .personal-bug-pagination {
   flex: none;
   align-self: flex-end;
-  margin: 12px 0 2px;
+  margin: 10px 0 0;
 }
 
 .personal-bug-group-view {
@@ -2262,7 +2271,7 @@ const trendPoints = [
 .personal-bug-group-view > :deep(.ant-pagination) {
   flex: none;
   align-self: flex-end;
-  margin: 12px 0 2px;
+  margin: 10px 0 0;
 }
 
 .personal-bug-group + .personal-bug-group { margin-top: 24px; }
@@ -2345,9 +2354,15 @@ const trendPoints = [
   scrollbar-width: thin;
 }
 
+.task-list-card .prototype-table-scroll {
+  flex: 1;
+  min-height: 0;
+}
+
 .task-group-list {
-  max-height: 520px;
-  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
 }
 
 .task-group + .task-group {
@@ -2379,6 +2394,7 @@ const trendPoints = [
 
 .task-group .prototype-table-scroll {
   min-height: auto;
+  overflow: visible;
 }
 
 .prototype-table {
@@ -2399,6 +2415,9 @@ const trendPoints = [
 }
 
 .prototype-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   height: 46px;
   font-weight: 700;
   background: #fafafa;
@@ -2447,12 +2466,13 @@ const trendPoints = [
 }
 
 .prototype-pagination {
+  flex: none;
   display: flex;
   gap: 10px;
   align-items: center;
   justify-content: flex-end;
   height: 32px;
-  margin-top: 12px;
+  margin-top: 10px;
   padding-right: 10px;
   color: #333;
 }

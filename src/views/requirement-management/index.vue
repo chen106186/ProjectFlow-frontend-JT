@@ -47,12 +47,13 @@
       <div class="req-table-wrap">
         <a-table
           v-if="displayMode === 'list'"
+          class="req-table"
           row-key="id"
           :columns="columns"
           :data-source="rows"
           :loading="loading"
           :pagination="false"
-          :scroll="{ x: 1440 }"
+          :scroll="{ x: 1440, y: '100%' }"
           size="middle"
         >
           <template #bodyCell="{ column, record, text }">
@@ -502,7 +503,7 @@ onMounted(initPage)
 <style scoped>
 .req-mgmt-page {
   width: min(1600px, 100%);
-  height: calc(100vh - 68px - 52px - 40px);
+  height: 100%;
   min-height: 0;
   margin: 0 auto;
   display: flex;
@@ -536,6 +537,8 @@ onMounted(initPage)
   min-height: 0;
   display: flex;
   flex-direction: column;
+  height: 100%;
+  padding: 18px 18px 10px;
   overflow: hidden;
 }
 
@@ -560,10 +563,18 @@ onMounted(initPage)
 .req-table-wrap {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
 }
 
-.req-group-list { min-height: 100%; }
+.req-table { height: 100%; min-height: 0; }
+.req-table :deep(.ant-spin-nested-loading),
+.req-table :deep(.ant-spin-container),
+.req-table :deep(.ant-table),
+.req-table :deep(.ant-table-container) { display: flex; flex: 1; flex-direction: column; min-height: 0; }
+.req-table :deep(.ant-table-header) { flex: none; }
+.req-table :deep(.ant-table-body) { flex: 1; min-height: 0; max-height: none !important; overflow-y: auto !important; }
+
+.req-group-list { height: 100%; min-height: 0; overflow: auto; }
 .req-group + .req-group { margin-top: 8px; }
 .req-group__header {
   display: flex;
@@ -592,8 +603,8 @@ onMounted(initPage)
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  height: 40px;
-  padding-top: 12px;
+  height: 32px;
+  margin-top: 10px;
   background: #fff;
 }
 

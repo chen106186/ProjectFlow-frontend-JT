@@ -65,7 +65,15 @@
         </a-menu>
       </a-layout-sider>
 
-      <a-layout-content :class="['app-content', { 'app-content--home': route.name === 'Home' }]">
+      <a-layout-content
+        :class="[
+          'app-content',
+          {
+            'app-content--home': route.name === 'Home',
+            'app-content--bug-list': route.name === 'BugList',
+          },
+        ]"
+      >
         <header v-if="profileReady && route.name !== 'Home'" class="app-content__header">
           <a-breadcrumb>
             <a-breadcrumb-item v-for="(item, index) in breadcrumbItems" :key="item.title">
@@ -79,13 +87,11 @@
 
         <a-spin
           :spinning="profileLoading"
-          :class="[
+          :wrapper-class-name="[
             'app-content__spin',
-            {
-              'app-content__spin--fixed': route.meta.isBugPage || route.meta.isProjectPage,
-              'app-content__spin--project-form': route.name === 'ManagementProjectCreate' || route.name === 'ManagementProjectEdit',
-            },
-          ]"
+            route.meta.isBugPage || route.meta.isProjectPage ? 'app-content__spin--fixed' : '',
+            route.name === 'ManagementProjectCreate' || route.name === 'ManagementProjectEdit' ? 'app-content__spin--project-form' : '',
+          ].filter(Boolean).join(' ')"
         >
           <div
             v-if="profileReady"
@@ -93,6 +99,7 @@
               'app-content__body',
               {
                 'app-content__body--fixed': route.meta.isBugPage || route.meta.isProjectPage,
+                'app-content__body--bug-list': route.name === 'BugList',
                 'app-content__body--project-form': route.name === 'ManagementProjectCreate' || route.name === 'ManagementProjectEdit',
               },
             ]"
@@ -761,6 +768,20 @@ const handleUserMenuClick = ({ key }) => {
 .app-content__body--fixed {
   overflow-x: hidden;
   overflow-y: auto;
+}
+
+.app-content__body--bug-list {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding-bottom: 10px;
+  overflow: clip;
+}
+
+.app-content--bug-list,
+.app-content--bug-list .app-content__spin.ant-spin-nested-loading,
+.app-content--bug-list .app-content__spin :deep(.ant-spin-container) {
+  overflow: clip;
 }
 
 .app-content__body--project-form {

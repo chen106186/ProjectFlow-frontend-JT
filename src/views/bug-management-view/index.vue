@@ -36,12 +36,11 @@
             row-key="id"
             :columns="columns"
             :data-source="bugs"
-            :pagination="{ current, pageSize, total, showSizeChanger: true, showTotal: t => `共 ${t} 条`, pageSizeOptions: ['10', '50', '100'] }"
+            :pagination="false"
             :loading="listLoading"
-            :scroll="{ x: 1260, y: 'calc(100vh - 440px)' }"
+            :scroll="{ x: 1260, y: '100%' }"
             size="middle"
             table-layout="fixed"
-            @change="handleTableChange"
           >
             <template #bodyCell="{ column, record, text, index }">
               <template v-if="column.dataIndex === 'index'">{{ (current - 1) * pageSize + index + 1 }}</template>
@@ -135,17 +134,17 @@
             </div>
             <a-empty v-if="!bugs.length" />
           </div>
-          <a-pagination
-            class="bug-list__pagination"
-            :current="current"
-            :page-size="pageSize"
-            :total="total"
-            :page-size-options="['10', '50', '100']"
-            :show-total="t => `共 ${t} 条`"
-            show-size-changer
-            @change="handleGroupPageChange"
-          />
         </template>
+        <a-pagination
+          class="bug-list__pagination"
+          :current="current"
+          :page-size="pageSize"
+          :total="total"
+          :page-size-options="['10', '50', '100']"
+          :show-total="t => `共 ${t} 条`"
+          show-size-changer
+          @change="handleGroupPageChange"
+        />
       </a-card>
     </template>
 
@@ -507,7 +506,6 @@ const handleReset = () => {
   current.value = 1
   loadBugs()
 }
-const handleTableChange = ({ current: c, pageSize: ps }) => { current.value = c; pageSize.value = ps; loadBugs() }
 const handleGroupPageChange = (page, size) => { current.value = page; pageSize.value = size; loadBugs() }
 
 const selectedBug = ref(null)
@@ -917,7 +915,7 @@ onMounted(async () => {
 
 <style scoped>
 .bug-page { height: 100%; width: min(1600px, 100%); margin: 0 auto; overflow-x: hidden; overflow-y: auto; color: #262626; }
-.bug-page--list { display: flex; flex-direction: column; height: calc(100vh - 126px); min-height: 0; overflow: hidden; }
+.bug-page--list { display: flex; flex: 1; flex-direction: column; height: auto; min-height: 0; overflow: clip; }
 .bug-filter, .bug-list, .bug-form-card { border: 1px solid #edf0f3; box-shadow: 0 2px 8px rgb(0 0 0 / 3%); }
 .bug-filter { flex: none; margin-bottom: 16px; }
 .bug-filter :deep(.ant-card-body) { padding: 16px 18px 2px; }
@@ -930,13 +928,18 @@ onMounted(async () => {
 .bug-list__toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .bug-list__group { display: flex; align-items: center; gap: 12px; color: #666; }
 .bug-list__group :deep(.ant-select) { width: 130px; }
-.bug-list { flex: 1; min-height: 0; }
-.bug-list :deep(.ant-card-body) { display: flex; flex-direction: column; height: 100%; min-height: 0; padding: 18px; overflow: hidden; }
+.bug-list { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.bug-list :deep(.ant-card-body) { display: flex; flex-direction: column; height: 100%; min-height: 0; padding: 18px 18px 10px; overflow: hidden; }
 .bug-list__toolbar { flex: none; }
 .bug-list__table { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .bug-list__table :deep(.ant-spin-nested-loading) { flex: 1; min-height: 0; }
-.bug-list__table :deep(.ant-pagination), .bug-list__pagination { flex: none; align-self: flex-end; margin: 12px 0 0; }
-.bug-group-list { flex: 1; min-height: 0; overflow: auto; }
+.bug-list__table :deep(.ant-spin-container),
+.bug-list__table :deep(.ant-table),
+.bug-list__table :deep(.ant-table-container) { display: flex; flex: 1; flex-direction: column; min-height: 0; }
+.bug-list__table :deep(.ant-table-header) { flex: none; }
+.bug-list__table :deep(.ant-table-body) { flex: 1; min-height: 0; max-height: none !important; overflow-y: auto !important; }
+.bug-list__pagination { flex: none; align-self: flex-end; height: 32px; margin: 10px 0 0; }
+.bug-group-list { flex: 1; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; }
 .bug-list :deep(.ant-table-cell) { white-space: nowrap; }
 .bug-title-text { display: block; width: 100%; overflow: hidden; color: #1677ff; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 .bug-no { color: #1677ff; font-size: 12px; font-weight: 600; font-family: monospace; }
@@ -945,6 +948,7 @@ onMounted(async () => {
 .bug-group { margin-bottom: 24px; }
 .bug-group__header { display: flex; align-items: center; justify-content: space-between; height: 40px; padding: 0 14px; background: #fafafa; border-block: 1px solid #edf0f3; }
 .bug-group__header button { display: inline-flex; align-items: center; gap: 8px; padding: 0; font-weight: 600; background: transparent; border: 0; cursor: pointer; }
+.bug-group-list :deep(.ant-table-thead > tr > th) { position: sticky; top: 0; z-index: 2; }
 .bug-form-card { width: min(1100px, 100%); min-height: 538px; margin: 0 auto; }
 .bug-form-card :deep(.ant-card-body) { padding: 22px 30px 24px; }
 .panel-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
