@@ -86,10 +86,14 @@
       <div v-else class="requirement-group-list">
         <section v-for="group in groupedRows" :key="group.value" class="requirement-group">
           <header class="requirement-group__header">
-            <strong>{{ group.label }}</strong>
+            <button type="button" @click="handleToggleGroup(group.value)">
+              <RightOutlined v-if="isGroupCollapsed(group.value)" />
+              <DownOutlined v-else />
+              {{ group.label }}
+            </button>
             <a-tag>{{ group.rows.length }}</a-tag>
           </header>
-          <a-table row-key="id" :columns="columns" :data-source="group.rows" :pagination="false" :scroll="{ x: 1440 }">
+          <a-table v-if="!isGroupCollapsed(group.value)" row-key="id" :columns="columns" :data-source="group.rows" :pagination="false" :scroll="{ x: 1440 }">
             <template #bodyCell="{ column, record, text }">
               <template v-if="column.dataIndex === 'title'">
                 <a-button type="link" class="table-link" @click="handleDetail(record)">{{ text }}</a-button>
@@ -164,10 +168,10 @@
 </template>
 
 <script setup>
-import { PlusOutlined } from '@ant-design/icons-vue'
+import { DownOutlined, PlusOutlined, RightOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { getProjectList } from '@/api/managementProject'
@@ -206,6 +210,7 @@ const pagination = reactive({
 
 const displayMode = ref('list')
 const groupField = ref('projectName')
+const collapsedGroups = ref([])
 const groupOptions = [{ label: '所属项目', value: 'projectName' }]
 
 const createDefaultForm = () => ({
@@ -345,6 +350,15 @@ const groupedRows = computed(() => {
 
   return Array.from(groups, ([value, rows]) => ({ value, label: value, rows }))
 })
+
+const isGroupCollapsed = value => collapsedGroups.value.includes(value)
+const handleToggleGroup = value => {
+  collapsedGroups.value = isGroupCollapsed(value)
+    ? collapsedGroups.value.filter(item => item !== value)
+    : [...collapsedGroups.value, value]
+}
+
+watch(groupField, () => { collapsedGroups.value = [] })
 
 const columns = [
   { title: '需求编号', dataIndex: 'requirementNo', width: 150 },
@@ -572,7 +586,21 @@ onMounted(initPage)
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 10px;
+  height: 40px;
+  padding: 0 14px;
+  background: #fafafa;
+  border-block: 1px solid #edf0f3;
+}
+
+.requirement-group__header button {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  padding: 0;
+  font-weight: 600;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
 }
 
 @media (max-width: 1100px) {
