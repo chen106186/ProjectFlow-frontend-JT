@@ -1062,6 +1062,7 @@ const renderGantt = async () => {
     view_mode: ganttViewMode.value,
     view_modes: ['Day', 'Month'],
     column_width: ganttColumnWidth.value,
+    infinite_padding: false,
     readonly: true,
     language: 'zh',
     popup_on: 'hover',
