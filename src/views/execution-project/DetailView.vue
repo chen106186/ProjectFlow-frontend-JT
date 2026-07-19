@@ -100,6 +100,7 @@
           <template #bodyCell="{ column, record, text }">
             <a-button v-if="column.dataIndex === 'name'" type="link" @click="handleTaskDetail(record)">{{ text }}</a-button>
             <a-tag v-else-if="column.dataIndex === 'priority'" :color="getTaskPriorityColor(record.priorityCode)">{{ text }}</a-tag>
+            <a-tag v-else-if="column.dataIndex === 'status'" :color="getTaskStatusColor(record.statusCode)">{{ text }}</a-tag>
             <a-tag v-else-if="column.dataIndex === 'riskLevel'" :color="getTaskRiskColor(text)">{{ text }}</a-tag>
           </template>
         </a-table>
@@ -595,6 +596,7 @@ const taskColumns = [
   { title: '标签', dataIndex: 'tag', width: 120 },
   { title: '负责人', dataIndex: 'owner', width: 100 },
   { title: '优先级', dataIndex: 'priority', width: 90 },
+  { title: '状态', dataIndex: 'status', width: 100 },
   { title: '计划开始日期', dataIndex: 'planStart', width: 130 },
   { title: '计划结束日期', dataIndex: 'planEnd', width: 130 },
   { title: '实际开始日期', dataIndex: 'actualStart', width: 130 },
@@ -912,6 +914,7 @@ const getTaskRiskLevel = task => {
 }
 const getTaskRiskColor = riskLevel => ({ 高风险: 'red', 中风险: 'orange', 即将到期: 'gold', 按计划进行: 'green' }[riskLevel] || 'default')
 const getTaskPriorityColor = priority => ({ URGENT: 'red', HIGH: 'orange', MEDIUM: 'blue', LOW: 'default' }[priority] || 'default')
+const getTaskStatusColor = status => ({ NOT_STARTED: 'default', OVERDUE_START: 'orange', IN_PROGRESS: 'processing', DUE_SOON: 'gold', OVERDUE: 'red', COMPLETED: 'green', OVERDUE_COMPLETED: 'volcano', PAUSED: 'purple' }[status] || 'default')
 const mapTaskRow = (task, index) => ({
   id: task.id,
   index: (taskPagination.current - 1) * taskPagination.pageSize + index + 1,

@@ -612,6 +612,7 @@ const taskColumns = [
   { title: '标签', dataIndex: 'tag', width: 120 },
   { title: '负责人', dataIndex: 'owner', width: 100 },
   { title: '优先级', dataIndex: 'priority', width: 90 },
+  { title: '状态', dataIndex: 'status', width: 100 },
   { title: '计划开始日期', dataIndex: 'planStart', width: 130 },
   { title: '计划结束日期', dataIndex: 'planEnd', width: 130 },
   { title: '实际开始日期', dataIndex: 'actualStart', width: 130 },
