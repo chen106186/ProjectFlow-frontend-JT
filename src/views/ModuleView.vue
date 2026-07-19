@@ -189,7 +189,7 @@
             </table>
           </div>
           <div v-else class="task-group-list">
-            <section v-for="(group, groupIndex) in groupedTasks" :key="group.value" class="task-group">
+            <section v-for="group in groupedTasks" :key="group.value" class="task-group">
               <header class="task-group__header">
                 <button type="button" @click="handleToggleTaskGroup(group.value)">
                   <RightOutlined v-if="isTaskGroupCollapsed(group.value)" />
@@ -203,7 +203,7 @@
                   <colgroup>
                     <col v-for="column in taskTableColumns" :key="column.dataIndex" :style="{ width: $px2rem(column.width) }" />
                   </colgroup>
-                  <thead v-if="groupIndex === 0">
+                  <thead>
                     <tr>
                       <th v-for="column in taskTableColumns" :key="column.dataIndex" :style="{ width: $px2rem(column.width) }">{{ column.title }}</th>
                     </tr>
@@ -320,16 +320,6 @@
                 <template v-else>{{ text }}</template>
               </template>
             </a-table>
-            <a-pagination
-              class="personal-bug-pagination"
-              v-model:current="bugCurrentPage"
-              v-model:page-size="bugPageSize"
-              :total="visibleBugs.length"
-              :page-size-options="['10', '50', '100']"
-              :show-total="total => `共 ${total} 条`"
-              show-size-changer
-              @change="handlePersonalBugPageChange"
-            />
           </div>
           <div v-else class="personal-bug-group-view">
             <div class="personal-bug-group-list">
@@ -364,16 +354,17 @@
               </section>
               <a-empty v-if="!groupedBugs.length" />
             </div>
-            <a-pagination
-              v-model:current="bugCurrentPage"
-              v-model:page-size="bugPageSize"
-              :total="visibleBugs.length"
-              :page-size-options="['10', '50', '100']"
-              :show-total="total => `共 ${total} 条`"
-              show-size-changer
-              @change="handlePersonalBugPageChange"
-            />
           </div>
+          <a-pagination
+            class="personal-bug-pagination"
+            v-model:current="bugCurrentPage"
+            v-model:page-size="bugPageSize"
+            :total="visibleBugs.length"
+            :page-size-options="['10', '50', '100']"
+            :show-total="total => `共 ${total} 条`"
+            show-size-changer
+            @change="handlePersonalBugPageChange"
+          />
         </a-card>
       </section>
     </template>
@@ -2037,7 +2028,7 @@ const trendPoints = [
 .module-view--fixed-list {
   height: 100%;
   min-height: 0;
-  overflow: hidden;
+  overflow: clip;
 }
 
 .personal-page,
@@ -2060,7 +2051,7 @@ const trendPoints = [
   flex-direction: column;
   height: 100%;
   min-height: 0;
-  overflow: hidden;
+  overflow: clip;
 }
 
 .task-list-page .filter-panel,
@@ -2252,6 +2243,7 @@ const trendPoints = [
 .personal-bug-pagination {
   flex: none;
   align-self: flex-end;
+  height: 32px;
   margin: 10px 0 0;
 }
 
@@ -2265,13 +2257,15 @@ const trendPoints = [
 .personal-bug-group-list {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
-.personal-bug-group-view > :deep(.ant-pagination) {
-  flex: none;
-  align-self: flex-end;
-  margin: 10px 0 0;
+.personal-bug-group-list :deep(.ant-table-thead > tr > th) {
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 
 .personal-bug-group + .personal-bug-group { margin-top: 24px; }
@@ -2362,7 +2356,9 @@ const trendPoints = [
 .task-group-list {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .task-group + .task-group {

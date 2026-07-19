@@ -185,7 +185,7 @@ function goDetail(target) {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 500px;
   gap: 16px;
-  overflow: hidden;
+  overflow: clip;
 }
 
 .daily-list-main {
@@ -202,7 +202,7 @@ function goDetail(target) {
 .daily-list-main {
   min-width: 0;
   padding: 16px 16px 10px;
-  overflow: hidden;
+  overflow: clip;
 }
 
 .daily-list-toolbar {

@@ -70,7 +70,7 @@
           'app-content',
           {
             'app-content--home': route.name === 'Home',
-            'app-content--bug-list': route.name === 'BugList',
+            'app-content--fixed-list': isFixedListPage,
           },
         ]"
       >
@@ -89,7 +89,7 @@
           :spinning="profileLoading"
           :wrapper-class-name="[
             'app-content__spin',
-            route.meta.isBugPage || route.meta.isProjectPage ? 'app-content__spin--fixed' : '',
+            route.meta.isBugPage || route.meta.isProjectPage || isFixedListPage ? 'app-content__spin--fixed' : '',
             route.name === 'ManagementProjectCreate' || route.name === 'ManagementProjectEdit' ? 'app-content__spin--project-form' : '',
           ].filter(Boolean).join(' ')"
         >
@@ -99,7 +99,7 @@
               'app-content__body',
               {
                 'app-content__body--fixed': route.meta.isBugPage || route.meta.isProjectPage,
-                'app-content__body--bug-list': route.name === 'BugList',
+                'app-content__body--fixed-list': isFixedListPage,
                 'app-content__body--project-form': route.name === 'ManagementProjectCreate' || route.name === 'ManagementProjectEdit',
               },
             ]"
@@ -138,6 +138,19 @@ import { getCurrentUser } from '@/api/system'
 
 const route = useRoute()
 const router = useRouter()
+
+const fixedListRouteNames = new Set([
+  'PersonalTasks',
+  'PersonalRequirements',
+  'PersonalBugs',
+  'PersonalDaily',
+  'AllTasks',
+  'DevelopmentTasks',
+  'TestingTasks',
+  'RequirementManagement',
+  'BugList',
+])
+const isFixedListPage = computed(() => fixedListRouteNames.has(route.name))
 
 const AUTH_PROFILE_KEY = 'authProfile'
 const USER_INFO_KEY = 'userInfo'
@@ -770,7 +783,7 @@ const handleUserMenuClick = ({ key }) => {
   overflow-y: auto;
 }
 
-.app-content__body--bug-list {
+.app-content__body--fixed-list {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -778,9 +791,9 @@ const handleUserMenuClick = ({ key }) => {
   overflow: clip;
 }
 
-.app-content--bug-list,
-.app-content--bug-list .app-content__spin.ant-spin-nested-loading,
-.app-content--bug-list .app-content__spin :deep(.ant-spin-container) {
+.app-content--fixed-list,
+.app-content--fixed-list .app-content__spin.ant-spin-nested-loading,
+.app-content--fixed-list .app-content__spin :deep(.ant-spin-container) {
   overflow: clip;
 }
 

@@ -102,7 +102,7 @@
         </a-table>
 
         <div v-else class="req-group-list">
-          <section v-for="(group, groupIndex) in groupedRows" :key="group.value" class="req-group">
+          <section v-for="group in groupedRows" :key="group.value" class="req-group">
             <header class="req-group__header">
               <button type="button" @click="handleToggleGroup(group.value)">
                 <RightOutlined v-if="isGroupCollapsed(group.value)" />
@@ -118,7 +118,6 @@
               :data-source="group.rows"
               :pagination="false"
               :scroll="{ x: 1440 }"
-              :show-header="groupIndex === 0"
               size="middle"
             >
               <template #bodyCell="{ column, record, text }">
@@ -509,6 +508,7 @@ onMounted(initPage)
   display: flex;
   flex-direction: column;
   gap: 0;
+  overflow: clip;
 }
 
 .req-filter-card,
@@ -574,7 +574,8 @@ onMounted(initPage)
 .req-table :deep(.ant-table-header) { flex: none; }
 .req-table :deep(.ant-table-body) { flex: 1; min-height: 0; max-height: none !important; overflow-y: auto !important; }
 
-.req-group-list { height: 100%; min-height: 0; overflow: auto; }
+.req-group-list { height: 100%; min-height: 0; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; }
+.req-group-list :deep(.ant-table-thead > tr > th) { position: sticky; top: 0; z-index: 2; }
 .req-group + .req-group { margin-top: 8px; }
 .req-group__header {
   display: flex;

@@ -25,7 +25,18 @@
           <template v-if="column.dataIndex === 'index'">{{ (pagination.current - 1) * pagination.pageSize + index + 1 }}</template>
           <template v-else-if="column.dataIndex === 'name'"><a-button type="link" class="table-link" @click="handleDetail(record)">{{ text }}</a-button></template>
           <template v-else-if="column.dataIndex === 'status'"><a-tag color="processing">{{ text }}</a-tag></template>
-          <template v-else-if="column.dataIndex === 'operation'"><a-space><a-button type="link" size="small" @click="handleEdit(record)"><EditOutlined />编辑</a-button><a-popconfirm title="确定删除该项目吗？" @confirm="handleDelete(record)"><a-button type="link" size="small" danger><DeleteOutlined />删除</a-button></a-popconfirm></a-space></template>
+          <template v-else-if="column.dataIndex === 'operation'">
+            <a-space :size="4">
+              <a-tooltip title="编辑">
+                <a-button type="link" size="small" class="operation-icon-button" aria-label="编辑" @click="handleEdit(record)"><EditOutlined /></a-button>
+              </a-tooltip>
+              <a-popconfirm title="确定删除该项目吗？" @confirm="handleDelete(record)">
+                <a-tooltip title="删除">
+                  <a-button type="link" size="small" class="operation-icon-button" aria-label="删除" danger><DeleteOutlined /></a-button>
+                </a-tooltip>
+              </a-popconfirm>
+            </a-space>
+          </template>
         </template>
       </a-table>
 
@@ -37,7 +48,18 @@
               <template v-if="column.dataIndex === 'index'">{{ index + 1 }}</template>
               <template v-else-if="column.dataIndex === 'name'"><a-button type="link" class="table-link" @click="handleDetail(record)">{{ text }}</a-button></template>
               <template v-else-if="column.dataIndex === 'status'"><a-tag color="processing">{{ text }}</a-tag></template>
-              <template v-else-if="column.dataIndex === 'operation'"><a-space><a-button type="link" size="small" @click="handleEdit(record)"><EditOutlined />编辑</a-button><a-popconfirm title="确定删除该项目吗？" @confirm="handleDelete(record)"><a-button type="link" size="small" danger><DeleteOutlined />删除</a-button></a-popconfirm></a-space></template>
+              <template v-else-if="column.dataIndex === 'operation'">
+                <a-space :size="4">
+                  <a-tooltip title="编辑">
+                    <a-button type="link" size="small" class="operation-icon-button" aria-label="编辑" @click="handleEdit(record)"><EditOutlined /></a-button>
+                  </a-tooltip>
+                  <a-popconfirm title="确定删除该项目吗？" @confirm="handleDelete(record)">
+                    <a-tooltip title="删除">
+                      <a-button type="link" size="small" class="operation-icon-button" aria-label="删除" danger><DeleteOutlined /></a-button>
+                    </a-tooltip>
+                  </a-popconfirm>
+                </a-space>
+              </template>
             </template>
           </a-table>
         </section>
@@ -114,7 +136,7 @@ const columns = [
   { title: '项目状态', dataIndex: 'status', width: 120 },
   { title: '任务数', dataIndex: 'taskCount', width: 100 },
   { title: 'BUG数', dataIndex: 'bugCount', width: 100 },
-  { title: '操作', dataIndex: 'operation', width: 190, fixed: 'right' },
+  { title: '操作', dataIndex: 'operation', width: 96, fixed: 'right' },
 ]
 
 const createDefaultForm = () => ({ name: '', department: '', managerId: undefined, participantIds: [], managementProjectId: undefined, projectBusinessType: undefined, stage: 'REQUIREMENT_ANALYSIS', status: 'NOT_STARTED', description: '' })
@@ -341,6 +363,8 @@ onMounted(async () => { await fetchReferenceData(); await fetchProjects() })
 .execution-list__display :deep(.ant-select) { width: 132px; }
 .execution-list :deep(.ant-table-cell) { white-space: nowrap; }
 .table-link { height: auto; padding: 0; }
+.operation-icon-button { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border-radius: 6px; }
+.operation-icon-button :deep(svg) { width: 15px; height: 15px; }
 .execution-groups { min-height: 100%; }
 .execution-group + .execution-group { margin-top: 8px; }
 .execution-group__header { display: flex; align-items: center; justify-content: space-between; height: 40px; padding: 0 14px; background: #fafafa; border-block: 1px solid #edf0f3; }

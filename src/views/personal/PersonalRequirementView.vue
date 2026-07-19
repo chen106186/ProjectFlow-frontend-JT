@@ -536,7 +536,7 @@ onMounted(initPage)
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: clip;
   color: #262626;
 }
 
@@ -654,7 +654,15 @@ onMounted(initPage)
 .requirement-group-list {
   height: 100%;
   min-height: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.requirement-group-list :deep(.ant-table-thead > tr > th) {
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 
 .requirement-pagination {
