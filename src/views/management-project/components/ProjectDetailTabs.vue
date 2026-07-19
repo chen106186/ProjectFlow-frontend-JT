@@ -1,19 +1,19 @@
 <template>
   <div class="project-detail-tabs">
-    <div class="project-tabs">
-      <button
-        v-for="tab in tabs"
-        :key="tab.key"
-        type="button"
-        :class="{ active: activeTab === tab.key }"
-        @click="emit('update:activeTab', tab.key)"
-      >
-        <component :is="tab.icon" />
-        {{ tab.label }}
-      </button>
-    </div>
-
     <div class="project-detail__layout">
+      <div class="project-detail__left">
+      <div class="project-tabs">
+        <button
+          v-for="tab in tabs"
+          :key="tab.key"
+          type="button"
+          :class="{ active: activeTab === tab.key }"
+          @click="emit('update:activeTab', tab.key)"
+        >
+          <component :is="tab.icon" />
+          {{ tab.label }}
+        </button>
+      </div>
       <main class="project-detail__main">
         <section v-show="activeTab === 'gantt'" class="detail-panel gantt-panel">
           <div class="project-stat-row">
@@ -227,7 +227,22 @@
           </a-table>
           <a-pagination class="detail-list-pagination" :current="documentPagination.current" :page-size="documentPagination.pageSize" :total="filteredDocsBySearch.length" :page-size-options="paginationOptions.pageSizeOptions" :show-total="paginationOptions.showTotal" show-size-changer @change="handleDocumentPageChange" />
         </section>
+
       </main>
+      </div>
+      <aside class="project-operation-sidebar">
+        <a-card class="operation-lifecycle-card" :bordered="false" :loading="operationLogLoading">
+          <template #title><span class="operation-lifecycle-card__title">操作日志</span></template>
+          <a-empty v-if="!operationLogRows.length" description="暂无操作记录" />
+          <a-timeline v-else class="operation-lifecycle-timeline">
+            <a-timeline-item v-for="log in operationLogRows" :key="log.id" :color="log.operationColor">
+              <div class="operation-timeline__action">{{ log.operatorName || '-' }} · {{ log.operationLabel }}</div>
+              <div v-if="log.content" class="operation-timeline__content">{{ log.content }}</div>
+              <div class="operation-timeline__time">{{ log.time }}</div>
+            </a-timeline-item>
+          </a-timeline>
+        </a-card>
+      </aside>
     </div>
   </div>
 </template>
@@ -274,6 +289,8 @@ const props = defineProps({
   documentRowSelection: { type: Object, required: true },
   selectedDocumentIds: { type: Array, required: true },
   expandedDocumentFolderIds: { type: Array, default: () => [] },
+  operationLogRows: { type: Array, required: true },
+  operationLogLoading: { type: Boolean, default: false },
 })
 
 const emit = defineEmits([
@@ -493,7 +510,7 @@ defineExpose({
 .project-detail-tabs {
   min-height: 520px;
   overflow: visible;
-  background: #fff;
+  background: transparent;
 }
 
 .project-tabs {
@@ -523,9 +540,18 @@ defineExpose({
 }
 
 .project-detail__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 16px;
+  align-items: start;
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
+}
+
+.project-detail__left {
+  min-width: 0;
+  background: #fff;
 }
 
 .project-detail__main {
@@ -537,6 +563,44 @@ defineExpose({
   overflow: hidden;
   background: #fff;
 }
+
+.project-operation-sidebar {
+  min-width: 0;
+}
+
+.operation-lifecycle-card {
+  border: 1px solid #edf0f3;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 4%);
+}
+
+.operation-lifecycle-card :deep(.ant-card-head) {
+  min-height: 44px;
+  padding: 0 18px;
+}
+
+.operation-lifecycle-card :deep(.ant-card-body) {
+  max-height: 500px;
+  padding: 18px 16px 4px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.operation-lifecycle-card__title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.operation-lifecycle-timeline {
+  min-width: 0;
+  margin-top: 4px;
+}
+
+.operation-lifecycle-timeline :deep(.ant-timeline-item-tail) { border-inline-start-color: #e0e7ef; }
+.operation-lifecycle-timeline :deep(.ant-timeline-item-head) { width: 9px; height: 9px; }
+.operation-lifecycle-timeline :deep(.ant-timeline-item-content) { inset-inline-start: 20px; margin-inline-start: 20px; }
+.operation-timeline__action { color: #1f2937; font-size: 13px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; white-space: normal; }
+.operation-timeline__content { margin-top: 3px; color: #6b7280; font-size: 12px; line-height: 1.5; word-break: break-word; }
+.operation-timeline__time { margin-top: 2px; color: #bfbfbf; font-size: 11px; }
 
 .detail-panel {
   flex: 1;

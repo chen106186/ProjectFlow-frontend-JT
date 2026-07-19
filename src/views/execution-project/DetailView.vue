@@ -21,6 +21,10 @@
               <td></td>
             </template>
           </tr>
+          <tr>
+            <th>项目描述</th>
+            <td colspan="7" class="execution-summary-table__description">{{ currentProject?.description || '-' }}</td>
+          </tr>
         </tbody>
       </table>
       <div class="execution-summary__progress">
@@ -39,6 +43,7 @@
       </div>
     </section>
 
+    <div class="execution-detail-layout">
     <section class="execution-detail-card">
       <div class="execution-tabs">
         <button v-for="tab in detailTabs" :key="tab.key" type="button" :class="{ active: activeTab === tab.key }" @click="activeTab = tab.key">
@@ -206,7 +211,22 @@
         </a-table>
         <a-pagination class="detail-list-pagination" :current="documentPagination.current" :page-size="documentPagination.pageSize" :total="filteredDocsBySearch.length" :page-size-options="documentPagination.pageSizeOptions" :show-total="documentPagination.showTotal" show-size-changer @change="(page, pageSize) => handleTablePaginationChange(documentPagination, page, pageSize)" />
       </div>
+
     </section>
+    <aside class="project-operation-sidebar">
+      <a-card class="operation-lifecycle-card" :bordered="false" :loading="operationLogLoading">
+        <template #title><span class="operation-lifecycle-card__title">操作日志</span></template>
+        <a-empty v-if="!operationLogRows.length" description="暂无操作记录" />
+        <a-timeline v-else class="operation-lifecycle-timeline">
+          <a-timeline-item v-for="log in operationLogRows" :key="log.id" :color="log.operationColor">
+            <div class="operation-timeline__action">{{ log.operatorName || '-' }} · {{ log.operationLabel }}</div>
+            <div v-if="log.content" class="operation-timeline__content">{{ log.content }}</div>
+            <div class="operation-timeline__time">{{ log.time }}</div>
+          </a-timeline-item>
+        </a-timeline>
+      </a-card>
+    </aside>
+    </div>
 
     <a-modal v-model:open="uploadVisible" class="document-upload-modal" title="上传文件" :width="760" :footer="null" destroy-on-close>
       <a-upload-dragger :before-upload="handleDocumentBeforeUpload" :show-upload-list="false" multiple accept=".doc,.docx,.xls,.xlsx,.pdf,.png,.jpg,.jpeg,.drawio">
@@ -423,6 +443,7 @@ import {
   uploadProjectFile,
   deleteProjectFolder,
 } from '@/api/managementProject'
+import { getOperationLogs } from '@/api/system'
 import { formatDateTime } from '@/utils/dateTime'
 import { OPERATION_ACTIONS, OPERATION_MODULES, recordOperationLog } from '@/utils/operationLog'
 
@@ -436,6 +457,7 @@ const taskLoading = ref(false)
 const bugLoading = ref(false)
 const reportLoading = ref(false)
 const documentLoading = ref(false)
+const operationLogLoading = ref(false)
 const selectedDocumentIds = ref([])
 const selectedDocumentCategory = ref('全部')
 const documentSearch = ref('')
@@ -587,6 +609,18 @@ const handleTablePaginationChange = async (target, page, pageSize, loadPage) => 
   target.current = page
   target.pageSize = pageSize
   if (loadPage) await loadPage()
+}
+const operationLogRows = ref([])
+const operationLogActionMap = {
+  CREATE: { label: '新建项目', color: 'green' },
+  UPDATE: { label: '编辑项目', color: 'blue' },
+  DELETE: { label: '删除项目', color: 'red' },
+  UPDATE_STATUS: { label: '项目状态变更', color: 'blue' },
+  STATUS_CHANGE: { label: '项目状态变更', color: 'blue' },
+}
+const mapProjectOperationLog = log => {
+  const action = operationLogActionMap[log.operationType] || { label: log.operationType || '-', color: 'gray' }
+  return { ...log, time: formatDateTime(log.createdAt), operationLabel: action.label, operationColor: action.color }
 }
 const taskColumns = [
   { title: '序号', dataIndex: 'index', width: 70 },
@@ -810,7 +844,6 @@ const summaryItems = computed(() => [
   { label: '项目状态', value: currentProject.value?.status || '-', tag: true, color: 'processing' },
   { label: '计划开始', value: currentProject.value?.plannedStartDate || '-' },
   { label: '计划结束', value: currentProject.value?.plannedEndDate || '-' },
-  { label: '项目描述', value: currentProject.value?.description || '-' },
 ])
 const summaryRows = computed(() => {
   const rows = []
@@ -991,6 +1024,32 @@ const fetchReportPage = async () => {
     reportLoading.value = false
   }
 }
+const fetchProjectOperationLogs = async projectId => {
+  operationLogLoading.value = true
+  try {
+    const query = {
+      module: 'project',
+      businessType: 'Project',
+      businessId: projectId,
+      pageSize: 200,
+    }
+    const firstPage = await getOperationLogs({ ...query, pageNo: 1 })
+    const records = [...(firstPage?.records || [])]
+    const pageCount = Math.ceil(Number(firstPage?.total || records.length) / query.pageSize)
+    if (pageCount > 1) {
+      const remainingPages = await Promise.all(
+        Array.from({ length: pageCount - 1 }, (_, index) => getOperationLogs({ ...query, pageNo: index + 2 })),
+      )
+      remainingPages.forEach(page => records.push(...(page?.records || [])))
+    }
+    operationLogRows.value = records.map(mapProjectOperationLog)
+  } catch (error) {
+    operationLogRows.value = []
+    message.error(error.message || '操作日志加载失败')
+  } finally {
+    operationLogLoading.value = false
+  }
+}
 
 const fetchProjectRelatedData = async projectId => {
   detailLoading.value = true
@@ -998,6 +1057,8 @@ const fetchProjectRelatedData = async projectId => {
   bugLoading.value = true
   reportLoading.value = true
   documentLoading.value = true
+  operationLogRows.value = []
+  void fetchProjectOperationLogs(projectId)
 
   try {
     const [project, nodes, ganttResult, taskResult, bugResult, bugSummaryResult, reportResult, files, folders] = await Promise.all([
@@ -1476,6 +1537,7 @@ onMounted(async () => {
 .execution-summary-table td { min-height: 42px; padding: 10px 12px; text-align: left; border: 1px solid #e5e6eb; }
 .execution-summary-table th { width: 100px; color: #1f1f1f; font-weight: 600; background: #fafafa; }
 .execution-summary-table td { color: #262626; overflow-wrap: anywhere; }
+.execution-summary-table__description { line-height: 1.6; white-space: pre-wrap; }
 .execution-summary__progress { padding-left: 20px; border-left: 1px solid #edf0f3; }
 .execution-summary__title { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .execution-summary__title h3 { display: flex; gap: 7px; align-items: center; margin: 0; }
@@ -1487,7 +1549,20 @@ onMounted(async () => {
 .summary-metrics span { color: #8c8c8c; font-size: 12px; }
 .summary-metrics strong { font-size: 18px; }
 .summary-metrics .danger { color: #ff4d4f; }
-.execution-detail-card { min-height: 560px; overflow: visible; background: #fff; }
+.execution-detail-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; align-items: start; }
+.execution-detail-card { min-width: 0; min-height: 560px; overflow: visible; background: #fff; }
+.project-operation-sidebar { min-width: 0; }
+.operation-lifecycle-card { border: 1px solid #edf0f3; box-shadow: 0 1px 4px rgb(0 0 0 / 4%); }
+.operation-lifecycle-card :deep(.ant-card-head) { min-height: 44px; padding: 0 18px; }
+.operation-lifecycle-card :deep(.ant-card-body) { max-height: 500px; padding: 18px 16px 4px; overflow-x: hidden; overflow-y: auto; }
+.operation-lifecycle-card__title { font-size: 14px; font-weight: 600; }
+.operation-lifecycle-timeline { min-width: 0; margin-top: 4px; }
+.operation-lifecycle-timeline :deep(.ant-timeline-item-tail) { border-inline-start-color: #e0e7ef; }
+.operation-lifecycle-timeline :deep(.ant-timeline-item-head) { width: 9px; height: 9px; }
+.operation-lifecycle-timeline :deep(.ant-timeline-item-content) { inset-inline-start: 20px; margin-inline-start: 20px; }
+.operation-timeline__action { color: #1f2937; font-size: 13px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; white-space: normal; }
+.operation-timeline__content { margin-top: 3px; color: #6b7280; font-size: 12px; line-height: 1.5; word-break: break-word; }
+.operation-timeline__time { margin-top: 2px; color: #bfbfbf; font-size: 11px; }
 .execution-tabs { display: flex; gap: 44px; height: 44px; padding-left: 8px; }
 .execution-tabs button { display: inline-flex; gap: 7px; align-items: center; height: 44px; padding: 0 7px; color: #1f1f1f; background: transparent; border: 0; border-bottom: 3px solid transparent; cursor: pointer; }
 .execution-tabs button.active { color: #1677ff; border-bottom-color: #1677ff; }

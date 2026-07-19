@@ -75,6 +75,10 @@
                   <td></td>
                 </template>
               </tr>
+              <tr>
+                <th>项目描述</th>
+                <td colspan="7" class="project-summary-table__description">{{ currentProject?.description || '-' }}</td>
+              </tr>
             </tbody>
           </table>
           <div class="project-summary__progress">
@@ -123,6 +127,8 @@
           :document-row-selection="documentRowSelection"
           :selected-document-ids="selectedDocumentIds"
           :expanded-document-folder-ids="expandedFolderIds"
+          :operation-log-rows="operationLogRows"
+          :operation-log-loading="operationLogLoading"
           @task-page-change="handleTaskPageChange"
           @bug-page-change="handleBugPageChange"
           @bug-filter-change="handleBugFilterChange"
@@ -411,6 +417,7 @@ const taskLoading = ref(false)
 const bugLoading = ref(false)
 const reportLoading = ref(false)
 const documentLoading = ref(false)
+const operationLogLoading = ref(false)
 const selectedDocumentIds = ref([])
 const selectedDocumentCategory = ref('全部')
 const currentProject = ref(null)
@@ -516,6 +523,18 @@ const createDetailPagination = () => reactive({ current: 1, pageSize: 10, total:
 const taskPagination = createDetailPagination()
 const bugPagination = createDetailPagination()
 const reportPagination = createDetailPagination()
+const operationLogRows = ref([])
+const operationLogActionMap = {
+  CREATE: { label: '新建项目', color: 'green' },
+  UPDATE: { label: '编辑项目', color: 'blue' },
+  DELETE: { label: '删除项目', color: 'red' },
+  UPDATE_STATUS: { label: '项目状态变更', color: 'blue' },
+  STATUS_CHANGE: { label: '项目状态变更', color: 'blue' },
+}
+const mapProjectOperationLog = log => {
+  const action = operationLogActionMap[log.operationType] || { label: log.operationType || '-', color: 'gray' }
+  return { ...log, time: formatDateTime(log.createdAt), operationLabel: action.label, operationColor: action.color }
+}
 const reportListFilter = reactive({ keyword: '', status: '全部', dateRange: [] })
 const filteredProjects = computed(() => projects.value)
 const groupedProjects = computed(() => {
@@ -1101,12 +1120,41 @@ const handleReportFilterChange = async filter => {
   await fetchReportPage()
 }
 
+const fetchProjectOperationLogs = async projectId => {
+  operationLogLoading.value = true
+  try {
+    const query = {
+      module: 'project',
+      businessType: 'Project',
+      businessId: projectId,
+      pageSize: 200,
+    }
+    const firstPage = await getOperationLogs({ ...query, pageNo: 1 })
+    const records = [...(firstPage?.records || [])]
+    const pageCount = Math.ceil(Number(firstPage?.total || records.length) / query.pageSize)
+    if (pageCount > 1) {
+      const remainingPages = await Promise.all(
+        Array.from({ length: pageCount - 1 }, (_, index) => getOperationLogs({ ...query, pageNo: index + 2 })),
+      )
+      remainingPages.forEach(page => records.push(...(page?.records || [])))
+    }
+    operationLogRows.value = records.map(mapProjectOperationLog)
+  } catch (error) {
+    operationLogRows.value = []
+    message.error(error.message || '操作日志加载失败')
+  } finally {
+    operationLogLoading.value = false
+  }
+}
+
 const fetchProjectRelatedData = async projectId => {
   detailLoading.value = true
   taskLoading.value = true
   bugLoading.value = true
   reportLoading.value = true
   documentLoading.value = true
+  operationLogRows.value = []
+  void fetchProjectOperationLogs(projectId)
   try {
     const [project, nodes, ganttResult, taskResult, bugResult, bugSummaryResult, reportResult, files, folders] = await Promise.all([
       getProjectDetail(projectId),
@@ -1244,6 +1292,7 @@ const syncRoute = async () => {
     taskPagination.current = 1
     bugPagination.current = 1
     reportPagination.current = 1
+    operationLogRows.value = []
     Object.assign(reportListFilter, { keyword: '', status: '全部', dateRange: [] })
     await fetchProjectRelatedData(projectId)
   }
@@ -1898,6 +1947,7 @@ const handleDeleteReport = async record => {
 .project-summary-table td { min-height: 42px; padding: 10px 12px; text-align: left; border: 1px solid #e5e6eb; }
 .project-summary-table th { width: 100px; color: #1f1f1f; font-weight: 600; background: #fafafa; }
 .project-summary-table td { color: #262626; overflow-wrap: anywhere; }
+.project-summary-table__description { line-height: 1.6; white-space: pre-wrap; }
 .document-upload-modal :deep(.ant-modal-body) { padding-top: 8px; }
 .document-upload-modal :deep(.ant-upload-drag) { padding: 18px; border: 2px dashed #91caff; background: #fbfdff; }
 .upload-drag-icon { margin: 0 !important; color: #1677ff; font-size: 48px; }
