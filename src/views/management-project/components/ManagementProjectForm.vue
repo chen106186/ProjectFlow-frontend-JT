@@ -182,7 +182,7 @@ onMounted(async () => {
   }
 })
 
-const handleBack = () => router.push({ name: 'ManagementProjects' })
+const handleBack = () => router.back()
 
 const handleSubmit = async () => {
   if (submitLoading.value) return

@@ -266,9 +266,7 @@ const fetchTaskDetail = async () => {
   }
 }
 
-const handleBack = () => {
-  router.push('/personal/tasks')
-}
+const handleBack = () => router.back()
 
 const handleBeforeUpload = file => {
   if (file.size > 50 * 1024 * 1024) {

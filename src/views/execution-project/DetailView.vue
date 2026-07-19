@@ -873,7 +873,7 @@ const mapProject = project => ({
   status: getDictLabel('projectStatus', project.status),
   statusCode: project.status,
 })
-const handleBack = () => router.push({ name: 'ExecutionProjects' })
+const handleBack = () => router.back()
 const handleTaskDetail = record => router.push({ name: 'AllTasks', query: { detail: 'task', taskId: String(record.id) } })
 const handleBugDetail = record => router.push({ name: 'BugDetail', params: { id: String(record.id) } })
 const formatFileSize = size => size >= 1024 * 1024 ? `${(size / 1024 / 1024).toFixed(1)}MB` : `${Math.ceil((size || 0) / 1024)}KB`

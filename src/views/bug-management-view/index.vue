@@ -786,7 +786,7 @@ const handleCreate = () => router.push({ name: 'BugCreate' })
 const handleEdit = record => router.push({ name: 'BugEdit', params: { id: record.id } })
 const handleDetail = record => router.push({ name: 'BugDetail', params: { id: record.id } })
 const handleEditFromDetail = () => router.push({ name: 'BugEdit', params: { id: selectedBug.value.id } })
-const handleBack = () => router.push({ name: 'BugList' })
+const handleBack = () => router.back()
 
 const handleCloseBugFromList = async record => {
   try {

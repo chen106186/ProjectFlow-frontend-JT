@@ -299,9 +299,7 @@ function getRouteDate() {
   return date
 }
 
-const handleBack = () => {
-  router.push('/personal/daily')
-}
+const handleBack = () => router.back()
 
 const handleEditorCreated = editor => {
   editorRef.value = editor
