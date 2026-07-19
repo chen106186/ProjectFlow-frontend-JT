@@ -70,12 +70,20 @@
           </template>
           <template v-else-if="column.dataIndex === 'ops'">
             <a-space :size="4">
-              <a-button type="link" size="small" @click="openEditModal(record)">编辑</a-button>
+              <a-tooltip title="编辑">
+                <a-button type="link" size="small" class="operation-icon-button" aria-label="编辑" @click="openEditModal(record)"><EditOutlined /></a-button>
+              </a-tooltip>
               <template v-if="record.statusCode === 'PENDING_REVIEW'">
                 <a-divider type="vertical" style="margin: 0;" />
-                <a-button type="link" size="small" :loading="opRecord === record.id + '_ACCEPTED'" @click="handleStatusChange(record, 'ACCEPTED')">采纳</a-button>
-                <a-button type="link" size="small" danger :loading="opRecord === record.id + '_REJECTED'" @click="handleStatusChange(record, 'REJECTED')">未采纳</a-button>
-                <a-button type="link" size="small" :loading="opRecord === record.id + '_SHELVED'" @click="handleStatusChange(record, 'SHELVED')">搁置</a-button>
+                <a-tooltip title="采纳">
+                  <a-button type="link" size="small" class="operation-icon-button" aria-label="采纳" :loading="opRecord === record.id + '_ACCEPTED'" @click="handleStatusChange(record, 'ACCEPTED')"><CheckCircleOutlined /></a-button>
+                </a-tooltip>
+                <a-tooltip title="未采纳">
+                  <a-button type="link" size="small" class="operation-icon-button" aria-label="未采纳" danger :loading="opRecord === record.id + '_REJECTED'" @click="handleStatusChange(record, 'REJECTED')"><CloseCircleOutlined /></a-button>
+                </a-tooltip>
+                <a-tooltip title="搁置">
+                  <a-button type="link" size="small" class="operation-icon-button" aria-label="搁置" :loading="opRecord === record.id + '_SHELVED'" @click="handleStatusChange(record, 'SHELVED')"><InboxOutlined /></a-button>
+                </a-tooltip>
               </template>
             </a-space>
           </template>
@@ -109,12 +117,20 @@
               </template>
               <template v-else-if="column.dataIndex === 'ops'">
                 <a-space :size="4">
-                  <a-button type="link" size="small" @click="openEditModal(record)">编辑</a-button>
+                  <a-tooltip title="编辑">
+                    <a-button type="link" size="small" class="operation-icon-button" aria-label="编辑" @click="openEditModal(record)"><EditOutlined /></a-button>
+                  </a-tooltip>
                   <template v-if="record.statusCode === 'PENDING_REVIEW'">
                     <a-divider type="vertical" style="margin: 0;" />
-                    <a-button type="link" size="small" :loading="opRecord === record.id + '_ACCEPTED'" @click="handleStatusChange(record, 'ACCEPTED')">采纳</a-button>
-                    <a-button type="link" size="small" danger :loading="opRecord === record.id + '_REJECTED'" @click="handleStatusChange(record, 'REJECTED')">未采纳</a-button>
-                    <a-button type="link" size="small" :loading="opRecord === record.id + '_SHELVED'" @click="handleStatusChange(record, 'SHELVED')">搁置</a-button>
+                    <a-tooltip title="采纳">
+                      <a-button type="link" size="small" class="operation-icon-button" aria-label="采纳" :loading="opRecord === record.id + '_ACCEPTED'" @click="handleStatusChange(record, 'ACCEPTED')"><CheckCircleOutlined /></a-button>
+                    </a-tooltip>
+                    <a-tooltip title="未采纳">
+                      <a-button type="link" size="small" class="operation-icon-button" aria-label="未采纳" danger :loading="opRecord === record.id + '_REJECTED'" @click="handleStatusChange(record, 'REJECTED')"><CloseCircleOutlined /></a-button>
+                    </a-tooltip>
+                    <a-tooltip title="搁置">
+                      <a-button type="link" size="small" class="operation-icon-button" aria-label="搁置" :loading="opRecord === record.id + '_SHELVED'" @click="handleStatusChange(record, 'SHELVED')"><InboxOutlined /></a-button>
+                    </a-tooltip>
                   </template>
                 </a-space>
               </template>
@@ -168,7 +184,7 @@
 </template>
 
 <script setup>
-import { DownOutlined, PlusOutlined, RightOutlined } from '@ant-design/icons-vue'
+import { CheckCircleOutlined, CloseCircleOutlined, DownOutlined, EditOutlined, InboxOutlined, PlusOutlined, RightOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
@@ -369,7 +385,7 @@ const columns = [
   { title: '状态', dataIndex: 'status', width: 110 },
   { title: '提交人', dataIndex: 'submitter', width: 110 },
   { title: '创建时间', dataIndex: 'createdAt', width: 200 },
-  { title: '操作', dataIndex: 'ops', width: 220, fixed: 'right' },
+  { title: '操作', dataIndex: 'ops', width: 160, fixed: 'right' },
 ]
 
 const priorityColor = value => ({ URGENT: 'red', HIGH: 'orange', MEDIUM: 'gold', LOW: 'default' }[value] || 'default')
@@ -577,6 +593,9 @@ onMounted(initPage)
 .requirement-no {
   font-family: 'Segoe UI', 'PingFang SC', sans-serif;
 }
+
+.operation-icon-button { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border-radius: 6px; }
+.operation-icon-button :deep(svg) { width: 15px; height: 15px; }
 
 .requirement-group + .requirement-group {
   margin-top: 16px;

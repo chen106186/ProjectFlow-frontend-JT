@@ -139,7 +139,7 @@ const disabledCalendarDate = date => date && date.isAfter(today, 'day')
 }
 
 .dr-calendar-panel :deep(.ant-picker-cell) {
-  padding: 1px 0;
+  padding: 1px 2px;
 }
 
 .dr-calendar-panel :deep(.ant-picker-cell-inner) {
@@ -151,6 +151,7 @@ const disabledCalendarDate = date => date && date.isAfter(today, 'day')
   height: 42px;
   min-width: 0;
   padding: 1px 0;
+  box-sizing: border-box;
   line-height: 14px;
 }
 

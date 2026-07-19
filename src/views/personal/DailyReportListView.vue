@@ -30,6 +30,7 @@
         :loading="loading"
         :pagination="false"
         :scroll="{ y: '100%' }"
+        table-layout="fixed"
         row-key="id"
       >
         <template #bodyCell="{ column, record }">
@@ -41,7 +42,9 @@
             </a-tooltip>
           </template>
           <template v-else-if="column.dataIndex === 'operation'">
-            <a-button type="link" @click="goDetail(record)">查看</a-button>
+            <a-tooltip title="查看">
+              <a-button type="link" class="operation-icon-button" aria-label="查看" @click="goDetail(record)"><EyeOutlined /></a-button>
+            </a-tooltip>
           </template>
           <template v-else-if="column.dataIndex === 'updatedAt'">
             {{ formatDateTime(record.updatedAt || record.createdAt) }}
@@ -72,6 +75,7 @@
 </template>
 
 <script setup>
+import { EyeOutlined } from '@ant-design/icons-vue'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -220,6 +224,7 @@ function goDetail(target) {
 
 .daily-content-link {
   display: block;
+  width: 100%;
   max-width: 100%;
   height: auto;
   padding: 0;
@@ -228,6 +233,17 @@ function goDetail(target) {
   white-space: nowrap;
   text-align: left;
 }
+
+.daily-content-link :deep(span) {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.operation-icon-button { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border-radius: 6px; }
+.operation-icon-button :deep(svg) { width: 15px; height: 15px; }
 
 .daily-report-table {
   flex: 1;

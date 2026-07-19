@@ -79,31 +79,20 @@
             </template>
             <template v-else-if="column.dataIndex === 'ops'">
               <a-space :size="4">
-                <a-button type="link" size="small" :disabled="!canOperate(record)" @click="openEditModal(record)">编辑</a-button>
+                <a-tooltip title="编辑">
+                  <a-button type="link" size="small" class="operation-icon-button" aria-label="编辑" :disabled="!canOperate(record)" @click="openEditModal(record)"><EditOutlined /></a-button>
+                </a-tooltip>
                 <template v-if="record.status === 'PENDING_REVIEW'">
                   <a-divider type="vertical" style="margin: 0;" />
-                  <a-button
-                    type="link"
-                    size="small"
-                    :disabled="!canOperate(record)"
-                    :loading="opRecord === record.id + '_ACCEPTED'"
-                    @click="handleStatusChange(record, 'ACCEPTED')"
-                  >采纳</a-button>
-                  <a-button
-                    type="link"
-                    size="small"
-                    danger
-                    :disabled="!canOperate(record)"
-                    :loading="opRecord === record.id + '_REJECTED'"
-                    @click="handleStatusChange(record, 'REJECTED')"
-                  >未采纳</a-button>
-                  <a-button
-                    type="link"
-                    size="small"
-                    :disabled="!canOperate(record)"
-                    :loading="opRecord === record.id + '_SHELVED'"
-                    @click="handleStatusChange(record, 'SHELVED')"
-                  >搁置</a-button>
+                  <a-tooltip title="采纳">
+                    <a-button type="link" size="small" class="operation-icon-button" aria-label="采纳" :disabled="!canOperate(record)" :loading="opRecord === record.id + '_ACCEPTED'" @click="handleStatusChange(record, 'ACCEPTED')"><CheckCircleOutlined /></a-button>
+                  </a-tooltip>
+                  <a-tooltip title="未采纳">
+                    <a-button type="link" size="small" class="operation-icon-button" aria-label="未采纳" danger :disabled="!canOperate(record)" :loading="opRecord === record.id + '_REJECTED'" @click="handleStatusChange(record, 'REJECTED')"><CloseCircleOutlined /></a-button>
+                  </a-tooltip>
+                  <a-tooltip title="搁置">
+                    <a-button type="link" size="small" class="operation-icon-button" aria-label="搁置" :disabled="!canOperate(record)" :loading="opRecord === record.id + '_SHELVED'" @click="handleStatusChange(record, 'SHELVED')"><InboxOutlined /></a-button>
+                  </a-tooltip>
                 </template>
               </a-space>
             </template>
@@ -152,12 +141,20 @@
                 </template>
                 <template v-else-if="column.dataIndex === 'ops'">
                   <a-space :size="4">
-                    <a-button type="link" size="small" :disabled="!canOperate(record)" @click="openEditModal(record)">编辑</a-button>
+                    <a-tooltip title="编辑">
+                      <a-button type="link" size="small" class="operation-icon-button" aria-label="编辑" :disabled="!canOperate(record)" @click="openEditModal(record)"><EditOutlined /></a-button>
+                    </a-tooltip>
                     <template v-if="record.status === 'PENDING_REVIEW'">
                       <a-divider type="vertical" style="margin: 0;" />
-                      <a-button type="link" size="small" :disabled="!canOperate(record)" :loading="opRecord === record.id + '_ACCEPTED'" @click="handleStatusChange(record, 'ACCEPTED')">采纳</a-button>
-                      <a-button type="link" size="small" danger :disabled="!canOperate(record)" :loading="opRecord === record.id + '_REJECTED'" @click="handleStatusChange(record, 'REJECTED')">未采纳</a-button>
-                      <a-button type="link" size="small" :disabled="!canOperate(record)" :loading="opRecord === record.id + '_SHELVED'" @click="handleStatusChange(record, 'SHELVED')">搁置</a-button>
+                      <a-tooltip title="采纳">
+                        <a-button type="link" size="small" class="operation-icon-button" aria-label="采纳" :disabled="!canOperate(record)" :loading="opRecord === record.id + '_ACCEPTED'" @click="handleStatusChange(record, 'ACCEPTED')"><CheckCircleOutlined /></a-button>
+                      </a-tooltip>
+                      <a-tooltip title="未采纳">
+                        <a-button type="link" size="small" class="operation-icon-button" aria-label="未采纳" danger :disabled="!canOperate(record)" :loading="opRecord === record.id + '_REJECTED'" @click="handleStatusChange(record, 'REJECTED')"><CloseCircleOutlined /></a-button>
+                      </a-tooltip>
+                      <a-tooltip title="搁置">
+                        <a-button type="link" size="small" class="operation-icon-button" aria-label="搁置" :disabled="!canOperate(record)" :loading="opRecord === record.id + '_SHELVED'" @click="handleStatusChange(record, 'SHELVED')"><InboxOutlined /></a-button>
+                      </a-tooltip>
                     </template>
                   </a-space>
                 </template>
@@ -234,7 +231,7 @@
 </template>
 
 <script setup>
-import { DownOutlined, PlusOutlined, RightOutlined } from '@ant-design/icons-vue'
+import { CheckCircleOutlined, CloseCircleOutlined, DownOutlined, EditOutlined, InboxOutlined, PlusOutlined, RightOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
@@ -374,7 +371,7 @@ const columns = [
     width: 170,
     customRender: ({ text }) => formatDateTime(text),
   },
-  { title: '操作', dataIndex: 'ops', width: 220, fixed: 'right' },
+  { title: '操作', dataIndex: 'ops', width: 160, fixed: 'right' },
 ]
 
 const fetchData = async () => {
@@ -510,7 +507,7 @@ onMounted(initPage)
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 0;
 }
 
 .req-filter-card,
@@ -615,6 +612,8 @@ onMounted(initPage)
 
 .req-no { font-family: 'Segoe UI', 'PingFang SC', sans-serif; }
 .req-title-link { padding: 0; }
+.operation-icon-button { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border-radius: 6px; }
+.operation-icon-button :deep(svg) { width: 15px; height: 15px; }
 .status-tip { margin-left: 8px; color: #8c8c8c; font-size: 12px; }
 
 @media (max-width: 1440px) {

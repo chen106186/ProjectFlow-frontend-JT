@@ -300,25 +300,37 @@
               </a-radio-group>
             </div>
           </div>
-          <a-table v-if="bugDisplayMode === 'list'" class="personal-bug-table" :columns="personalBugColumns" :data-source="visibleBugs" :pagination="personalBugPagination" :scroll="{ x: 1100, y: 'calc(100vh - 440px)' }" size="middle" row-key="id" table-layout="fixed" @change="handlePersonalBugTableChange">
-            <template #bodyCell="{ column, record, text }">
-              <template v-if="column.dataIndex === 'code'">
-                <span class="bug-no">{{ text && text !== '-' ? '#' + String(text).padStart(3, '0') : '-' }}</span>
+          <div v-if="bugDisplayMode === 'list'" class="personal-bug-list-view">
+            <a-table class="personal-bug-table" :columns="personalBugColumns" :data-source="pagedVisibleBugs" :pagination="false" :scroll="{ x: 1100, y: '100%' }" size="middle" row-key="id" table-layout="fixed">
+              <template #bodyCell="{ column, record, text }">
+                <template v-if="column.dataIndex === 'code'">
+                  <span class="bug-no">{{ text && text !== '-' ? '#' + String(text).padStart(3, '0') : '-' }}</span>
+                </template>
+                <template v-else-if="column.dataIndex === 'title'">
+                  <a-tooltip :title="text">
+                    <span class="bug-title-text" @click="handleBugDetail(record)">{{ text }}</span>
+                  </a-tooltip>
+                </template>
+                <template v-else-if="column.dataIndex === 'level'">
+                  <a-tag :color="record.levelColor">{{ text }}</a-tag>
+                </template>
+                <template v-else-if="column.dataIndex === 'status'">
+                  <a-tag :color="record.statusColor">{{ text }}</a-tag>
+                </template>
+                <template v-else>{{ text }}</template>
               </template>
-              <template v-else-if="column.dataIndex === 'title'">
-                <a-tooltip :title="text">
-                  <span class="bug-title-text" @click="handleBugDetail(record)">{{ text }}</span>
-                </a-tooltip>
-              </template>
-              <template v-else-if="column.dataIndex === 'level'">
-                <a-tag :color="record.levelColor">{{ text }}</a-tag>
-              </template>
-              <template v-else-if="column.dataIndex === 'status'">
-                <a-tag :color="record.statusColor">{{ text }}</a-tag>
-              </template>
-              <template v-else>{{ text }}</template>
-            </template>
-          </a-table>
+            </a-table>
+            <a-pagination
+              class="personal-bug-pagination"
+              v-model:current="bugCurrentPage"
+              v-model:page-size="bugPageSize"
+              :total="visibleBugs.length"
+              :page-size-options="['10', '50', '100']"
+              :show-total="total => `共 ${total} 条`"
+              show-size-changer
+              @change="handlePersonalBugPageChange"
+            />
+          </div>
           <div v-else class="personal-bug-group-view">
             <div class="personal-bug-group-list">
               <section v-for="group in groupedBugs" :key="group.value" class="personal-bug-group">
@@ -851,14 +863,6 @@ const taskStatusSelectOptions = computed(() =>
 )
 const visibleBugs = computed(() => bugApiRows.value)
 const bugUserOptions = computed(() => bugUsers.value.map(user => ({ label: user.realName, value: user.id })))
-const personalBugPagination = computed(() => ({
-  current: bugCurrentPage.value,
-  pageSize: bugPageSize.value,
-  total: visibleBugs.value.length,
-  pageSizeOptions: ['10', '50', '100'],
-  showSizeChanger: true,
-  showTotal: total => `共 ${total} 条`,
-}))
 const pagedVisibleBugs = computed(() => {
   const start = (bugCurrentPage.value - 1) * bugPageSize.value
   return visibleBugs.value.slice(start, start + bugPageSize.value)
@@ -1712,11 +1716,6 @@ const handleBugReset = () => {
   loadMyBugs()
 }
 
-const handlePersonalBugTableChange = pagination => {
-  bugCurrentPage.value = pagination.current
-  bugPageSize.value = pagination.pageSize
-}
-
 const handlePersonalBugPageChange = (page, pageSize) => {
   bugCurrentPage.value = page
   bugPageSize.value = pageSize
@@ -2203,11 +2202,17 @@ const trendPoints = [
   min-height: 0;
 }
 
+.bug-list-card .list-toolbar {
+  flex: none;
+}
+
+.personal-bug-list-view,
 .personal-bug-table {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .personal-bug-table :deep(.ant-spin-nested-loading) {
@@ -2215,10 +2220,30 @@ const trendPoints = [
   min-height: 0;
 }
 
-.personal-bug-table :deep(.ant-pagination) {
+.personal-bug-table :deep(.ant-spin-container),
+.personal-bug-table :deep(.ant-table),
+.personal-bug-table :deep(.ant-table-container) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.personal-bug-table :deep(.ant-table-header) {
+  flex: none;
+}
+
+.personal-bug-table :deep(.ant-table-body) {
+  flex: 1;
+  min-height: 0;
+  max-height: none !important;
+  overflow-y: auto !important;
+}
+
+.personal-bug-pagination {
   flex: none;
   align-self: flex-end;
-  margin: 12px 0 0;
+  margin: 12px 0 2px;
 }
 
 .personal-bug-group-view {
@@ -2237,7 +2262,7 @@ const trendPoints = [
 .personal-bug-group-view > :deep(.ant-pagination) {
   flex: none;
   align-self: flex-end;
-  margin: 12px 0 0;
+  margin: 12px 0 2px;
 }
 
 .personal-bug-group + .personal-bug-group { margin-top: 24px; }
