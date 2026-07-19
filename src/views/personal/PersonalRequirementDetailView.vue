@@ -178,7 +178,7 @@ const requirementNo = computed(() => {
   return '-'
 })
 
-const projectName = computed(() => projectMap.value[requirement.value?.projectId] || '-')
+const projectName = computed(() => requirement.value?.projectName || projectMap.value[requirement.value?.projectId] || '-')
 const typeLabel = computed(() => dictStore.getDictLabel('requirementType', requirement.value?.requirementType) || '-')
 const priorityLabel = computed(() => dictStore.getDictLabel('requirementPriority', requirement.value?.priority) || '-')
 const statusLabel = computed(() => dictStore.getDictLabel('requirementStatus', requirement.value?.status) || '-')
@@ -200,7 +200,7 @@ const statusColor = value => ({ PENDING_REVIEW: 'blue', ACCEPTED: 'green', REJEC
 const statusSuccessText = status => ({ ACCEPTED: '需求已采纳', REJECTED: '需求未采纳', SHELVED: '需求已搁置' }[status] || '状态已更新')
 const formatLogTime = dt => formatDateTime(dt)
 const loadProjects = async () => {
-  const result = await getProjectList({ pageNo: 1, pageSize: 200, projectType: 'EXECUTION' })
+  const result = await getProjectList({ pageNo: 1, pageSize: 200 })
   projectMap.value = Object.fromEntries((result.records || []).map(item => [item.id, item.name]))
 }
 
