@@ -391,7 +391,7 @@ const resetTaskFilters = () => {
   taskStatusFilter.value = ''
   taskPersonFilter.value = ''
 }
-const bugCardFilters = { pending: { status: 'PENDING_FIX' }, fixing: { status: 'FIXING' }, verifying: { status: 'PENDING_VERIFY' }, closed: { status: 'CLOSED' } }
+const bugCardFilters = { pending: { status: 'PENDING_FIX' }, verifying: { status: 'PENDING_VERIFY' }, closed: { status: 'CLOSED' } }
 const bugFilterParams = computed(() => ({
   ...(bugCardFilters[activeBugFilter.value] || {}),
   ...(bugStatusFilter.value ? { status: bugStatusFilter.value } : {}),
@@ -564,6 +564,10 @@ defineExpose({
 .project-stat-row {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-bottom: 16px;
+}
+
+.bug-summary {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .project-bug-table :deep(.ant-table-body),
