@@ -175,7 +175,13 @@ const reportMap = computed(() => {
   return map
 })
 
-const currentReport = computed(() => reportMap.value[selectedDate.value.format('YYYY-MM-DD')] || null)
+const currentReport = computed(() => {
+  const reportId = route.query.id
+  if (reportId) {
+    return allReports.value.find(report => String(report.id) === String(reportId)) || null
+  }
+  return reportMap.value[selectedDate.value.format('YYYY-MM-DD')] || null
+})
 const isEditableDate = computed(() => selectedDate.value.isSame(today, 'day') || selectedDate.value.isSame(yesterday, 'day'))
 const pageTitle = computed(() => {
   if (!isEditableDate.value) {
@@ -195,11 +201,12 @@ onBeforeUnmount(() => {
 })
 
 watch(
-  () => route.query.date,
+  () => [route.query.date, route.query.id],
   () => {
     const date = getRouteDate()
     selectedDate.value = date
     calendarValue.value = date
+    syncForm()
   }
 )
 

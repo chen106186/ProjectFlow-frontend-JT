@@ -390,7 +390,7 @@ const resetTaskFilters = () => {
   taskStatusFilter.value = ''
   taskPersonFilter.value = ''
 }
-const bugCardFilters = { urgent: { priority: 'URGENT' }, pending: { status: 'PENDING_FIX' }, fixing: { status: 'FIXING' }, closed: { status: 'CLOSED' } }
+const bugCardFilters = { pending: { status: 'PENDING_FIX' }, fixing: { status: 'FIXING' }, verifying: { status: 'PENDING_VERIFY' }, closed: { status: 'CLOSED' } }
 const bugFilterParams = computed(() => ({
   ...(bugCardFilters[activeBugFilter.value] || {}),
   ...(bugStatusFilter.value ? { status: bugStatusFilter.value } : {}),

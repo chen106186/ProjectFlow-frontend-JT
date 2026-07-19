@@ -620,7 +620,7 @@ const taskColumns = [
 const taskRows = ref([])
 const taskStatusFilters = toOptions(['全部状态', '未开始', '进行中', '已完成'])
 const personFilterOptions = toOptions(['全部负责人', '全部指定人', '张三', '李四', '王五'])
-const bugSummary = computed(() => [{ key: 'urgent', label: '紧急', value: bugSummaryStats.value.byPriority?.URGENT || 0, class: 'bug-severe', icon: ExclamationCircleOutlined }, { key: 'pending', label: '待修复', value: bugSummaryStats.value.byStatus?.PENDING_FIX || 0, class: 'bug-submitted', icon: SendOutlined }, { key: 'fixing', label: '修复中', value: bugSummaryStats.value.byStatus?.FIXING || 0, class: 'bug-confirmed', icon: ToolOutlined }, { key: 'closed', label: '已关闭', value: bugSummaryStats.value.byStatus?.CLOSED || 0, class: 'bug-closed', icon: CheckCircleOutlined }])
+const bugSummary = computed(() => [{ key: 'pending', label: '待修复', value: bugSummaryStats.value.byStatus?.PENDING_FIX || 0, class: 'bug-severe', icon: ExclamationCircleOutlined }, { key: 'fixing', label: '修复中', value: bugSummaryStats.value.byStatus?.FIXING || 0, class: 'bug-submitted', icon: SendOutlined }, { key: 'verifying', label: '待验证', value: bugSummaryStats.value.byStatus?.PENDING_VERIFY || 0, class: 'bug-confirmed', icon: ToolOutlined }, { key: 'closed', label: '已关闭', value: bugSummaryStats.value.byStatus?.CLOSED || 0, class: 'bug-closed', icon: CheckCircleOutlined }])
 const bugColumns = [{ title: 'BUG ID', dataIndex: 'code', width: 130 }, { title: '标题', dataIndex: 'title', width: 220 }, { title: '严重级别', dataIndex: 'severity', width: 100 }, { title: '状态', dataIndex: 'status', width: 100 }, { title: '指定人', dataIndex: 'assignee', width: 90 }, { title: '创建人', dataIndex: 'creator', width: 90 }]
 const bugRows = ref([])
 const bugSummaryStats = ref({ total: 0, byStatus: {}, byPriority: {} })

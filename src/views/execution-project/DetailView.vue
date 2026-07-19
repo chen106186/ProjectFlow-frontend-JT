@@ -605,8 +605,8 @@ const taskPagination = createTablePagination()
 const taskRows = ref([])
 const taskStatusFilters = toOptions(['全部状态', '未开始', '进行中', '已完成'])
 const personFilterOptions = computed(() => [{ label: '全部指定人', value: '' }, ...managerOptions.value])
-const bugSummary = computed(() => [{ key: 'urgent', label: '严重', value: bugSummaryStats.value.byPriority?.URGENT || 0, class: 'bug-severe', icon: ExclamationCircleOutlined }, { key: 'pending', label: '已提交', value: bugSummaryStats.value.byStatus?.PENDING_FIX || 0, class: 'bug-submitted', icon: SendOutlined }, { key: 'fixing', label: '已确认', value: bugSummaryStats.value.byStatus?.FIXING || 0, class: 'bug-confirmed', icon: ToolOutlined }, { key: 'closed', label: '已关闭', value: bugSummaryStats.value.byStatus?.CLOSED || 0, class: 'bug-closed', icon: CheckCircleOutlined }])
-const bugCardFilters = { urgent: { priority: 'URGENT' }, pending: { status: 'PENDING_FIX' }, fixing: { status: 'FIXING' }, closed: { status: 'CLOSED' } }
+const bugSummary = computed(() => [{ key: 'pending', label: '待修复', value: bugSummaryStats.value.byStatus?.PENDING_FIX || 0, class: 'bug-severe', icon: ExclamationCircleOutlined }, { key: 'fixing', label: '修复中', value: bugSummaryStats.value.byStatus?.FIXING || 0, class: 'bug-submitted', icon: SendOutlined }, { key: 'verifying', label: '待验证', value: bugSummaryStats.value.byStatus?.PENDING_VERIFY || 0, class: 'bug-confirmed', icon: ToolOutlined }, { key: 'closed', label: '已关闭', value: bugSummaryStats.value.byStatus?.CLOSED || 0, class: 'bug-closed', icon: CheckCircleOutlined }])
+const bugCardFilters = { pending: { status: 'PENDING_FIX' }, fixing: { status: 'FIXING' }, verifying: { status: 'PENDING_VERIFY' }, closed: { status: 'CLOSED' } }
 const bugQueryParams = computed(() => ({
   ...(bugCardFilters[activeBugFilter.value] || {}),
   ...(bugStatusFilter.value ? { status: bugStatusFilter.value } : {}),

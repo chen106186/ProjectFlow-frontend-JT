@@ -35,13 +35,13 @@
         <template #bodyCell="{ column, record }">
           <template v-if="column.dataIndex === 'content'">
             <a-tooltip :title="getReportContent(record)">
-              <a-button type="link" class="daily-content-link" @click="goDetail(record.reportDate)">
+              <a-button type="link" class="daily-content-link" @click="goDetail(record)">
                 {{ getReportContent(record) }}
               </a-button>
             </a-tooltip>
           </template>
           <template v-else-if="column.dataIndex === 'operation'">
-            <a-button type="link" @click="goDetail(record.reportDate)">查看</a-button>
+            <a-button type="link" @click="goDetail(record)">查看</a-button>
           </template>
           <template v-else-if="column.dataIndex === 'updatedAt'">
             {{ formatDateTime(record.updatedAt || record.createdAt) }}
@@ -73,7 +73,7 @@
 
 <script setup>
 import dayjs from 'dayjs'
-import { computed, onMounted, reactive, ref, onBeforeMount } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { listMyDailyReports } from '@/api/dailyReports'
@@ -100,18 +100,13 @@ const paginationState = reactive({
   pageSize: 10,
 })
 
-const isGmOffice = ref(false)
-
-const columns = computed(() => {
-  const base = [
-    { title: '日期', dataIndex: 'reportDate', width: 140 },
-    ...(isGmOffice.value ? [{ title: '汇报人', dataIndex: 'reporterName', width: 120 }] : []),
-    { title: '内容', dataIndex: 'content', ellipsis: true },
-    { title: '提交时间', dataIndex: 'updatedAt', width: 220 },
-    { title: '操作', dataIndex: 'operation', width: 90 },
-  ]
-  return base
-})
+const columns = [
+  { title: '日期', dataIndex: 'reportDate', width: 140 },
+  { title: '提交人', dataIndex: 'reporterName', width: 120 },
+  { title: '内容', dataIndex: 'content', ellipsis: true },
+  { title: '提交时间', dataIndex: 'updatedAt', width: 220 },
+  { title: '操作', dataIndex: 'operation', width: 90 },
+]
 
 const filteredReports = computed(() => {
   const keyword = query.keyword.trim().toLowerCase()
@@ -130,10 +125,6 @@ const pagedReports = computed(() => {
   return filteredReports.value.slice(start, start + paginationState.pageSize)
 })
 
-onBeforeMount(() => {
-  const profile = JSON.parse(localStorage.getItem('authProfile') || '{}')
-  isGmOffice.value = !!profile.isGmOffice
-})
 
 onMounted(async () => {
   await loadReports()
@@ -172,9 +163,12 @@ function handlePageChange(page, pageSize) {
   paginationState.pageSize = pageSize
 }
 
-function goDetail(date) {
-  const reportDate = dayjs(date).format('YYYY-MM-DD')
-  router.push({ path: '/personal/daily/detail', query: { date: reportDate } })
+function goDetail(target) {
+  const report = target && typeof target === 'object' ? target : null
+  const reportDate = dayjs(report?.reportDate || target).format('YYYY-MM-DD')
+  const query = { date: reportDate }
+  if (report?.id) query.id = String(report.id)
+  router.push({ path: '/personal/daily/detail', query })
 }
 </script>
 
