@@ -128,9 +128,10 @@
           </div>
           <a-table row-key="id" class="project-bug-table" :columns="bugColumns" :data-source="bugRows" :loading="bugLoading" :pagination="false" size="small" :scroll="{ x: 840, y: 500 }">
             <template #bodyCell="{ column, record, text }">
-              <a-button v-if="column.dataIndex === 'title'" type="link" @click="emit('view-bug', record)">{{ text }}</a-button>
-              <a-tag v-else-if="column.dataIndex === 'severity'" color="red">{{ text }}</a-tag>
-              <a-tag v-else-if="column.dataIndex === 'status'" color="orange">{{ text }}</a-tag>
+              <span v-if="column.dataIndex === 'bugNo'" class="bug-no">{{ text ? '#' + String(text).padStart(3, '0') : '-' }}</span>
+              <a-button v-else-if="column.dataIndex === 'title'" type="link" @click="emit('view-bug', record)">{{ text }}</a-button>
+              <a-tag v-else-if="column.dataIndex === 'severity'" :color="record.severityColor">{{ text }}</a-tag>
+              <a-tag v-else-if="column.dataIndex === 'status'" :color="record.statusColor">{{ text }}</a-tag>
             </template>
           </a-table>
           <a-pagination class="detail-list-pagination" :current="bugPagination.current" :page-size="bugPagination.pageSize" :total="bugPagination.total" :page-size-options="paginationOptions.pageSizeOptions" :show-total="paginationOptions.showTotal" show-size-changer @change="(page, pageSize) => emit('bug-page-change', page, pageSize)" />
@@ -390,7 +391,7 @@ const resetTaskFilters = () => {
   taskStatusFilter.value = ''
   taskPersonFilter.value = ''
 }
-const bugCardFilters = { pending: { status: 'PENDING_FIX' }, fixing: { status: 'FIXING' }, verifying: { status: 'PENDING_VERIFY' }, closed: { status: 'CLOSED' } }
+const bugCardFilters = { urgent: { priority: 'URGENT' }, pending: { status: 'PENDING_FIX' }, verifying: { status: 'PENDING_VERIFY' }, closed: { status: 'CLOSED' } }
 const bugFilterParams = computed(() => ({
   ...(bugCardFilters[activeBugFilter.value] || {}),
   ...(bugStatusFilter.value ? { status: bugStatusFilter.value } : {}),
@@ -837,6 +838,13 @@ defineExpose({
 
 .risk-heading {
   margin-bottom: 12px;
+}
+
+.bug-no {
+  color: #1677ff;
+  font-family: monospace;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .risk-grid .semantic-card,

@@ -4,11 +4,11 @@
       <a-card class="bug-filter app-filter-card" :bordered="false">
         <a-form :model="queryParams" class="bug-filter__form app-filter-form" layout="inline">
           <a-form-item label="搜索"><a-input v-model:value="queryParams.keyword" allow-clear placeholder="请输入关键字"  /></a-form-item>
-          <a-form-item label="所属项目"><a-select v-model:value="queryParams.projectId" :options="projectOptions" placeholder="全部" allow-clear /></a-form-item>
-          <a-form-item label="严重等级"><a-select v-model:value="queryParams.priority" :options="priorityFilterOptions" placeholder="全部" allow-clear /></a-form-item>
-          <a-form-item label="状态"><a-select v-model:value="queryParams.status" :options="statusFilterOptions" placeholder="全部" allow-clear /></a-form-item>
-          <a-form-item label="创建人"><a-select v-model:value="queryParams.creatorId" :options="userOptions" placeholder="全部" allow-clear show-search option-filter-prop="label" /></a-form-item>
-          <a-form-item label="指定人"><a-select v-model:value="queryParams.assigneeId" :options="userOptions" placeholder="全部" allow-clear show-search option-filter-prop="label" /></a-form-item>
+          <a-form-item label="所属项目"><a-select v-model:value="queryParams.projectId" :options="projectOptions" placeholder="全部" allow-clear @change="handleSearch" /></a-form-item>
+          <a-form-item label="严重等级"><a-select v-model:value="queryParams.priority" :options="priorityFilterOptions" placeholder="全部" allow-clear @change="handleSearch" /></a-form-item>
+          <a-form-item label="状态"><a-select v-model:value="queryParams.status" :options="statusFilterOptions" placeholder="全部" allow-clear @change="handleSearch" /></a-form-item>
+          <a-form-item label="创建人"><a-select v-model:value="queryParams.creatorId" :options="userOptions" placeholder="全部" allow-clear show-search option-filter-prop="label" @change="handleSearch" /></a-form-item>
+          <a-form-item label="指定人"><a-select v-model:value="queryParams.assigneeId" :options="userOptions" placeholder="全部" allow-clear show-search option-filter-prop="label" @change="handleSearch" /></a-form-item>
           <a-form-item class="bug-filter__actions app-filter-actions">
             <a-space><a-button type="primary" @click="handleSearch">查询</a-button><a-button @click="handleReset">重置</a-button></a-space>
           </a-form-item>
@@ -161,10 +161,6 @@
             <template v-if="selectedBug">
               <span class="detail-bug-no">{{ selectedBug.bugNo ? '#' + String(selectedBug.bugNo).padStart(3, '0') : '' }}</span>
               <h1 class="detail-title">{{ selectedBug.title }}</h1>
-              <div class="detail-header__tags">
-                <a-tag :color="priorityColors[selectedBug.priority]">{{ priorityLabels[selectedBug.priority] || selectedBug.priority }}</a-tag>
-                <a-tag :color="statusColors[selectedBug.status]">{{ statusLabels[selectedBug.status] || selectedBug.status }}</a-tag>
-              </div>
             </template>
           </div>
 
@@ -224,7 +220,7 @@
                       </tr>
                     </tbody>
                   </table>
-                  <div v-if="selectedBug.remark" class="detail-rich resolve-remark" v-html="bugResolveRemarkHtml" @click="handleRichImageClick"></div>
+                  <div v-if="bugResolveRemark" class="detail-rich resolve-remark" v-html="bugResolveRemarkHtml" @click="handleRichImageClick"></div>
                 </section>
               </a-card>
 
@@ -285,13 +281,13 @@
               </a-card>
             </div>
           </div>
-          <div v-if="selectedBug && !isClosedBug(selectedBug)" class="detail-floating-actions">
+          <div v-if="selectedBug && !isClosedBug(selectedBug) && (!isResolvedBug(selectedBug) || isBugCreator(selectedBug))" class="detail-floating-actions">
             <template v-if="!isResolvedBug(selectedBug)">
               <a-button type="primary" @click="handleEditFromDetail">编辑 Bug</a-button>
               <a-button @click="assignVisible = true">重新指派</a-button>
               <a-button type="primary" class="resolve-button" @click="openResolveModal">解决</a-button>
             </template>
-            <a-button danger :loading="closeLoading" @click="handleCloseBug">关闭 Bug</a-button>
+            <a-button v-if="isBugCreator(selectedBug)" danger :loading="closeLoading" @click="handleCloseBug">关闭 Bug</a-button>
           </div>
         </a-spin>
       </div>
@@ -367,7 +363,7 @@ const priorityOptions = [
 ]
 const priorityFilterOptions = priorityOptions
 const statusFilterOptions = [
-  { label: '待修复', value: 'PENDING_FIX' }, { label: '修复中', value: 'FIXING' },
+  { label: '待修复', value: 'PENDING_FIX' },
   { label: '待验证', value: 'PENDING_VERIFY' }, { label: '已关闭', value: 'CLOSED' },
 ]
 const groupOptions = [
@@ -424,11 +420,12 @@ const isClosedBug = bug => {
 }
 
 const isResolvedBug = bug => bug?.status === 'PENDING_VERIFY' || bug?.status === '待验证' || bug?.statusCode === 'PENDING_VERIFY'
+const isBugCreator = bug => Boolean(currentUserId.value) && String(bug?.creatorId) === String(currentUserId.value)
 
 const OPERATION_LABELS = {
   CREATE: '创建', UPDATE: '更新', DELETE: '删除',
   ASSIGN: '指派', FIX: '修复', CLOSE: '关闭', REOPEN: '重开',
-  COMMENT: '评论', EXPORT: '导出',
+  COMMENT: '评论', EXPORT: '导出', UPDATE_STATUS: '更新状态',
 }
 const operationLabel = type => OPERATION_LABELS[type] || type || '操作'
 
@@ -524,7 +521,8 @@ const hydratePrivateRichImages = async () => {
 }
 const bugDescriptionHtml = computed(() => normalizeRichHtml(selectedBug.value?.description))
 const bugReproduceStepsHtml = computed(() => normalizeRichHtml(selectedBug.value?.reproduceSteps))
-const bugResolveRemarkHtml = computed(() => normalizeRichHtml(selectedBug.value?.remark))
+const bugResolveRemark = computed(() => selectedBug.value?.resolveRemark || selectedBug.value?.remark || selectedBug.value?.fixDetail || '')
+const bugResolveRemarkHtml = computed(() => normalizeRichHtml(bugResolveRemark.value))
 const handleRichImageClick = event => {
   const image = event.target?.closest?.('img')
   if (!image?.src || image.classList.contains('rich-image--failed')) return
@@ -969,8 +967,6 @@ onMounted(async () => {
   white-space: nowrap;
 }
 
-.detail-header__tags { display: flex; gap: 6px; flex-shrink: 0; }
-
 .detail-body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 300px;
@@ -980,7 +976,7 @@ onMounted(async () => {
 
 .detail-main { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 
-.detail-sidebar { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.detail-sidebar { display: flex; flex-direction: column; gap: 14px; min-width: 0; margin-right: 10px; }
 
 .lifecycle-card :deep(.ant-card-body) { padding: 14px 16px; }
 

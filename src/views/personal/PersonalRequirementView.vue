@@ -127,15 +127,6 @@
         <a-form-item label="优先级" name="priority">
           <a-select v-model:value="formState.priority" :options="priorityOptions" placeholder="请选择优先级" />
         </a-form-item>
-        <a-form-item label="审核人" name="reviewerId">
-          <a-select
-            v-model:value="formState.reviewerId"
-            show-search
-            :options="reviewerOptions"
-            option-filter-prop="label"
-            placeholder="请选择审核人"
-          />
-        </a-form-item>
         <a-form-item label="标签">
           <a-input v-model:value="formState.tags" placeholder="多个标签请用逗号分隔" />
         </a-form-item>
@@ -154,7 +145,7 @@ import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
-import { getProjectList, getSystemUsers } from '@/api/managementProject'
+import { getProjectList } from '@/api/managementProject'
 import { createRequirement, listMyRequirements } from '@/api/requirements'
 import { useDictStore } from '@/store/dictStore'
 import { formatDateTime } from '@/utils/dateTime'
@@ -168,7 +159,6 @@ const createVisible = ref(false)
 const formRef = ref()
 const requirementRows = ref([])
 const projectRows = ref([])
-const userRows = ref([])
 
 const query = reactive({
   keyword: '',
@@ -194,7 +184,6 @@ const groupOptions = [{ label: '所属项目', value: 'projectName' }]
 const createDefaultForm = () => ({
   title: '',
   projectId: undefined,
-  reviewerId: undefined,
   requirementType: undefined,
   priority: undefined,
   description: '',
@@ -206,7 +195,6 @@ const formState = reactive(createDefaultForm())
 const formRules = {
   title: [{ required: true, message: '请输入需求标题', trigger: 'blur' }],
   projectId: [{ required: true, message: '请选择所属项目', trigger: 'change' }],
-  reviewerId: [{ required: true, message: '请选择审核人', trigger: 'change' }],
   requirementType: [{ required: true, message: '请选择需求类型', trigger: 'change' }],
   priority: [{ required: true, message: '请选择优先级', trigger: 'change' }],
   description: [{ required: true, message: '请输入需求描述', trigger: 'blur' }],
@@ -255,7 +243,6 @@ const typeFilterOptions = computed(() => typeOptions.value)
 const priorityFilterOptions = computed(() => priorityOptions.value)
 const statusFilterOptions = computed(() => statusOptions.value)
 const projectOptions = computed(() => projectRows.value.map(project => ({ label: project.name, value: project.id })))
-const reviewerOptions = computed(() => userRows.value.map(user => ({ label: user.realName || user.username, value: user.id })))
 const projectFilterOptions = computed(() => projectOptions.value)
 const projectMap = computed(() => Object.fromEntries(projectRows.value.map(project => [String(project.id), project.name])))
 
@@ -284,7 +271,6 @@ const mapRequirement = item => ({
   title: item.title,
   projectId: item.projectId,
   projectName: projectMap.value[String(item.projectId)] || '-',
-  reviewerName: item.reviewerName || '-',
   requirementType: optionLabel(typeOptions.value, item.requirementType),
   requirementTypeCode: item.requirementType,
   priority: optionLabel(priorityOptions.value, item.priority),
@@ -300,7 +286,7 @@ const filteredRows = computed(() => {
 
   return requirementRows.value.filter(item => {
     if (keyword) {
-      const text = [item.requirementNo, item.title, item.projectName, item.reviewerName].join(' ')
+      const text = [item.requirementNo, item.title, item.projectName].join(' ')
       if (!text.includes(keyword)) return false
     }
     if (query.projectId && String(item.projectId) !== String(query.projectId)) return false
@@ -337,8 +323,7 @@ const columns = [
   { title: '优先级', dataIndex: 'priority', width: 100 },
   { title: '状态', dataIndex: 'status', width: 110 },
   { title: '提交人', dataIndex: 'submitter', width: 110 },
-  { title: '审核人', dataIndex: 'reviewerName', width: 110 },
-  { title: '创建时间', dataIndex: 'createdAt', width: 170 },
+  { title: '创建时间', dataIndex: 'createdAt', width: 200 },
 ]
 
 const priorityColor = value => ({ URGENT: 'red', HIGH: 'orange', MEDIUM: 'gold', LOW: 'default' }[value] || 'default')
@@ -347,11 +332,6 @@ const statusColor = value => ({ PENDING_REVIEW: 'blue', ACCEPTED: 'green', REJEC
 const loadProjects = async () => {
   const result = await getProjectList({ pageNo: 1, pageSize: 200, projectType: 'MANAGEMENT' })
   projectRows.value = result.records || []
-}
-
-const loadUsers = async () => {
-  const result = await getSystemUsers({ pageNo: 1, pageSize: 200, enabled: true })
-  userRows.value = result.records || []
 }
 
 const loadRequirements = async () => {
@@ -374,7 +354,6 @@ const loadRequirements = async () => {
 const initPage = async () => {
   await dictStore.loadDicts()
   await loadProjects()
-  await loadUsers()
   await loadRequirements()
 }
 
@@ -416,7 +395,6 @@ const handleSubmit = async () => {
     const created = await createRequirement({
       title: formState.title,
       projectId: formState.projectId,
-      reviewerId: formState.reviewerId,
       requirementType: formState.requirementType,
       priority: formState.priority,
       description: formState.description,
