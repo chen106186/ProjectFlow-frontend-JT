@@ -461,7 +461,7 @@ const handleSave = async () => {
   position: relative;
   overflow: visible;
   border: 1px solid #d9d9d9;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .dr-rich-editor :deep(.w-e-toolbar) {
@@ -519,7 +519,7 @@ const handleSave = async () => {
   padding: 6px 10px;
   background: #fafafa;
   border: 1px solid #f0f0f0;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .dr-file-item > span:nth-child(2) {

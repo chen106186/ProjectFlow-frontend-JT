@@ -2087,7 +2087,7 @@ const trendPoints = [
 
 .prototype-card {
   border: 1px solid #ececec;
-  border-radius: 4px;
+  border-radius: 8px;
   box-shadow: 0 1px 4px rgb(0 0 0 / 3%);
 }
 
@@ -2534,7 +2534,7 @@ const trendPoints = [
 .bug-mini-card {
   padding: 12px;
   background: #f8f8f8;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .bug-mini-card + .bug-mini-card {
@@ -2727,7 +2727,7 @@ const trendPoints = [
   margin: 0;
   padding: 8px 12px;
   border: 1px solid #d9d9d9;
-  border-radius: 4px;
+  border-radius: 8px;
 }
 
 .daily-files {
@@ -2962,7 +2962,7 @@ const trendPoints = [
   color: #4b5563;
   background: #fff;
   border: 1px solid #e5eaf0;
-  border-radius: 6px;
+  border-radius: 8px;
   box-shadow: 0 8px 20px rgb(15 35 55 / 8%);
 }
 
@@ -3091,7 +3091,7 @@ const trendPoints = [
 
 .editor-box {
   border: 1px solid #d9d9d9;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .editor-tools {
@@ -3133,7 +3133,7 @@ const trendPoints = [
   padding: 8px 10px;
   background: #f8fbff;
   border: 1px solid #e5edf7;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .daily-upload-item strong {

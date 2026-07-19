@@ -178,7 +178,7 @@ const handleSubmit = async () => {
   padding: 72px 48px 76px;
   background: rgb(255 255 255 / 76%);
   border: 1px solid rgb(255 255 255 / 76%);
-  border-radius: 30px;
+  border-radius: 8px;
   box-shadow: 0 22px 48px rgb(40 91 165 / 14%);
   backdrop-filter: blur(12px);
 }
@@ -216,7 +216,7 @@ const handleSubmit = async () => {
   min-height: 58px;
   padding-inline: 18px;
   border-color: #d9dee8;
-  border-radius: 11px;
+  border-radius: 8px;
   background: rgb(255 255 255 / 72%);
   box-shadow: none;
 }
@@ -248,7 +248,7 @@ const handleSubmit = async () => {
 .login-form-card__submit {
   width: 100%;
   height: 58px;
-  border-radius: 11px;
+  border-radius: 8px;
   font-size: 20px;
   font-weight: 500;
   box-shadow: 0 12px 20px rgb(22 119 255 / 22%);

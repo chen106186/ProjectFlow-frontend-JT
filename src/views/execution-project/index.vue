@@ -351,7 +351,7 @@ onMounted(async () => { await fetchReferenceData(); await fetchProjects() })
 .execution-form :deep(.ant-form-item-label > label) { height: 34px; font-size: 16px; }
 .execution-form :deep(.ant-form-item-control-input) { min-height: 34px; }
 .execution-form :deep(.ant-input),
-.execution-form :deep(.ant-select-selector) { min-height: 34px; border-radius: 6px; }
+.execution-form :deep(.ant-select-selector) { min-height: 34px; border-radius: 8px; }
 .execution-form :deep(.ant-select-selection-placeholder) { color: #c8c8c8; font-size: 16px; }
 .execution-project-name-select :deep(.ant-select-arrow) { right: auto; left: 12px; color: #a8a8a8; font-size: 18px; }
 .execution-project-name-select :deep(.ant-select-selection-search) { inset-inline-start: 44px; inset-inline-end: 11px; }
@@ -359,6 +359,6 @@ onMounted(async () => { await fetchReferenceData(); await fetchProjects() })
 .execution-project-name-select :deep(.ant-select-selection-item) { padding-left: 36px; }
 .execution-form :deep(textarea.ant-input) { height: 100px; resize: none; }
 .form-actions { display: flex; justify-content: flex-end; gap: 24px; padding: 2px 54px 0 0; }
-.form-actions .ant-btn { min-width: 94px; height: 44px; font-size: 16px; border-radius: 7px; }
+.form-actions .ant-btn { min-width: 94px; height: 44px; font-size: 16px; border-radius: 8px; }
 @media (max-width: 960px) { .execution-filter__form.app-filter-form { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }.execution-filter__actions { grid-column: 2 !important; } }
 </style>

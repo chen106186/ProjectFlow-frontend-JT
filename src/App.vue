@@ -11,7 +11,7 @@ const themeConfig = {
   token: {
     colorPrimary: '#1677ff',
     colorBgLayout: '#f3f6f9',
-    borderRadius: 6,
+    borderRadius: 8,
     fontFamily: "'Microsoft YaHei', 'PingFang SC', Arial, sans-serif",
   },
 }

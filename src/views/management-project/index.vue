@@ -1886,7 +1886,7 @@ const handleDeleteReport = async record => {
 .detail-panel h3 { margin: 0 0 12px; }
 .gantt-panel { padding: 12px; }
 .project-stat-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 16px; }
-.project-stat-row .semantic-card { display: flex; gap: 12px; align-items: center; width: 100%; height: 86px; padding: 14px 15px; text-align: left; border: 1px solid rgb(0 0 0 / 5%); border-radius: 16px; box-shadow: 0 4px 16px rgb(0 0 0 / 5%); transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.28s ease; }
+.project-stat-row .semantic-card { display: flex; gap: 12px; align-items: center; width: 100%; height: 86px; padding: 14px 15px; text-align: left; border: 1px solid rgb(0 0 0 / 5%); border-radius: 8px; box-shadow: 0 4px 16px rgb(0 0 0 / 5%); transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.28s ease; }
 .project-stat-row .semantic-card:hover { box-shadow: 0 14px 28px rgb(0 0 0 / 10%); transform: translateY(-4px); }
 .gantt-progress { color: #0066cc; background: linear-gradient(135deg, #fff 0%, #edf6ff 100%); }
 .gantt-workspace { display: grid; min-height: 430px; overflow: hidden; border: 1px solid #edf0f3; }
@@ -1901,7 +1901,7 @@ const handleDeleteReport = async record => {
 .date-overdue { color: #ff4d4f; }
 .gantt-scroll { width: 100%; min-width: 0; min-height: 430px; overflow: hidden; }
 .gantt-scroll :deep(.gantt-container) { overflow-x: auto; overflow-y: hidden; border-radius: 0; }
-.gantt-scroll :deep(.popup-wrapper) { padding: 14px 16px; border: 1px solid rgb(0 0 0 / 6%); border-radius: 12px; box-shadow: 0 12px 32px rgb(0 0 0 / 14%); }
+.gantt-scroll :deep(.popup-wrapper) { padding: 14px 16px; border: 1px solid rgb(0 0 0 / 6%); border-radius: 8px; box-shadow: 0 12px 32px rgb(0 0 0 / 14%); }
 .gantt-scroll :deep(.popup-wrapper .title) { margin-bottom: 10px; font-size: 14px; }
 .gantt-scroll :deep(.gantt-popup__dates) { display: grid; grid-template-columns: 64px 92px; gap: 7px 14px; align-items: center; font-size: 12px; }
 .gantt-scroll :deep(.gantt-popup__dates span) { color: #86868b; }
@@ -1915,7 +1915,7 @@ const handleDeleteReport = async record => {
 .gantt-scroll :deep(.gantt-overdue .gantt-actual-bar) { fill: #ff453a; stroke: #d70015; }
 .gantt-scroll :deep(.bar-label) { fill: #1d1d1f; }
 .risk-grid, .bug-summary, .document-categories { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 22px; }
-.risk-grid .semantic-card, .bug-summary .semantic-card { display: flex; gap: 12px; align-items: center; width: 100%; height: 86px; padding: 14px 15px; text-align: left; border: 1px solid rgb(0 0 0 / 5%); border-radius: 16px; box-shadow: 0 4px 16px rgb(0 0 0 / 5%); transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.28s ease; }
+.risk-grid .semantic-card, .bug-summary .semantic-card { display: flex; gap: 12px; align-items: center; width: 100%; height: 86px; padding: 14px 15px; text-align: left; border: 1px solid rgb(0 0 0 / 5%); border-radius: 8px; box-shadow: 0 4px 16px rgb(0 0 0 / 5%); transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.28s ease; }
 .risk-grid .semantic-card:hover, .bug-summary .semantic-card:hover { box-shadow: 0 14px 28px rgb(0 0 0 / 10%); transform: translateY(-4px); }
 .semantic-card__icon { display: inline-flex; flex: 0 0 36px; align-items: center; justify-content: center; width: 36px; height: 36px; font-size: 20px; background: rgb(255 255 255 / 78%); border-radius: 11px; box-shadow: 0 4px 12px rgb(0 0 0 / 6%); }
 .semantic-card__content { min-width: 0; }.semantic-card__content > span, .semantic-card__content strong, .semantic-card__content small { display: block; }.semantic-card__content > span { color: #6e6e73; font-size: 13px; }.semantic-card__content strong { margin: 3px 0; color: #1d1d1f; font-size: 19px; }.semantic-card__content small { overflow: hidden; color: #86868b; text-overflow: ellipsis; white-space: nowrap; }
@@ -1924,7 +1924,7 @@ const handleDeleteReport = async record => {
 .report-filter { margin-bottom: 18px; }.report-filter :deep(.ant-input) { width: 280px; }
 .document-toolbar :deep(.ant-input-group-wrapper) { width: 300px; }
 .document-categories { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-.document-categories button { display: grid; grid-template-columns: 42px 1fr; padding: 15px; color: #1d1d1f; text-align: left; background: #fff; border: 1px solid rgb(0 0 0 / 5%); border-radius: 16px; box-shadow: 0 4px 16px rgb(0 0 0 / 5%); cursor: pointer; transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.28s ease; }
+.document-categories button { display: grid; grid-template-columns: 42px 1fr; padding: 15px; color: #1d1d1f; text-align: left; background: #fff; border: 1px solid rgb(0 0 0 / 5%); border-radius: 8px; box-shadow: 0 4px 16px rgb(0 0 0 / 5%); cursor: pointer; transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.28s ease; }
 .document-categories button:hover { box-shadow: 0 14px 28px rgb(0 0 0 / 10%); transform: translateY(-4px); }
 .document-categories button:first-child { border-color: #1677ff; }.document-category__icon { display: inline-flex; grid-row: 1 / 3; align-self: center; align-items: center; justify-content: center; width: 36px; height: 36px; font-size: 20px; border-radius: 11px; }.document-categories strong { font-size: 17px; }
 .category-all { background: linear-gradient(135deg, #fff 0%, #edf6ff 100%); }.category-all .document-category__icon { color: #0066cc; background: #e5f2ff; }
@@ -1987,7 +1987,7 @@ const handleDeleteReport = async record => {
 .report-detail-attachment :deep(.ant-upload-drag-icon) { margin-bottom: 4px; font-size: 30px; }
 .report-detail-attachment :deep(.ant-upload-text) { margin-bottom: 2px; font-size: 14px; }
 .report-detail-attachment :deep(.ant-upload-hint) { font-size: 12px; }
-.report-detail-attachment__list { margin-top: 8px; border: 1px solid #edf0f3; border-radius: 6px; }
+.report-detail-attachment__list { margin-top: 8px; border: 1px solid #edf0f3; border-radius: 8px; }
 .report-detail-attachment__list > div { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 8px; align-items: center; min-height: 34px; padding: 2px 10px; }
 .report-detail-attachment__list > div + div { border-top: 1px solid #edf0f3; }
 .report-detail-attachment__list span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1996,7 +1996,7 @@ const handleDeleteReport = async record => {
 .report-item-table :deep(.ant-table-body) { max-height: 200px; overflow-y: auto !important; }
 .task-picker-pagination { display: flex; justify-content: flex-end; margin-top: 12px; }
 .report-detail-log-title { margin-top: 28px; }
-.report-detail-logs { height: 200px; padding: 16px 18px 4px; overflow-x: hidden; overflow-y: auto; border: 1px solid #f0f0f0; border-radius: 6px; }
+.report-detail-logs { height: 200px; padding: 16px 18px 4px; overflow-x: hidden; overflow-y: auto; border: 1px solid #f0f0f0; border-radius: 8px; }
 .report-detail-log-meta { color: #8c8c8c; font-size: 12px; }
 .report-detail-logs p { margin: 6px 0 0; color: #1f1f1f; }
 .report-detail-view :deep(.ant-table-cell) { white-space: nowrap; }

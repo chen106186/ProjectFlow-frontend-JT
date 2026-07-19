@@ -304,7 +304,7 @@ const handleClose = () => {
   height: calc((100vh - 248px) / 6);
   min-height: 70px;
   padding: 4px 5px;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .task-calendar-modal__calendar :deep(.ant-picker-cell-selected .ant-picker-cell-inner) {
@@ -445,7 +445,7 @@ const handleClose = () => {
   background: #fff;
   border: 1px solid #e8e8e8;
   border-left-width: 3px;
-  border-radius: 7px;
+  border-radius: 8px;
   cursor: pointer;
 }
 
@@ -630,7 +630,7 @@ body .ant-modal-root .task-calendar-modal-wrap {
   height: calc(100vh - 104px);
   padding: 0;
   overflow: hidden;
-  border-radius: 10px;
+  border-radius: 8px;
   box-shadow: 0 14px 38px rgb(15 35 55 / 12%);
 }
 

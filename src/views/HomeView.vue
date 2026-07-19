@@ -538,7 +538,7 @@ const handleTodoClick = item => {
   text-align: left;
   background: #fff;
   border: 1px solid #eef1f4;
-  border-radius: 7px;
+  border-radius: 8px;
   cursor: pointer;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
@@ -698,7 +698,7 @@ const handleTodoClick = item => {
   background: #fff;
   border: 1px solid #e8e8e8;
   border-left-width: 3px;
-  border-radius: 7px;
+  border-radius: 8px;
   cursor: pointer;
   transition: box-shadow 0.15s;
 }
@@ -941,7 +941,7 @@ const handleTodoClick = item => {
   background: #fff;
   border: 1px solid #eef1f4;
   border-left-width: 4px;
-  border-radius: 7px;
+  border-radius: 8px;
   box-shadow: 0 2px 8px rgb(0 0 0 / 3%);
 }
 

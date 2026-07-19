@@ -362,7 +362,7 @@ onMounted(fetchTaskDetail)
 
 .detail-card {
   border: 1px solid var(--app-border);
-  border-radius: 6px;
+  border-radius: 8px;
   box-shadow: none;
 }
 

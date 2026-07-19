@@ -258,7 +258,7 @@ onMounted(async () => {
   height: 100%;
   min-height: 0;
   border: 1px solid var(--app-border);
-  border-radius: 2px;
+  border-radius: 8px;
   box-shadow: none;
 }
 
@@ -334,7 +334,7 @@ onMounted(async () => {
   min-height: 0;
   overflow-y: auto;
   border: 1px solid #e8edf3;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .notification-group + .notification-group {

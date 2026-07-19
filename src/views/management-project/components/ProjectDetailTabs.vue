@@ -551,7 +551,9 @@ defineExpose({
 
 .project-detail__left {
   min-width: 0;
+  overflow: hidden;
   background: #fff;
+  border-radius: 8px;
 }
 
 .project-detail__main {
@@ -661,7 +663,7 @@ defineExpose({
   padding: 14px 15px;
   text-align: left;
   border: 1px solid rgb(0 0 0 / 5%);
-  border-radius: 16px;
+  border-radius: 8px;
   box-shadow: 0 4px 16px rgb(0 0 0 / 5%);
   transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.28s ease;
 }
@@ -836,7 +838,7 @@ defineExpose({
 .gantt-scroll :deep(.popup-wrapper) {
   padding: 14px 16px;
   border: 1px solid rgb(0 0 0 / 6%);
-  border-radius: 12px;
+  border-radius: 8px;
   box-shadow: 0 12px 32px rgb(0 0 0 / 14%);
 }
 
@@ -999,7 +1001,7 @@ defineExpose({
   text-align: left;
   background: #fff;
   border: 1px solid rgb(0 0 0 / 5%);
-  border-radius: 16px;
+  border-radius: 8px;
   box-shadow: 0 4px 16px rgb(0 0 0 / 5%);
   cursor: pointer;
   transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.28s ease;

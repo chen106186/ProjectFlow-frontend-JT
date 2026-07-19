@@ -68,7 +68,7 @@ const profileItems = computed(() => [
   width: min(720px, 100%);
   height: fit-content;
   border: 1px solid var(--app-border);
-  border-radius: 18px;
+  border-radius: 8px;
 }
 
 .profile-card :deep(.ant-card-body) {

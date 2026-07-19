@@ -1550,7 +1550,7 @@ onMounted(async () => {
 .summary-metrics strong { font-size: 18px; }
 .summary-metrics .danger { color: #ff4d4f; }
 .execution-detail-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; align-items: start; }
-.execution-detail-card { min-width: 0; min-height: 560px; overflow: visible; background: #fff; }
+.execution-detail-card { min-width: 0; min-height: 560px; overflow: hidden; background: #fff; border-radius: 8px; }
 .project-operation-sidebar { min-width: 0; }
 .operation-lifecycle-card { border: 1px solid #edf0f3; box-shadow: 0 1px 4px rgb(0 0 0 / 4%); }
 .operation-lifecycle-card :deep(.ant-card-head) { min-height: 44px; padding: 0 18px; }
@@ -1584,8 +1584,8 @@ onMounted(async () => {
   justify-content: flex-end;
   margin-top: 16px;
 }
-.semantic-card { display: flex; gap: 14px; align-items: center; min-height: 86px; padding: 16px 18px; border: 1px solid #edf0f3; border-radius: 6px; }
-.execution-stat-row .semantic-card, .risk-grid .semantic-card, .bug-summary .semantic-card { gap: 12px; width: 100%; height: 86px; min-height: 0; padding: 14px 15px; text-align: left; border: 1px solid rgb(0 0 0 / 5%); border-radius: 16px; box-shadow: 0 4px 16px rgb(0 0 0 / 5%); transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.28s ease; }
+.semantic-card { display: flex; gap: 14px; align-items: center; min-height: 86px; padding: 16px 18px; border: 1px solid #edf0f3; border-radius: 8px; }
+.execution-stat-row .semantic-card, .risk-grid .semantic-card, .bug-summary .semantic-card { gap: 12px; width: 100%; height: 86px; min-height: 0; padding: 14px 15px; text-align: left; border: 1px solid rgb(0 0 0 / 5%); border-radius: 8px; box-shadow: 0 4px 16px rgb(0 0 0 / 5%); transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.28s ease; }
 .execution-stat-row .semantic-card:hover, .risk-grid .semantic-card:hover, .bug-summary .semantic-card:hover, .document-categories button:hover { box-shadow: 0 14px 28px rgb(0 0 0 / 10%); transform: translateY(-4px); }
 .semantic-card__icon { display: inline-flex; flex: 0 0 36px; align-items: center; justify-content: center; width: 36px; height: 36px; font-size: 20px; background: rgb(255 255 255 / 78%); border-radius: 11px; box-shadow: 0 4px 12px rgb(0 0 0 / 6%); }
 .semantic-card__content { min-width: 0; }
@@ -1620,7 +1620,7 @@ onMounted(async () => {
 .gantt-scroll { width: 100%; min-width: 0; height: 100%; min-height: 0; overflow: hidden; }
 .gantt-scroll :deep(.gantt-container) { height: 100%; overflow-x: auto; overflow-y: hidden; border-radius: 0; }
 .gantt-scroll :deep(.gantt) { display: block; height: 100%; max-width: none; }
-.gantt-scroll :deep(.popup-wrapper) { padding: 14px 16px; border: 1px solid rgb(0 0 0 / 6%); border-radius: 12px; box-shadow: 0 12px 32px rgb(0 0 0 / 14%); }
+.gantt-scroll :deep(.popup-wrapper) { padding: 14px 16px; border: 1px solid rgb(0 0 0 / 6%); border-radius: 8px; box-shadow: 0 12px 32px rgb(0 0 0 / 14%); }
 .gantt-scroll :deep(.popup-wrapper .title) { margin-bottom: 10px; font-size: 14px; }
 .gantt-scroll :deep(.gantt-popup__dates) { display: grid; grid-template-columns: 64px 92px; gap: 7px 14px; align-items: center; font-size: 12px; }
 .gantt-scroll :deep(.gantt-popup__dates span) { color: #86868b; }
@@ -1667,7 +1667,7 @@ onMounted(async () => {
 .report-detail-remark-actions { display: flex; justify-content: flex-end; margin-bottom: 14px; }
 .report-task-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
 .report-detail-log-title { margin-top: 28px; }
-.report-detail-logs { min-height: 130px; padding: 16px 18px 4px; border: 1px solid #f0f0f0; border-radius: 6px; }
+.report-detail-logs { min-height: 130px; padding: 16px 18px 4px; border: 1px solid #f0f0f0; border-radius: 8px; }
 .report-detail-log-meta { color: #8c8c8c; font-size: 12px; }
 .report-detail-logs p { margin: 6px 0 0; color: #1f1f1f; }
 .report-detail-view :deep(.ant-table-cell) { white-space: nowrap; }
@@ -1679,7 +1679,7 @@ onMounted(async () => {
 .report-modal__actions .ant-btn { min-width: 80px; }
 .document-toolbar :deep(.ant-input-group-wrapper) { width: 300px; }
 .document-categories { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-.document-categories button { display: grid; grid-template-columns: 42px 1fr; padding: 15px; color: #1d1d1f; text-align: left; background: #fff; border: 1px solid rgb(0 0 0 / 5%); border-radius: 16px; box-shadow: 0 4px 16px rgb(0 0 0 / 5%); cursor: pointer; transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.28s ease; }
+.document-categories button { display: grid; grid-template-columns: 42px 1fr; padding: 15px; color: #1d1d1f; text-align: left; background: #fff; border: 1px solid rgb(0 0 0 / 5%); border-radius: 8px; box-shadow: 0 4px 16px rgb(0 0 0 / 5%); cursor: pointer; transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.28s ease; }
 .document-categories button:first-child { border-color: #1677ff; }
 .document-categories button.active { color: #1677ff; border-color: #1677ff; box-shadow: 0 0 0 2px rgb(22 119 255 / 12%); }
 .document-category__icon { display: inline-flex; grid-row: 1 / 3; align-self: center; align-items: center; justify-content: center; width: 36px; height: 36px; font-size: 20px; border-radius: 11px; }

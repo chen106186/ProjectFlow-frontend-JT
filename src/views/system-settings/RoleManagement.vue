@@ -332,7 +332,7 @@ const handleSavePermissions = async () => {
 
 .prototype-card {
   border: 1px solid #ececec;
-  border-radius: 4px;
+  border-radius: 8px;
   box-shadow: 0 1px 4px rgb(0 0 0 / 3%);
 }
 

@@ -273,12 +273,18 @@
 
             <!-- Right: sidebar (always visible) -->
             <div class="detail-sidebar">
-              <div v-if="isClosedBug(selectedBug)" class="closed-tip detail-closed-tip">
-                <a-tag color="green" style="font-size:0.8125rem;padding:0.25rem 0.625rem">已关闭</a-tag>
-                <p>该 Bug 已关闭，不可再进行操作。</p>
-              </div>
               <a-card class="detail-card lifecycle-card" :bordered="false">
                 <template #title><span class="detail-card__title">Bug的一生</span></template>
+                <template v-if="isClosedBug(selectedBug)" #extra>
+                  <a-tag color="green" class="lifecycle-status-tag">已关闭</a-tag>
+                </template>
+                <div v-if="isClosedBug(selectedBug)" class="closed-summary">
+                  <CheckCircleFilled class="closed-summary__icon" />
+                  <div>
+                    <strong>流程已结束</strong>
+                    <p>该 Bug 已关闭，不可再进行操作。</p>
+                  </div>
+                </div>
                 <a-empty v-if="!selectedBug.logs?.length" description="暂无流转记录" style="padding: 1rem 0" />
                 <a-timeline v-else class="lifecycle-timeline">
                   <a-timeline-item v-for="log in selectedBug.logs" :key="log.id">
@@ -344,7 +350,7 @@
 </template>
 
 <script setup>
-import { ArrowLeftOutlined, CheckOutlined, CloseOutlined, DownOutlined, PlusOutlined, RightOutlined } from '@ant-design/icons-vue'
+import { ArrowLeftOutlined, CheckCircleFilled, CheckOutlined, CloseOutlined, DownOutlined, PlusOutlined, RightOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
@@ -922,7 +928,7 @@ onMounted(async () => {
 .bug-form-fields { max-width: 980px; }
 .bug-form-fields :deep(.ant-form-item) { margin-bottom: 20px; }
 .bug-form-fields :deep(.ant-form-item-label) { max-width: 150px; }
-.bug-rich-editor { border: 1px solid #d9d9d9; border-radius: 4px; overflow: hidden; }
+.bug-rich-editor { border: 1px solid #d9d9d9; border-radius: 8px; overflow: hidden; }
 .bug-rich-editor :deep(.w-e-toolbar) { border-bottom: 1px solid #d9d9d9; }
 .bug-rich-editor :deep(.w-e-text-container) { min-height: 260px; }
 .bug-rich-editor :deep(.w-e-text-container img) { max-width: 100%; height: auto; }
@@ -941,7 +947,7 @@ onMounted(async () => {
   max-width: calc(100vw - 32px);
   padding: 10px 30px;
   background: rgba(0, 0, 0, 0.28);
-  border-radius: 12px;
+  border-radius: 8px;
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
   transform: translateX(-50%);
 }
@@ -1000,9 +1006,28 @@ onMounted(async () => {
 
 .detail-main { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 
-.detail-sidebar { display: flex; flex-direction: column; gap: 14px; min-width: 0; margin-right: 10px; }
+.detail-sidebar { min-width: 0; margin-right: 10px; }
 
-.lifecycle-card :deep(.ant-card-body) { padding: 14px 16px; }
+.detail-card.lifecycle-card :deep(.ant-card-body) { margin: 0; padding: 14px 16px 6px; }
+.lifecycle-card :deep(.ant-card-extra) { padding: 0; }
+
+.lifecycle-status-tag { margin-inline-end: 0; font-weight: 500; }
+
+.closed-summary {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 18px;
+  padding: 12px;
+  color: #389e0d;
+  background: #f6ffed;
+  border: 1px solid #d9f7be;
+  border-radius: 8px;
+}
+
+.closed-summary__icon { flex: none; margin-top: 2px; font-size: 16px; }
+.closed-summary strong { display: block; color: #237804; font-size: 13px; line-height: 1.5; }
+.closed-summary p { margin: 2px 0 0; color: #6b7280; font-size: 12px; line-height: 1.5; }
 
 .lifecycle-timeline { margin-top: 4px; }
 .lifecycle-timeline :deep(.ant-timeline-item-tail) { border-inline-start-color: #e0e7ef; }
@@ -1129,7 +1154,7 @@ onMounted(async () => {
 .comment-item {
   padding: 12px 14px;
   background: #fafafa;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 .comment-item__meta { display: flex; gap: 10px; align-items: baseline; margin-bottom: 6px; }
 .comment-item__meta b { font-size: 13px; color: #262626; }
@@ -1152,7 +1177,7 @@ onMounted(async () => {
   overflow: hidden;
   background: #fff;
   border: 1px solid #d9d9d9;
-  border-radius: 4px;
+  border-radius: 8px;
 }
 .comment-rich-editor :deep(.w-e-toolbar) { border-bottom: 1px solid #d9d9d9; }
 .comment-rich-editor :deep(.w-e-text-container) { min-height: 120px; }
@@ -1162,7 +1187,7 @@ onMounted(async () => {
 
 .resolve-form { margin-top: 12px; }
 .resolve-form :deep(.ant-form-item) { margin-bottom: 20px; }
-.resolve-rich-editor { overflow: hidden; background: #fff; border: 1px solid #d9d9d9; border-radius: 4px; }
+.resolve-rich-editor { overflow: hidden; background: #fff; border: 1px solid #d9d9d9; border-radius: 8px; }
 .resolve-rich-editor :deep(.w-e-toolbar) { border-bottom: 1px solid #d9d9d9; }
 .resolve-rich-editor :deep(.w-e-text-container) { min-height: 220px; }
 .resolve-rich-editor :deep(.w-e-text-container img) { max-width: 100%; height: auto; }
@@ -1182,7 +1207,7 @@ onMounted(async () => {
   max-width: calc(100vw - 32px);
   padding: 10px 30px;
   background: rgba(0, 0, 0, 0.28);
-  border-radius: 12px;
+  border-radius: 8px;
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
   transform: translateX(-50%);
 }
@@ -1194,10 +1219,6 @@ onMounted(async () => {
 }
 .detail-floating-actions .resolve-button { background: #52c41a; border-color: #52c41a; }
 .detail-floating-actions .resolve-button:hover { background: #73d13d; border-color: #73d13d; }
-
-.closed-tip { text-align: center; }
-.closed-tip p { margin: 10px 0 0; color: #8c8c8c; font-size: 13px; }
-.detail-closed-tip { padding: 18px 0; }
 
 @media (max-width: 1000px) {
   .detail-floating-actions,

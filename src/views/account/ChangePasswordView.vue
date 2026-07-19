@@ -120,7 +120,7 @@ const handleSubmit = async () => {
   width: min(620px, 100%);
   height: fit-content;
   border: 1px solid var(--app-border);
-  border-radius: 18px;
+  border-radius: 8px;
 }
 
 .password-card :deep(.ant-card-body) {
@@ -168,7 +168,7 @@ const handleSubmit = async () => {
   color: #667085;
   background: #f8fbff;
   border: 1px solid #e6f0ff;
-  border-radius: 12px;
+  border-radius: 8px;
 }
 
 .password-tips p {
