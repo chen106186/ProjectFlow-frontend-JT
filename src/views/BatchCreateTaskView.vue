@@ -84,7 +84,7 @@
               <td><a-checkbox :checked="selectedKeys.includes(row.key)" @change="toggleRow(row.key)" /></td>
               <td>{{ row.sequence }}</td>
               <td>
-                <div class="name-cell" :class="{ 'name-cell--child': row.level > 0 }">
+                <div class="name-cell" :style="row.level ? { paddingLeft: `${row.level * 1.5}rem` } : undefined">
                   <span v-if="row.level" class="child-mark">└</span>
                   <a-input v-model:value="row.name" :placeholder="row.level ? '请输入子任务名称' : '请输入任务名称'" />
                 </div>
@@ -108,7 +108,7 @@
               <td>
                 <a-space :size="4">
                   <a-button type="link" size="small" @click="duplicateRow(row.key)">复制</a-button>
-                  <a-button v-if="!row.parentKey" type="link" size="small" @click="addChild(row.key)">添加子任务</a-button>
+                  <a-button v-if="row.level < MAX_CHILD_LEVEL" type="link" size="small" @click="addChild(row.key)">添加子任务</a-button>
                   <a-button type="link" danger size="small" @click="removeRows([row.key])">删除</a-button>
                 </a-space>
               </td>
@@ -147,6 +147,8 @@ const roleOptions = [
   { label: '产品', value: '产品' },
   { label: '设计', value: '设计' },
 ]
+
+const MAX_CHILD_LEVEL = 3
 
 let seed = 1
 
@@ -189,21 +191,26 @@ const projectOptions = computed(() =>
 const parentRows = computed(() => rows.value.filter(row => !row.parentKey))
 const childCount = computed(() => rows.value.length - parentRows.value.length)
 const selectedRow = computed(() => rows.value.find(row => row.key === selectedKeys.value[0]))
-const canAddSelectedChild = computed(() => selectedKeys.value.length === 1 && selectedRow.value && !selectedRow.value.parentKey)
+const canAddSelectedChild = computed(() => selectedKeys.value.length === 1 && selectedRow.value?.level < MAX_CHILD_LEVEL)
 
 const displayRows = computed(() => {
   const result = []
+  const appendChildren = (parentKey, parentSequence, level) => {
+    rows.value
+      .filter(row => row.parentKey === parentKey)
+      .forEach((child, childIndex) => {
+        child.level = level
+        child.sequence = `${parentSequence}.${childIndex + 1}`
+        result.push(child)
+        appendChildren(child.key, child.sequence, level + 1)
+      })
+  }
+
   parentRows.value.forEach((parent, index) => {
     parent.level = 0
     parent.sequence = String(index + 1)
     result.push(parent)
-    rows.value
-      .filter(row => row.parentKey === parent.key)
-      .forEach((child, childIndex) => {
-        child.level = 1
-        child.sequence = `${index + 1}.${childIndex + 1}`
-        result.push(child)
-      })
+    appendChildren(parent.key, parent.sequence, 1)
   })
   return result
 })
@@ -217,12 +224,24 @@ const addParent = () => {
 
 const addChild = key => {
   const parent = rows.value.find(row => row.key === key)
-  if (!parent || parent.parentKey) {
-    message.warning('请先选择一个父任务')
+  if (!parent) return
+  if (parent.level >= MAX_CHILD_LEVEL) {
+    message.warning('子任务层级最多支持 3 层')
     return
   }
   const child = newRow(parent.key)
-  const insertIndex = Math.max(...rows.value.map((row, index) => (row.key === parent.key || row.parentKey === parent.key ? index : -1)))
+  const descendantKeys = new Set([parent.key])
+  let hasNewDescendant = true
+  while (hasNewDescendant) {
+    hasNewDescendant = false
+    rows.value.forEach(row => {
+      if (row.parentKey && descendantKeys.has(row.parentKey) && !descendantKeys.has(row.key)) {
+        descendantKeys.add(row.key)
+        hasNewDescendant = true
+      }
+    })
+  }
+  const insertIndex = Math.max(...rows.value.map((row, index) => (descendantKeys.has(row.key) ? index : -1)))
   rows.value.splice(insertIndex + 1, 0, child)
 }
 
@@ -239,9 +258,16 @@ const duplicateRow = key => {
 
 const removeRows = keys => {
   const removeKeySet = new Set(keys)
-  keys.forEach(key => {
-    rows.value.filter(row => row.parentKey === key).forEach(row => removeKeySet.add(row.key))
-  })
+  let hasNewDescendant = true
+  while (hasNewDescendant) {
+    hasNewDescendant = false
+    rows.value.forEach(row => {
+      if (row.parentKey && removeKeySet.has(row.parentKey) && !removeKeySet.has(row.key)) {
+        removeKeySet.add(row.key)
+        hasNewDescendant = true
+      }
+    })
+  }
   rows.value = rows.value.filter(row => !removeKeySet.has(row.key))
   selectedKeys.value = selectedKeys.value.filter(key => !removeKeySet.has(key))
   if (!rows.value.length) addParent()
@@ -510,10 +536,6 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 0.3125rem;
-}
-
-.name-cell--child {
-  padding-left: 1.5rem;
 }
 
 .child-mark {
