@@ -40,6 +40,7 @@ import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { createProject, getGanttNodes, getProjectDetail, getSystemUsers, updateProject } from '@/api/managementProject'
+import { getDepartments } from '@/api/system'
 import { useDictStore } from '@/store/dictStore'
 import { OPERATION_ACTIONS, OPERATION_MODULES, recordOperationLog } from '@/utils/operationLog'
 
@@ -123,11 +124,15 @@ const editableProjectStatusOptions = computed(() => {
 })
 
 const loadReferenceData = async () => {
-  const [userPage] = await Promise.all([
+  const [userPage, depts] = await Promise.all([
     getSystemUsers({ pageNo: 1, pageSize: 200, enabled: true }),
+    getDepartments(),
     dictStore.loadDicts(),
   ])
-  managerOptions.value = userPage.records.map(user => ({ label: user.realName, value: user.id }))
+  const pmDept = (depts || []).find(d => d.name === '项目经理部')
+  const allUsers = userPage.records || []
+  const pmUsers = pmDept ? allUsers.filter(u => u.departmentId === pmDept.id) : allUsers
+  managerOptions.value = (pmUsers.length ? pmUsers : allUsers).map(user => ({ label: user.realName, value: user.id }))
   projectStatusOptions.value = dictStore.getDictItems('projectStatus')
   contractOptions.value = dictStore.getDictItems('contractStatus')
 }

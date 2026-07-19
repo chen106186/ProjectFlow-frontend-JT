@@ -15,11 +15,12 @@
         </template>
         <template #extra>
           <a-tabs v-model:active-key="activeTodoTab" class="todo-tabs" size="small">
-            <a-tab-pane key="all" tab="全部" />
-            <a-tab-pane key="overdue" tab="逾期" />
-            <a-tab-pane key="urgent" tab="紧急" />
-            <a-tab-pane key="bug" tab="BUG" />
-            <a-tab-pane key="requirement" tab="需求" />
+            <a-tab-pane key="all" :tab="`全部（${todoCounts.all}）`" />
+            <a-tab-pane key="task" :tab="`任务（${todoCounts.task}）`" />
+            <a-tab-pane key="overdue" :tab="`逾期（${todoCounts.overdue}）`" />
+            <a-tab-pane key="urgent" :tab="`紧急（${todoCounts.urgent}）`" />
+            <a-tab-pane key="bug" :tab="`BUG（${todoCounts.bug}）`" />
+            <a-tab-pane key="requirement" :tab="`需求（${todoCounts.requirement}）`" />
           </a-tabs>
         </template>
         <a-spin :spinning="todoLoading">
@@ -222,12 +223,22 @@ const metrics = computed(() => [
 
 const filteredTodos = computed(() => {
   if (activeTodoTab.value === 'all') return todos.value
+  if (activeTodoTab.value === 'task') return todos.value.filter(t => t.itemType === 'TASK')
   if (activeTodoTab.value === 'overdue') return todos.value.filter(t => t.overdueDays > 0)
   if (activeTodoTab.value === 'urgent') return todos.value.filter(t => t.priority === 'URGENT')
   if (activeTodoTab.value === 'bug') return todos.value.filter(t => t.itemType === 'BUG')
   if (activeTodoTab.value === 'requirement') return todos.value.filter(t => t.itemType === 'REQUIREMENT')
   return todos.value
 })
+
+const todoCounts = computed(() => ({
+  all: todos.value.length,
+  task: todos.value.filter(t => t.itemType === 'TASK').length,
+  overdue: todos.value.filter(t => t.overdueDays > 0).length,
+  urgent: todos.value.filter(t => t.priority === 'URGENT').length,
+  bug: todos.value.filter(t => t.itemType === 'BUG').length,
+  requirement: todos.value.filter(t => t.itemType === 'REQUIREMENT').length,
+}))
 
 const todoStatus = item => {
   if (item.overdueDays > 0) return 'overdue'
@@ -610,8 +621,15 @@ const handleTodoClick = item => {
   min-height: 60px;
 }
 
+.todo-panel :deep(.ant-card-head-title) {
+  flex: none;
+}
+
 .todo-panel :deep(.ant-card-extra) {
   padding: 0;
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .todo-panel :deep(.ant-card-body) {
@@ -627,14 +645,23 @@ const handleTodoClick = item => {
 }
 
 .todo-tabs {
-  width: 320px;
+  width: auto;
 }
 
 .todo-tabs :deep(.ant-tabs-nav) {
   margin: 0;
 }
 
+.todo-tabs :deep(.ant-tabs-tab) {
+  padding: 8px 0;
+  margin-left: 16px !important;
+}
+
 .todo-tabs :deep(.ant-tabs-content-holder) {
+  display: none;
+}
+
+.todo-tabs :deep(.ant-tabs-nav-more) {
   display: none;
 }
 

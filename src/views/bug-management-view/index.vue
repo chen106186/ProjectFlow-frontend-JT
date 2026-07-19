@@ -397,7 +397,7 @@ const queryParams = reactive({ keyword: '', projectId: undefined, priority: unde
 
 const columns = [
   { title: '编号', dataIndex: 'bugNo', width: 80 },
-  { title: 'Bug标题', dataIndex: 'title', width: 240 },
+  { title: 'Bug标题', dataIndex: 'title', width: 240, ellipsis: true },
   { title: '所属项目', dataIndex: 'projectName', width: 210 },
   { title: '严重等级', dataIndex: 'priority', width: 110 },
   { title: '状态', dataIndex: 'status', width: 110 },

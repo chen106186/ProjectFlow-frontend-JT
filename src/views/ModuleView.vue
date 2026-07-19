@@ -669,6 +669,7 @@ import {
   fixBug,
   getDicts,
   getMyStatistics,
+  getMyBugs,
   getProjectBugs,
   getProjectFiles,
   getProjectList,
@@ -828,13 +829,9 @@ const isManagementProject = project => (project?.projectType || project?.type) =
 const taskFilterProjectOptions = computed(() =>
   taskProjects.value.map(p => ({ label: p.name, value: p.id }))
 )
-const taskFormProjectOptions = computed(() => {
-  const projects = taskModalMode.value === 'create'
-    ? taskProjects.value.filter(isManagementProject)
-    : taskProjects.value
-
-  return projects.map(p => ({ label: p.name, value: p.id }))
-})
+const taskFormProjectOptions = computed(() =>
+  taskProjects.value.map(p => ({ label: p.name, value: p.id }))
+)
 const taskUserOptions = computed(() =>
   taskUsers.value.map(u => ({ label: u.realName, value: u.id }))
 )
@@ -1111,19 +1108,15 @@ async function fetchBugModuleData() {
 
 async function loadMyBugs() {
   try {
-    const profile = JSON.parse(window.localStorage.getItem('authProfile') || '{}')
     const f = bugFilter.value
-    const result = await getProjectBugs({
-      pageNo: 1,
-      pageSize: 200,
+    const result = await getMyBugs({
       keyword: f.keyword || undefined,
       projectId: f.projectId || undefined,
       priority: f.priority || undefined,
       status: f.status || undefined,
       creatorId: f.creatorId || undefined,
-      assigneeId: profile.id || undefined,
     })
-    const bugs = result.records || []
+    const bugs = Array.isArray(result) ? result : (result.records || [])
     bugApiRows.value = bugs.map((bug, index) => ({
       id: bug.id,
       index: index + 1,
@@ -1518,14 +1511,6 @@ const handleTaskSubmit = async () => {
   try {
     let body
     if (isPersonalTasks.value && editingTaskId.value) {
-      if (!editingTaskId.value) {
-        const selectedProject = taskProjects.value.find(project => project.id === fs.projectId)
-        if (selectedProject && !isManagementProject(selectedProject)) {
-          message.warning('新建任务只能选择管理类项目')
-          taskSubmitLoading.value = false
-          return
-        }
-      }
       body = {
         actualStartDate: fs.actualStartDate ? fs.actualStartDate.format('YYYY-MM-DD') : undefined,
         actualEndDate: fs.actualEndDate ? fs.actualEndDate.format('YYYY-MM-DD') : undefined,
@@ -1536,14 +1521,6 @@ const handleTaskSubmit = async () => {
       if (!fs.projectId) { message.warning('请选择所属项目'); taskSubmitLoading.value = false; return }
       if (!fs.assigneeId) { message.warning('请选择负责人'); taskSubmitLoading.value = false; return }
       if (!fs.priority) { message.warning('请选择优先级'); taskSubmitLoading.value = false; return }
-      if (!editingTaskId.value) {
-        const selectedProject = taskProjects.value.find(project => project.id === fs.projectId)
-        if (selectedProject && !isManagementProject(selectedProject)) {
-          message.warning('新建任务只能选择管理类项目')
-          taskSubmitLoading.value = false
-          return
-        }
-      }
       body = {
         projectId: fs.projectId,
         name: fs.name,
