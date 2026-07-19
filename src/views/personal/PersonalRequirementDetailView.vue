@@ -284,13 +284,7 @@ const handleEditSubmit = async () => {
   }
 }
 
-const handleBack = () => {
-  if (from === 'management') {
-    router.push({ name: 'RequirementManagement' })
-  } else {
-    router.push({ name: 'PersonalRequirements' })
-  }
-}
+const handleBack = () => router.back()
 
 const initPage = async () => {
   const id = route.params.id
