@@ -99,12 +99,12 @@
               <span class="section-title"><BugOutlined /> 关联Bug（{{ relatedBugs.length }}）</span>
             </template>
             <a-empty v-if="!relatedBugs.length" description="暂无关联Bug" />
-            <article v-for="bug in relatedBugs" v-else :key="bug.code" class="bug-mini-card">
-              <p class="bug-code"><BugOutlined /> {{ bug.code }}</p>
-              <strong>{{ bug.title }}</strong>
+            <article v-for="bug in relatedBugs" v-else :key="bug.id || bug.bugNo" class="bug-mini-card">
+              <p class="bug-code"><BugOutlined /> {{ formatBugNo(bug) }}</p>
+              <strong>{{ bug.title || '-' }}</strong>
               <div>
-                <a-tag :color="bug.levelColor">{{ bug.level }}</a-tag>
-                <a-tag :color="bug.statusColor">{{ bug.status }}</a-tag>
+                <a-tag :color="getBugPriorityColor(bug.priority)">{{ getBugPriorityLabel(bug.priority) }}</a-tag>
+                <a-tag :color="getBugStatusColor(bug.status)">{{ getBugStatusLabel(bug.status) }}</a-tag>
               </div>
             </article>
           </a-card>
@@ -730,6 +730,7 @@ const taskSubmitLoading = ref(false)
 const taskDetailLoading = ref(false)
 const selectedTaskDetail = ref(null)
 const taskAttachmentRows = ref([])
+const taskRelatedBugRows = ref([])
 const taskUploadLoading = ref(false)
 const editingTaskId = ref(null)
 const taskDisplayMode = ref('list')
@@ -1086,6 +1087,11 @@ function getBugStatusLabel(status) { return BUG_STATUS_LABELS[status] || status 
 function getBugStatusColor(status) { return BUG_STATUS_COLORS[status] || 'default' }
 function getBugPriorityLabel(priority) { return BUG_PRIORITY_LABELS[priority] || priority || '-' }
 function getBugPriorityColor(priority) { return BUG_PRIORITY_COLORS[priority] || 'default' }
+function formatBugNo(bug) {
+  if (bug?.bugNo) return `#${String(bug.bugNo).padStart(3, '0')}`
+  if (bug?.code) return bug.code
+  return bug?.id ? `BUG-${bug.id}` : '-'
+}
 function getBugUserName(userId) { return bugUsers.value.find(u => u.id === userId)?.realName || '-' }
 function getBugProjectName(projectId) { return bugProjects.value.find(p => p.id === projectId)?.name || '-' }
 
@@ -1256,21 +1262,20 @@ function renderStatisticsCharts() {
   // 项目分布
   const projectDist = stats?.projectDistribution || {}
   const projectData = Object.entries(projectDist).map(([name, value], i) => ({
-    value,
+    value: Number(value),
     name,
     itemStyle: { color: CHART_COLORS[i % CHART_COLORS.length] },
   }))
-  const projectTotal = projectData.reduce((s, d) => s + d.value, 0)
   projectChart.setOption(createDonutOption(
     projectData.length ? projectData : [{ value: 1, name: '暂无数据', itemStyle: { color: '#e8e8e8' } }],
     CHART_COLORS,
-    projectData.length ? `${projectTotal} 个` : '0%',
+    projectData.length ? `${projectData.length} 个` : '-',
   ))
 
   // 任务状态分布
   const statusDist = stats?.taskStatusDistribution || {}
   const statusData = Object.entries(statusDist).map(([code, value]) => ({
-    value,
+    value: Number(value),
     name: STATUS_LABEL_MAP[code] || code,
     itemStyle: { color: STATUS_COLOR_MAP[code] || '#c8cfd9' },
   }))
@@ -1278,7 +1283,7 @@ function renderStatisticsCharts() {
   statusChart.setOption(createDonutOption(
     statusData.length ? statusData : [{ value: 1, name: '暂无数据', itemStyle: { color: '#e8e8e8' } }],
     Object.values(STATUS_COLOR_MAP),
-    statusData.length ? `${statusTotal} 个` : '0%',
+    statusData.length ? `${statusTotal} 个` : '-',
   ))
 }
 
@@ -1307,19 +1312,35 @@ const updateDetailQuery = (detail, taskId) => {
 async function loadTaskDetailData(taskId) {
   selectedTaskDetail.value = null
   taskAttachmentRows.value = []
+  taskRelatedBugRows.value = []
   taskDetailLoading.value = true
   try {
-    const [detail, files] = await Promise.all([
+    const [detail, files, bugs] = await Promise.all([
       getTaskById(taskId),
       getProjectFiles({ businessType: 'TASK', businessId: taskId }),
+      fetchAllTaskBugs(taskId),
     ])
     selectedTaskDetail.value = { ...detail, status: resolveTaskStatusCode(detail) }
     taskAttachmentRows.value = Array.isArray(files) ? files : []
+    taskRelatedBugRows.value = bugs
   } catch (error) {
     message.error(error.message || '任务详情加载失败')
   } finally {
     taskDetailLoading.value = false
   }
+}
+
+async function fetchAllTaskBugs(taskId) {
+  const pageSize = 200
+  const first = await getProjectBugs({ taskId, pageNo: 1, pageSize })
+  const records = [...(first.records || [])]
+  const total = Number(first.total || records.length)
+  const pages = Math.ceil(total / pageSize)
+  for (let pageNo = 2; pageNo <= pages; pageNo += 1) {
+    const next = await getProjectBugs({ taskId, pageNo, pageSize })
+    records.push(...(next.records || []))
+  }
+  return records
 }
 
 const handleTaskDetail = async record => {
@@ -1964,7 +1985,7 @@ const attachments = computed(() =>
   }))
 )
 
-const relatedBugs = computed(() => [])
+const relatedBugs = computed(() => taskRelatedBugRows.value)
 const taskLogs = computed(() => Array.isArray(selectedTaskDetail.value?.logs) ? selectedTaskDetail.value.logs : [])
 
 const STATS_PERIOD_OPTIONS = [
@@ -1975,8 +1996,8 @@ const STATS_PERIOD_OPTIONS = [
 ]
 
 const CHART_COLORS = ['#1677ff', '#69b1ff', '#27c27a', '#ff7a45', '#9254de', '#c8cfd9']
-const STATUS_LABEL_MAP = { COMPLETED: '已完成', IN_PROGRESS: '进行中', DUE_SOON: '即将到期', OVERDUE: '逾期', NOT_STARTED: '待开始', PAUSED: '暂停' }
-const STATUS_COLOR_MAP = { COMPLETED: '#27c27a', IN_PROGRESS: '#1677ff', DUE_SOON: '#ff7a45', OVERDUE: '#ff4d4f', NOT_STARTED: '#c8cfd9', PAUSED: '#9254de' }
+const STATUS_LABEL_MAP = { COMPLETED: '已完成', IN_PROGRESS: '进行中', DUE_SOON: '即将到期', OVERDUE: '已逾期', NOT_STARTED: '未开始', PAUSED: '已暂停', OVERDUE_COMPLETED: '逾期完成', OVERDUE_START: '启动逾期', CANCELLED: '已取消' }
+const STATUS_COLOR_MAP = { COMPLETED: '#27c27a', IN_PROGRESS: '#1677ff', DUE_SOON: '#ff7a45', OVERDUE: '#ff4d4f', NOT_STARTED: '#c8cfd9', PAUSED: '#9254de', OVERDUE_COMPLETED: '#fa8c16', OVERDUE_START: '#d48806', CANCELLED: '#8c8c8c' }
 
 const statCards = computed(() => {
   const s = statsData.value

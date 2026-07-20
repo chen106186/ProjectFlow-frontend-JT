@@ -157,7 +157,7 @@
           <a-form-item label="Bug标题" name="title"><a-input v-model:value="formState.title" placeholder="请输入Bug标题" /></a-form-item>
           <a-form-item label="所属项目" name="projectId"><a-select v-model:value="formState.projectId" :options="projectOptions" placeholder="请选择所属项目" @change="handleProjectChange" /></a-form-item>
           <a-form-item label="关联任务">
-            <a-select v-model:value="formState.taskId" :options="relatedTaskOptions" placeholder="请选择关联任务（非必填）" allow-clear show-search option-filter-prop="label" :loading="relatedTaskLoading" :disabled="!formState.projectId" />
+            <a-select v-model:value="formState.relatedTaskIds" mode="multiple" :options="relatedTaskOptions" placeholder="请选择关联任务（可多选，非必填）" allow-clear show-search option-filter-prop="label" :loading="relatedTaskLoading" :disabled="!formState.projectId" />
           </a-form-item>
           <a-form-item label="指派给" name="assigneeId"><a-select v-model:value="formState.assigneeId" :options="bugFormUserOptions" placeholder="请选择负责人" show-search option-filter-prop="label" /></a-form-item>
           <a-form-item label="严重等级" name="priority"><a-select v-model:value="formState.priority" :options="priorityOptions" /></a-form-item>
@@ -216,6 +216,17 @@
                       <td><a-tag :color="priorityColors[selectedBug.priority]">{{ priorityLabels[selectedBug.priority] || selectedBug.priority || '-' }}</a-tag></td>
                       <th>状态</th>
                       <td><a-tag :color="statusColors[selectedBug.status]">{{ statusLabels[selectedBug.status] || selectedBug.status || '-' }}</a-tag></td>
+                    </tr>
+                    <tr>
+                      <th>关联任务</th>
+                      <td colspan="3">
+                        <a-space v-if="selectedBug.relatedTasks?.length" wrap>
+                          <a-tag v-for="task in selectedBug.relatedTasks" :key="task.id" color="blue">
+                            {{ task.name || `任务 ${task.id}` }}
+                          </a-tag>
+                        </a-space>
+                        <span v-else>-</span>
+                      </td>
                     </tr>
                     <tr v-if="selectedBug.closedAt">
                       <th>关闭时间</th>
@@ -378,7 +389,7 @@ import '@wangeditor/editor/dist/css/style.css'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  getProjectBugs, getBugById, createBug, updateBug, closeBug, assignBug,
+  getProjectBugs, getBugById, createBug, updateBug, closeBug, reopenBug, assignBug,
   addBugComment, listBugComments, getProjectList, getProjectTasks, getSystemUsers, resolveBug,
 } from '@/api/managementProject'
 import { formatDateTime } from '@/utils/dateTime'
@@ -697,7 +708,7 @@ const submitLoading = ref(false)
 const editorRef = shallowRef()
 const editorConfig = { placeholder: '请输入重现步骤', scroll: true, ...richTextImageUploadConf }
 
-const createDefaultFormState = () => ({ title: '', projectId: undefined, taskId: undefined, assigneeId: undefined, priority: 'MEDIUM', description: '', reproduceSteps: '' })
+const createDefaultFormState = () => ({ title: '', projectId: undefined, relatedTaskIds: [], assigneeId: undefined, priority: 'MEDIUM', description: '', reproduceSteps: '' })
 const formState = reactive(createDefaultFormState())
 const relatedTaskOptions = ref([])
 const relatedTaskLoading = ref(false)
@@ -711,9 +722,17 @@ const formRules = {
 
 const handleEditorCreated = editor => { editorRef.value = editor }
 
-const isTestingTask = task => {
-  const roleName = task?.roleName || task?.role || ''
-  return roleName.includes('测试') || /test/i.test(roleName)
+const fetchAllProjectTasks = async projectId => {
+  const pageSize = 200
+  const first = await getProjectTasks({ projectId, pageNo: 1, pageSize })
+  const records = [...(first.records || [])]
+  const total = Number(first.total || records.length)
+  const pages = Math.ceil(total / pageSize)
+  for (let pageNo = 2; pageNo <= pages; pageNo += 1) {
+    const next = await getProjectTasks({ projectId, pageNo, pageSize })
+    records.push(...(next.records || []))
+  }
+  return records
 }
 
 const loadRelatedTasks = async projectId => {
@@ -721,10 +740,9 @@ const loadRelatedTasks = async projectId => {
   if (!projectId) return
   relatedTaskLoading.value = true
   try {
-    const result = await getProjectTasks({ projectId, pageNo: 1, pageSize: 200 })
+    const tasks = await fetchAllProjectTasks(projectId)
     if (String(formState.projectId) === String(projectId)) {
-      relatedTaskOptions.value = (result.records || [])
-        .filter(isTestingTask)
+      relatedTaskOptions.value = tasks
         .map(task => ({ label: task.name, value: task.id }))
     }
   } catch (error) {
@@ -788,7 +806,7 @@ const handleResolveConfirm = async () => {
 }
 
 const handleProjectChange = projectId => {
-  formState.taskId = undefined
+  formState.relatedTaskIds = []
   loadRelatedTasks(projectId)
 }
 
@@ -804,7 +822,8 @@ const handleSubmit = async () => {
     const body = {
       title: formState.title,
       projectId: formState.projectId,
-      taskId: formState.taskId || undefined,
+      taskId: formState.relatedTaskIds[0] || undefined,
+      relatedTaskIds: formState.relatedTaskIds,
       assigneeId: formState.assigneeId,
       priority: formState.priority,
       description: formState.description,
@@ -830,7 +849,18 @@ const handleEdit = record => router.push({ name: 'BugEdit', params: { id: record
 const handleDetail = record => router.push({ name: 'BugDetail', params: { id: record.id } })
 const handleEditFromDetail = () => router.push({ name: 'BugEdit', params: { id: selectedBug.value.id } })
 const handleBack = () => router.back()
-const handleReopenBug = () => message.info('重新打开接口暂未对接')
+const handleReopenBug = async record => {
+  const bug = record || selectedBug.value
+  if (!bug) return
+  try {
+    await reopenBug(bug.id)
+    message.success('Bug已重新打开')
+    loadBugs()
+    if (selectedBug.value?.id === bug.id) selectedBug.value = await getBugById(bug.id)
+  } catch (e) {
+    message.error(e.message || '重新打开失败')
+  }
+}
 
 const handleCloseBugFromList = async record => {
   try {
@@ -864,7 +894,7 @@ const syncRouteState = async () => {
       formState.title = bug.title || ''
       formState.projectId = bug.projectId
       await loadRelatedTasks(bug.projectId)
-      formState.taskId = bug.taskId || undefined
+      formState.relatedTaskIds = Array.isArray(bug.relatedTaskIds) ? bug.relatedTaskIds : (bug.taskId ? [bug.taskId] : [])
       formState.assigneeId = bug.assigneeId
       formState.priority = bug.priority || 'MEDIUM'
       formState.description = bug.description || ''

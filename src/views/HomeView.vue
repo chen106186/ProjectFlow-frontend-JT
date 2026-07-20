@@ -316,8 +316,8 @@ const statsLoading = ref(false)
 const myStats = reactive({ myTaskTotal: 0, myTaskCompleted: 0, myTaskOverdue: 0, myBugTotal: 0, myBugOpen: 0, myRequirementTotal: 0, myRequirementAccepted: 0, unreadNoticeCount: 0, completionTrend: [], projectDistribution: {}, taskStatusDistribution: {} })
 
 const CHART_COLORS = ['#1677ff', '#69b1ff', '#27c27a', '#ff7a45', '#9254de', '#c8cfd9']
-const STATUS_LABEL_MAP = { COMPLETED: '已完成', IN_PROGRESS: '进行中', DUE_SOON: '即将到期', OVERDUE: '逾期', NOT_STARTED: '待开始', PAUSED: '暂停' }
-const STATUS_COLOR_MAP = { COMPLETED: '#27c27a', IN_PROGRESS: '#1677ff', DUE_SOON: '#ff7a45', OVERDUE: '#ff4d4f', NOT_STARTED: '#c8cfd9', PAUSED: '#9254de' }
+const STATUS_LABEL_MAP = { COMPLETED: '已完成', IN_PROGRESS: '进行中', DUE_SOON: '即将到期', OVERDUE: '已逾期', NOT_STARTED: '未开始', PAUSED: '已暂停', OVERDUE_COMPLETED: '逾期完成', OVERDUE_START: '启动逾期', CANCELLED: '已取消' }
+const STATUS_COLOR_MAP = { COMPLETED: '#27c27a', IN_PROGRESS: '#1677ff', DUE_SOON: '#ff7a45', OVERDUE: '#ff4d4f', NOT_STARTED: '#c8cfd9', PAUSED: '#9254de', OVERDUE_COMPLETED: '#fa8c16', OVERDUE_START: '#d48806', CANCELLED: '#8c8c8c' }
 
 const projectLegendItems = computed(() => {
   const dist = myStats.projectDistribution || {}
@@ -390,24 +390,23 @@ const renderDistCharts = () => {
   if (!projectChart || !statusChart) return
   const projectDist = myStats.projectDistribution || {}
   const projectData = Object.entries(projectDist).map(([name, value], i) => ({
-    value, name, itemStyle: { color: CHART_COLORS[i % CHART_COLORS.length] },
+    value: Number(value), name, itemStyle: { color: CHART_COLORS[i % CHART_COLORS.length] },
   }))
-  const projectTotal = projectData.reduce((s, d) => s + d.value, 0)
   projectChart.setOption(createDonutOption(
     projectData.length ? projectData : [{ value: 1, name: '暂无数据', itemStyle: { color: '#e8e8e8' } }],
     CHART_COLORS,
-    projectData.length ? `${projectTotal} 个` : '0%',
+    projectData.length ? `${projectData.length} 个` : '-',
   ), true)
 
   const statusDist = myStats.taskStatusDistribution || {}
   const statusData = Object.entries(statusDist).map(([code, value]) => ({
-    value, name: STATUS_LABEL_MAP[code] || code, itemStyle: { color: STATUS_COLOR_MAP[code] || '#c8cfd9' },
+    value: Number(value), name: STATUS_LABEL_MAP[code] || code, itemStyle: { color: STATUS_COLOR_MAP[code] || '#c8cfd9' },
   }))
   const statusTotal = statusData.reduce((s, d) => s + d.value, 0)
   statusChart.setOption(createDonutOption(
     statusData.length ? statusData : [{ value: 1, name: '暂无数据', itemStyle: { color: '#e8e8e8' } }],
     Object.values(STATUS_COLOR_MAP),
-    statusData.length ? `${statusTotal} 个` : '0%',
+    statusData.length ? `${statusTotal} 个` : '-',
   ), true)
 }
 

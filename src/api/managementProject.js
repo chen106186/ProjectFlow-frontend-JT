@@ -54,6 +54,7 @@ export const updateBug = (id, data) => request(`/api/bugs/${id}`, { method: 'PUT
 export const deleteBug = id => request(`/api/bugs/${id}`, { method: 'DELETE' })
 export const getMyBugs = params => request('/api/bugs/my', { params })
 export const closeBug = id => request(`/api/bugs/${id}/close`, { method: 'PATCH' })
+export const reopenBug = id => request(`/api/bugs/${id}/reopen`, { method: 'PATCH' })
 export const fixBug = (id, data) => request(`/api/bugs/${id}/fix`, { method: 'POST', body: data })
 export const resolveBug = (id, data) => request(`/api/bugs/${id}/resolve`, { method: 'POST', body: data })
 export const assignBug = (id, data) => request(`/api/bugs/${id}/assign`, { method: 'PATCH', body: data })
