@@ -406,6 +406,7 @@ import { getOperationLogs } from '@/api/system'
 import { useDictStore } from '@/store/dictStore'
 import { formatDateTime } from '@/utils/dateTime'
 import { OPERATION_ACTIONS, OPERATION_MODULES, recordOperationLog } from '@/utils/operationLog'
+import { px2rem, scalePxByRem } from '@/utils/px2rem'
 
 const route = useRoute()
 const router = useRouter()
@@ -566,16 +567,17 @@ const ganttStatusOptions = computed(() => taskStatusOptions.value.length ? taskS
   { label: '已完成', value: 'COMPLETED' },
   { label: '已逾期', value: 'OVERDUE' },
 ])
-const ganttNodeColumns = [
+const ganttNodeColumnDefinitions = [
   { title: '节点名称', dataIndex: 'name', width: 160 },
   { title: '计划时间', dataIndex: 'planTime', width: 120 },
   { title: '实际时间', dataIndex: 'actualTime', width: 120 },
   { title: '状态', dataIndex: 'status', width: 90 },
   { title: '进度', dataIndex: 'progress', width: 160 },
 ]
-const ganttTableWidth = ganttNodeColumns.reduce((total, column) => total + column.width, 0)
+const ganttNodeColumns = ganttNodeColumnDefinitions.map(column => ({ ...column, width: px2rem(column.width) }))
+const ganttTableWidth = ganttNodeColumnDefinitions.reduce((total, column) => total + column.width, 0)
 const ganttNodeRows = ref([])
-const ganttWorkspaceHeight = computed(() => 86 + ganttNodeRows.value.length * 72)
+const ganttWorkspaceHeight = computed(() => 86 + ganttNodeRows.value.length * 72 + 12)
 const ganttViewMode = ref('Day')
 const ganttColumnWidth = computed(() => ganttViewMode.value === 'Month' ? 120 : 36)
 const formatDateRange = (start, end) => start === '-' && end === '-' ? '-' : `${start} ~ ${end}`
@@ -606,14 +608,6 @@ const ganttTasks = computed(() => {
     }
     return task
   })
-})
-const ganttScrollStart = computed(() => {
-  const earliestPlanStart = ganttNodeRows.value
-    .map(node => formatNodeDate(node.planStart))
-    .filter(Boolean)
-    .sort()[0]
-  const offsetUnit = ganttViewMode.value === 'Month' ? 'month' : 'week'
-  return earliestPlanStart ? dayjs(earliestPlanStart).subtract(1, offsetUnit).format('YYYY-MM-DD') : 'start'
 })
 const ganttForm = reactive({ id: null, name: '', planStart: undefined, planEnd: undefined, actualStart: undefined, actualEnd: undefined, progress: 0 })
 const ganttFormRules = {
@@ -1219,21 +1213,21 @@ const renderGantt = async () => {
   ganttInstance = new Gantt(ganttElement, ganttTasks.value, {
     view_mode: ganttViewMode.value,
     view_modes: ['Day', 'Month'],
-    column_width: ganttColumnWidth.value,
+    column_width: scalePxByRem(ganttColumnWidth.value),
     infinite_padding: false,
     readonly: true,
     language: 'zh',
     popup_on: 'hover',
-    upper_header_height: 44,
-    lower_header_height: 32,
-    bar_height: 30,
-    padding: 42,
+    upper_header_height: scalePxByRem(44),
+    lower_header_height: scalePxByRem(32),
+    bar_height: scalePxByRem(30),
+    padding: scalePxByRem(42),
     popup: ({ task, set_title, set_subtitle, set_details }) => {
       set_title('计划与实际时间')
       set_subtitle('')
       set_details(`<div class="gantt-popup__dates"><span>计划开始</span><strong>${task.planStart}</strong><span>实际开始</span><strong>${task.actualStart === '-' ? '未填写' : task.actualStart}</strong><span>计划结束</span><strong>${task.planEnd}</strong><span>实际结束</span><strong>${task.actualEnd === '-' ? '未填写' : task.actualEnd}</strong></div>`)
     },
-    scroll_to: ganttScrollStart.value,
+    scroll_to: 'today',
   })
   const pixelsPerDay = ganttViewMode.value === 'Month' ? ganttInstance.config.column_width / 30 : ganttInstance.config.column_width
   ganttNodeRows.value.forEach(node => {
@@ -1251,12 +1245,22 @@ const renderGantt = async () => {
     actualBar.setAttribute('y', bar.y)
     actualBar.setAttribute('width', Math.max(dayjs(actualEnd).diff(dayjs(actualStart), 'day'), 1) * pixelsPerDay)
     actualBar.setAttribute('height', bar.height)
-    actualBar.setAttribute('rx', 3)
-    actualBar.setAttribute('ry', 3)
+    actualBar.setAttribute('rx', scalePxByRem(3))
+    actualBar.setAttribute('ry', scalePxByRem(3))
     bar.bar_group.insertBefore(actualBar, bar.bar_group.querySelector('.bar-label'))
   })
   const todayButton = ganttElement.querySelector('.today-button')
-  if (todayButton) todayButton.textContent = '今天'
+  const centerToday = () => {
+    const container = ganttInstance?.$container
+    const todayMarker = container?.querySelector('.current-highlight')
+    if (!container || !todayMarker) return
+    container.scrollLeft = Math.max(0, todayMarker.offsetLeft - container.clientWidth / 2)
+  }
+  if (todayButton) {
+    todayButton.textContent = '今天'
+    todayButton.onclick = centerToday
+  }
+  window.requestAnimationFrame(() => window.requestAnimationFrame(centerToday))
 
   ganttElement.onwheel = event => {
     if (!event.ctrlKey) return
@@ -1268,6 +1272,12 @@ const renderGantt = async () => {
 const handleGanttViewModeChange = value => {
   if (ganttViewMode.value === value) return
   ganttViewMode.value = value
+}
+
+let ganttResizeTimer
+const handleGanttResize = () => {
+  window.clearTimeout(ganttResizeTimer)
+  ganttResizeTimer = window.setTimeout(renderGantt, 120)
 }
 
 const handleGanttZoom = direction => {
@@ -1301,8 +1311,13 @@ watch(() => [route.name, route.params.id, route.query.status], syncRoute)
 watch(activeTab, renderGantt)
 watch(ganttViewMode, renderGantt)
 watch(groupField, () => { collapsedGroups.value = [] })
-onBeforeUnmount(() => { ganttInstance = null })
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleGanttResize)
+  window.clearTimeout(ganttResizeTimer)
+  ganttInstance = null
+})
 onMounted(async () => {
+  window.addEventListener('resize', handleGanttResize)
   await fetchReferenceData()
   await syncRoute()
 })

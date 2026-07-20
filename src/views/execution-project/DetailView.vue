@@ -446,6 +446,7 @@ import {
 import { getOperationLogs } from '@/api/system'
 import { formatDateTime } from '@/utils/dateTime'
 import { OPERATION_ACTIONS, OPERATION_MODULES, recordOperationLog } from '@/utils/operationLog'
+import { px2rem, scalePxByRem } from '@/utils/px2rem'
 
 const route = useRoute()
 const router = useRouter()
@@ -510,16 +511,17 @@ const ganttStatusOptions = computed(() => taskStatusOptions.value.length ? taskS
   { label: '已逾期', value: 'OVERDUE' },
 ])
 
-const ganttNodeColumns = [
+const ganttNodeColumnDefinitions = [
   { title: '节点名称', dataIndex: 'name', width: 160 },
   { title: '计划时间', dataIndex: 'planTime', width: 120 },
   { title: '实际时间', dataIndex: 'actualTime', width: 120 },
   { title: '状态', dataIndex: 'status', width: 90 },
   { title: '进度', dataIndex: 'progress', width: 160 },
 ]
-const ganttTableWidth = ganttNodeColumns.reduce((total, column) => total + column.width, 0)
+const ganttNodeColumns = ganttNodeColumnDefinitions.map(column => ({ ...column, width: px2rem(column.width) }))
+const ganttTableWidth = ganttNodeColumnDefinitions.reduce((total, column) => total + column.width, 0)
 const ganttNodeRows = ref([])
-const ganttWorkspaceHeight = computed(() => 86 + ganttNodeRows.value.length * 72)
+const ganttWorkspaceHeight = computed(() => 86 + ganttNodeRows.value.length * 72 + 12)
 const ganttViewMode = ref('Day')
 const ganttColumnWidth = computed(() => ganttViewMode.value === 'Month' ? 120 : 36)
 const formatDateRange = (start, end) => start === '-' && end === '-' ? '-' : `${start} ~ ${end}`
@@ -550,14 +552,6 @@ const ganttTasks = computed(() => {
     }
     return task
   })
-})
-const ganttScrollStart = computed(() => {
-  const earliestPlanStart = ganttNodeRows.value
-    .map(node => formatNodeDate(node.planStart))
-    .filter(Boolean)
-    .sort()[0]
-  const offsetUnit = ganttViewMode.value === 'Month' ? 'month' : 'week'
-  return earliestPlanStart ? dayjs(earliestPlanStart).subtract(1, offsetUnit).format('YYYY-MM-DD') : 'start'
 })
 const ganttFormRef = ref()
 const ganttForm = reactive({ id: null, name: '', planStart: undefined, planEnd: undefined, actualStart: undefined, actualEnd: undefined, progress: 0 })
@@ -1123,21 +1117,21 @@ const renderGantt = async () => {
   ganttInstance = new Gantt(ganttElement, ganttTasks.value, {
     view_mode: ganttViewMode.value,
     view_modes: ['Day', 'Month'],
-    column_width: ganttColumnWidth.value,
+    column_width: scalePxByRem(ganttColumnWidth.value),
     infinite_padding: false,
     readonly: true,
     language: 'zh',
     popup_on: 'hover',
-    upper_header_height: 44,
-    lower_header_height: 32,
-    bar_height: 30,
-    padding: 42,
+    upper_header_height: scalePxByRem(44),
+    lower_header_height: scalePxByRem(32),
+    bar_height: scalePxByRem(30),
+    padding: scalePxByRem(42),
     popup: ({ task, set_title, set_subtitle, set_details }) => {
       set_title('计划与实际时间')
       set_subtitle('')
       set_details(`<div class="gantt-popup__dates"><span>计划开始</span><strong>${task.planStart}</strong><span>实际开始</span><strong>${task.actualStart === '-' ? '未填写' : task.actualStart}</strong><span>计划结束</span><strong>${task.planEnd}</strong><span>实际结束</span><strong>${task.actualEnd === '-' ? '未填写' : task.actualEnd}</strong></div>`)
     },
-    scroll_to: ganttScrollStart.value,
+    scroll_to: 'today',
   })
   const pixelsPerDay = ganttViewMode.value === 'Month' ? ganttInstance.config.column_width / 30 : ganttInstance.config.column_width
   ganttNodeRows.value.forEach(node => {
@@ -1155,12 +1149,22 @@ const renderGantt = async () => {
     actualBar.setAttribute('y', bar.y)
     actualBar.setAttribute('width', Math.max(dayjs(actualEnd).diff(dayjs(actualStart), 'day'), 1) * pixelsPerDay)
     actualBar.setAttribute('height', bar.height)
-    actualBar.setAttribute('rx', 3)
-    actualBar.setAttribute('ry', 3)
+    actualBar.setAttribute('rx', scalePxByRem(3))
+    actualBar.setAttribute('ry', scalePxByRem(3))
     bar.bar_group.insertBefore(actualBar, bar.bar_group.querySelector('.bar-label'))
   })
   const todayButton = ganttElement.querySelector('.today-button')
-  if (todayButton) todayButton.textContent = '今天'
+  const centerToday = () => {
+    const container = ganttInstance?.$container
+    const todayMarker = container?.querySelector('.current-highlight')
+    if (!container || !todayMarker) return
+    container.scrollLeft = Math.max(0, todayMarker.offsetLeft - container.clientWidth / 2)
+  }
+  if (todayButton) {
+    todayButton.textContent = '今天'
+    todayButton.onclick = centerToday
+  }
+  window.requestAnimationFrame(() => window.requestAnimationFrame(centerToday))
 
   ganttElement.onwheel = event => {
     if (!event.ctrlKey) return
@@ -1173,6 +1177,12 @@ const handleGanttZoom = direction => {
   const nextMode = direction === 'in' ? 'Day' : 'Month'
   if (ganttViewMode.value === nextMode) return
   ganttViewMode.value = nextMode
+}
+
+let ganttResizeTimer
+const handleGanttResize = () => {
+  window.clearTimeout(ganttResizeTimer)
+  ganttResizeTimer = window.setTimeout(renderGantt, 120)
 }
 
 const refreshFolders = async () => {
@@ -1512,8 +1522,13 @@ watch([activeBugFilter, bugStatusFilter, bugAssigneeFilter], () => {
   bugPagination.current = 1
   fetchBugPage()
 })
-onBeforeUnmount(() => { ganttInstance = null })
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleGanttResize)
+  window.clearTimeout(ganttResizeTimer)
+  ganttInstance = null
+})
 onMounted(async () => {
+  window.addEventListener('resize', handleGanttResize)
   await fetchReferenceData()
   await fetchProjectRelatedData(route.params.id)
 })
@@ -1607,19 +1622,23 @@ onMounted(async () => {
 .section-heading .filter-hint { color: #1677ff; font-size: 13px; }
 .task-table-filters, .bug-table-filters { margin-left: auto; }
 .gantt-view-toolbar { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin: -4px 0 12px; color: #595959; font-size: 13px; }
-.gantt-workspace { display: grid; min-height: 0; overflow: hidden; border: 1px solid #edf0f3; }
-.gantt-node-table { width: 100%; border-right: 1px solid #edf0f3; }
+.gantt-workspace { display: grid; width: 100%; min-width: 0; min-height: 0; overflow: hidden; border: 1px solid #edf0f3; }
+.gantt-node-table { width: 100%; min-width: 0; overflow: hidden; border-right: 1px solid #edf0f3; }
 .gantt-node-table :deep(.ant-table-container), .gantt-node-table :deep(.ant-table), .gantt-node-table :deep(.ant-table-content) { height: 100%; }
-.gantt-node-table :deep(.ant-table-thead > tr > th) { height: 86PX; padding: 8PX 6PX; text-align: center; white-space: nowrap; }
-.gantt-node-table :deep(.ant-table-tbody > tr > td) { height: 72PX; padding: 6PX; text-align: center; white-space: nowrap; }
+.gantt-node-table :deep(.ant-table-thead > tr > th) { height: 86px; padding: 8px 6px; text-align: center; white-space: nowrap; }
+.gantt-node-table :deep(.ant-table-tbody > tr > td) { height: 72px; padding: 6px; text-align: center; white-space: nowrap; }
 .gantt-node-table :deep(.ant-table-tbody > tr) { cursor: pointer; }
 .gantt-node-table :deep(.ant-table-tbody > tr:hover > td) { background: #edf6ff; }
 .gantt-node-table :deep(.ant-progress) { min-width: 76px; }
-.date-range { display: inline-flex; flex-direction: column; gap: 4PX; align-items: center; justify-content: center; height: 48PX; line-height: 20PX; }
+.date-range { display: inline-flex; flex-direction: column; gap: 4px; align-items: center; justify-content: center; height: 48px; line-height: 20px; }
 .date-overdue { color: #ff4d4f; }
 .gantt-scroll { width: 100%; min-width: 0; height: 100%; min-height: 0; overflow: hidden; }
-.gantt-scroll :deep(.gantt-container) { height: 100%; overflow-x: auto; overflow-y: hidden; border-radius: 0; }
-.gantt-scroll :deep(.gantt) { display: block; height: 100%; max-width: none; }
+.gantt-scroll :deep(.gantt-container) { width: 100%; min-width: 0; max-width: 100%; height: 100%; overflow-x: scroll !important; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-color: rgb(134 134 139 / 65%) #f3f4f6; scrollbar-width: auto; border-radius: 0; }
+.gantt-scroll :deep(.gantt-container)::-webkit-scrollbar { display: block; height: 10px; }
+.gantt-scroll :deep(.gantt-container)::-webkit-scrollbar-track { background: #f3f4f6; border-radius: 5px; }
+.gantt-scroll :deep(.gantt-container)::-webkit-scrollbar-thumb { min-width: 40px; background: rgb(134 134 139 / 65%); background-clip: padding-box; border: 2px solid #f3f4f6; border-radius: 5px; }
+.gantt-scroll :deep(.gantt-container)::-webkit-scrollbar-thumb:hover { background: rgb(110 110 115 / 80%); background-clip: padding-box; }
+.gantt-scroll :deep(.gantt) { display: block; height: auto; max-width: none; }
 .gantt-scroll :deep(.popup-wrapper) { padding: 14px 16px; border: 1px solid rgb(0 0 0 / 6%); border-radius: 8px; box-shadow: 0 12px 32px rgb(0 0 0 / 14%); }
 .gantt-scroll :deep(.popup-wrapper .title) { margin-bottom: 10px; font-size: 14px; }
 .gantt-scroll :deep(.gantt-popup__dates) { display: grid; grid-template-columns: 64px 92px; gap: 7px 14px; align-items: center; font-size: 12px; }

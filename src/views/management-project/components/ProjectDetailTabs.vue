@@ -758,13 +758,17 @@ defineExpose({
 
 .gantt-workspace {
   display: grid;
+  width: 100%;
   min-height: 0;
+  min-width: 0;
   overflow: hidden;
   border: 1px solid #edf0f3;
 }
 
 .gantt-node-table {
   width: 100%;
+  min-width: 0;
+  overflow: hidden;
   border-right: 1px solid #edf0f3;
 }
 
@@ -775,15 +779,15 @@ defineExpose({
 }
 
 .gantt-node-table :deep(.ant-table-thead > tr > th) {
-  height: 86PX;
-  padding: 8PX 6PX;
+  height: 86px;
+  padding: 8px 6px;
   text-align: center;
   white-space: nowrap;
 }
 
 .gantt-node-table :deep(.ant-table-tbody > tr > td) {
-  height: 72PX;
-  padding: 6PX;
+  height: 72px;
+  padding: 6px;
   text-align: center;
   white-space: nowrap;
 }
@@ -803,11 +807,11 @@ defineExpose({
 .date-range {
   display: inline-flex;
   flex-direction: column;
-  gap: 4PX;
+  gap: 4px;
   align-items: center;
   justify-content: center;
-  height: 48PX;
-  line-height: 20PX;
+  height: 48px;
+  line-height: 20px;
 }
 
 .date-overdue {
@@ -823,15 +827,44 @@ defineExpose({
 }
 
 .gantt-scroll :deep(.gantt-container) {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   height: 100%;
-  overflow-x: auto;
+  overflow-x: scroll !important;
   overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-color: rgb(134 134 139 / 65%) #f3f4f6;
+  scrollbar-width: auto;
   border-radius: 0;
+}
+
+.gantt-scroll :deep(.gantt-container)::-webkit-scrollbar {
+  display: block;
+  height: 10px;
+}
+
+.gantt-scroll :deep(.gantt-container)::-webkit-scrollbar-track {
+  background: #f3f4f6;
+  border-radius: 5px;
+}
+
+.gantt-scroll :deep(.gantt-container)::-webkit-scrollbar-thumb {
+  min-width: 40px;
+  background: rgb(134 134 139 / 65%);
+  background-clip: padding-box;
+  border: 2px solid #f3f4f6;
+  border-radius: 5px;
+}
+
+.gantt-scroll :deep(.gantt-container)::-webkit-scrollbar-thumb:hover {
+  background: rgb(110 110 115 / 80%);
+  background-clip: padding-box;
 }
 
 .gantt-scroll :deep(.gantt) {
   display: block;
-  height: 100%;
+  height: auto;
   max-width: none;
 }
 
