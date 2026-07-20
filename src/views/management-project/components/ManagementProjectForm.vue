@@ -11,6 +11,9 @@
           <a-form-item label="承建单位"><a-input v-model:value="formState.contractor" placeholder="请输入承建单位" /></a-form-item>
           <a-form-item label="业务主管"><a-input v-model:value="formState.supervisor" placeholder="请输入业务主管" /></a-form-item>
         </template>
+        <a-form-item v-if="isEdit" label="项目阶段">
+          <a-select v-model:value="formState.stage" :options="currentStageOptions" placeholder="请选择项目阶段" />
+        </a-form-item>
         <a-form-item label="项目节点">
           <div class="project-node-list">
             <a-tag v-for="node in displayNodeOptions" :key="node.value">{{ node.label }}</a-tag>
@@ -108,6 +111,7 @@ const displayNodeOptions = computed(() => {
   const codes = isEdit.value ? formState.nodes : getProjectNodeCodes(formState.type)
   return codes.map(code => ({ label: getProjectNodeName(code), value: code }))
 })
+const currentStageOptions = computed(() => projectNodeMap[formState.type] || [])
 const isOverdueCompleted = computed(() => {
   if (!formState.actualEndDate || !formState.plannedEndDate) return false
   return formState.actualEndDate > formState.plannedEndDate
@@ -154,7 +158,12 @@ const loadProject = async () => {
     supervisor: project.supervisor || project.businessSupervisor || '',
     type: project.projectBusinessType || 'DIGITALIZATION',
     nodes,
-    stage: project.stage || 'BUSINESS_OPPORTUNITY',
+    stage: (() => {
+      const type = project.projectBusinessType || 'DIGITALIZATION'
+      const opts = projectNodeMap[type] || []
+      const s = project.stage
+      return opts.some(o => o.value === s) ? s : (opts[0]?.value || '')
+    })(),
     status: project.statusCode || project.status || 'NOT_STARTED',
     contractStatus: project.contractStatusCode || project.contractStatus || 'NOT_SIGNED',
     plannedStartDate: project.plannedStartDate || undefined,
@@ -168,6 +177,7 @@ const loadProject = async () => {
 
 watch(() => formState.type, type => {
   if (!isEdit.value) formState.nodes = getProjectNodeCodes(type)
+  formState.stage = projectNodeMap[type]?.[0]?.value || ''
   if (type === 'EXTERNAL') {
     formState.department = ''
     formState.contractor = ''
