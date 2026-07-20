@@ -44,6 +44,7 @@
                 <span class="todo-card__content">
                   <strong>{{ item.title }}</strong>
                   <small v-if="item.itemType === 'BUG'">创建人：{{ item.creatorName || '-' }}　|　指定人：{{ item.ownerName || '-' }}　|　项目：{{ item.projectName || '-' }}</small>
+                  <small v-else-if="item.itemType === 'REQUIREMENT'">创建人：{{ item.ownerName || '-' }}　|　需求类型：{{ requirementTypeLabel(item.requirementType) }}　|　项目：{{ item.projectName || '-' }}</small>
                   <small v-else>{{ item.ownerName || '待分配' }}　|　{{ item.plannedEndDate || '-' }} 截止　|　{{ item.projectName || '-' }}</small>
                 </span>
                 <span class="todo-card__badge" :class="`todo-card__badge--${todoBadgeStatus(item)}`">{{ todoStatusLabel(item) }}</span>
@@ -198,10 +199,12 @@ import { getProjectList } from '@/api/managementProject'
 import { getUserList } from '@/api/system'
 import TaskCalendarModal from '@/components/TaskCalendarModal.vue'
 import { canViewAllStatistics } from '@/utils/authScope'
+import { useDictStore } from '@/store/dictStore'
 
 echarts.use([BarChart, LineChart, PieChart, GridComponent, TooltipComponent, LegendComponent, CanvasRenderer])
 
 const router = useRouter()
+const dictStore = useDictStore()
 const activeTodoTab = ref('all')
 const calendarValue = ref(dayjs())
 const isCalendarVisible = ref(false)
@@ -265,6 +268,9 @@ const todoItemTypeLabel = type => {
 
 const BUG_STATUS_LABEL = { PENDING_FIX: '待修复', FIXING: '修复中', PENDING_VERIFY: '待验证', CLOSED: '已关闭' }
 const BUG_STATUS_BADGE = { FIXING: 'inProgress', PENDING_VERIFY: 'dueSoon', CLOSED: 'completed' }
+const REQUIREMENT_STATUS_LABEL = { PENDING_REVIEW: '待评审', ACCEPTED: '已采纳', REJECTED: '已拒绝' }
+
+const requirementTypeLabel = type => dictStore.getDictLabel('requirementType', type) || type || '-'
 
 const todoBadgeStatus = item => {
   if (item.itemType === 'BUG') return BUG_STATUS_BADGE[item.status] || 'dueSoon'
@@ -273,6 +279,7 @@ const todoBadgeStatus = item => {
 
 const todoStatusLabel = item => {
   if (item.itemType === 'BUG') return BUG_STATUS_LABEL[item.status] || item.status
+  if (item.itemType === 'REQUIREMENT') return REQUIREMENT_STATUS_LABEL[item.status] || item.status
   const s = todoStatus(item)
   const map = { overdue: '逾期', urgent: '紧急', dueSoon: '即将到期', inProgress: '进行中', completed: '已完成', notStarted: '未开始' }
   return map[s] || '未开始'
@@ -436,6 +443,7 @@ onMounted(async () => {
   const profile = JSON.parse(localStorage.getItem('authProfile') || '{}')
   isGmOffice.value = canViewAllStatistics(profile)
 
+  dictStore.loadDicts()
   summaryLoading.value = true
   todoLoading.value = true
   try {
@@ -507,6 +515,8 @@ const handleCalendarMonthChange = (value, onChange, offset) => {
 const handleTodoClick = item => {
   if (item.itemType === 'BUG') {
     router.push({ name: 'BugDetail', params: { id: item.businessId } })
+  } else if (item.itemType === 'REQUIREMENT') {
+    router.push({ name: 'PersonalRequirementDetail', params: { id: item.businessId } })
   } else {
     router.push({ name: 'PersonalTasks', query: { detail: 'task', taskId: item.businessId } })
   }
