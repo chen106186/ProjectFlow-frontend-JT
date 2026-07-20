@@ -301,7 +301,7 @@
             </div>
           </div>
           <div v-if="bugDisplayMode === 'list'" class="personal-bug-list-view">
-            <a-table class="personal-bug-table" :columns="personalBugColumns" :data-source="pagedVisibleBugs" :pagination="false" :scroll="{ x: 1100, y: '100%' }" size="middle" row-key="id" table-layout="fixed">
+            <a-table class="personal-bug-table" :columns="personalBugColumns" :data-source="pagedVisibleBugs" :pagination="false" :scroll="{ x: 1240, y: '100%' }" size="middle" row-key="id" table-layout="fixed">
               <template #bodyCell="{ column, record, text }">
                 <template v-if="column.dataIndex === 'code'">
                   <span class="bug-no">{{ text && text !== '-' ? '#' + String(text).padStart(3, '0') : '-' }}</span>
@@ -316,6 +316,16 @@
                 </template>
                 <template v-else-if="column.dataIndex === 'status'">
                   <a-tag :color="record.statusColor">{{ text }}</a-tag>
+                </template>
+                <template v-else-if="column.dataIndex === 'operation'">
+                  <a-space :size="4">
+                    <a-tooltip v-if="canAssignPersonalBug(record)" title="快速指派">
+                      <a-button type="link" size="small" class="bug-operation-button" aria-label="快速指派" @click="openQuickAssign(record)"><UserSwitchOutlined /></a-button>
+                    </a-tooltip>
+                    <a-tooltip v-if="!isClosedPersonalBug(record) && isPersonalBugCreator(record)" title="关闭">
+                      <a-button type="link" size="small" class="bug-operation-button" aria-label="关闭" danger :loading="personalBugActionId === record.id + '_close'" @click="handleClosePersonalBug(record)"><CloseCircleOutlined /></a-button>
+                    </a-tooltip>
+                  </a-space>
                 </template>
                 <template v-else>{{ text }}</template>
               </template>
@@ -332,7 +342,7 @@
                 </button>
                 <a-tag>{{ group.rows.length }}</a-tag>
               </header>
-              <a-table v-if="!isBugGroupCollapsed(group.value)" :columns="personalBugColumns" :data-source="group.rows" :pagination="false" :scroll="{ x: 1100 }" size="middle" row-key="id" table-layout="fixed">
+              <a-table v-if="!isBugGroupCollapsed(group.value)" :columns="personalBugColumns" :data-source="group.rows" :pagination="false" :scroll="{ x: 1240 }" size="middle" row-key="id" table-layout="fixed">
                 <template #bodyCell="{ column, record, text }">
                   <template v-if="column.dataIndex === 'code'">
                     <span class="bug-no">{{ text && text !== '-' ? '#' + String(text).padStart(3, '0') : '-' }}</span>
@@ -347,6 +357,16 @@
                   </template>
                   <template v-else-if="column.dataIndex === 'status'">
                     <a-tag :color="record.statusColor">{{ text }}</a-tag>
+                  </template>
+                  <template v-else-if="column.dataIndex === 'operation'">
+                    <a-space :size="4">
+                      <a-tooltip v-if="canAssignPersonalBug(record)" title="快速指派">
+                        <a-button type="link" size="small" class="bug-operation-button" aria-label="快速指派" @click="openQuickAssign(record)"><UserSwitchOutlined /></a-button>
+                      </a-tooltip>
+                      <a-tooltip v-if="!isClosedPersonalBug(record) && isPersonalBugCreator(record)" title="关闭">
+                        <a-button type="link" size="small" class="bug-operation-button" aria-label="关闭" danger :loading="personalBugActionId === record.id + '_close'" @click="handleClosePersonalBug(record)"><CloseCircleOutlined /></a-button>
+                      </a-tooltip>
+                    </a-space>
                   </template>
                   <template v-else>{{ text }}</template>
                 </template>
@@ -565,6 +585,17 @@
       </a-form>
     </a-modal>
 
+    <a-modal v-model:open="bugAssignOpen" width="32rem" title="快速指派" :confirm-loading="bugAssignLoading" ok-text="确认" cancel-text="取消" centered @ok="handleQuickAssign">
+      <a-form class="prototype-modal-form" layout="horizontal" :label-col="{ span: 5 }">
+        <a-form-item label="指派给" required>
+          <a-select v-model:value="bugAssignForm.assigneeId" :options="bugUserOptions" placeholder="请选择负责人" show-search option-filter-prop="label" />
+        </a-form-item>
+        <a-form-item label="备注">
+          <a-textarea v-model:value="bugAssignForm.reason" :rows="4" placeholder="请输入备注" />
+        </a-form-item>
+      </a-form>
+    </a-modal>
+
     <a-modal v-model:open="bugEditOpen" width="40rem" title="编辑Bug" centered>
       <template #footer>
         <a-space>
@@ -644,6 +675,7 @@ import {
   BugOutlined,
   CheckCircleOutlined,
   CheckOutlined,
+  CloseCircleOutlined,
   DeleteOutlined,
   DownOutlined,
   DownloadOutlined,
@@ -662,6 +694,7 @@ import {
   RightOutlined,
   ScheduleOutlined,
   ToolOutlined,
+  UserSwitchOutlined,
 } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import * as echarts from 'echarts'
@@ -670,6 +703,7 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { createDailyReport, fetchDailyReports } from '@/api/dailyReports'
 import {
+  assignBug,
   closeBug,
   createTask,
   deleteBug,
@@ -708,10 +742,20 @@ const bugFixBugId = ref(null)
 const bugFixForm = ref({ fixAnalysis: '', fixDetail: '' })
 const bugFixLoading = ref(false)
 const bugVerifyLoading = ref(false)
+const bugAssignOpen = ref(false)
+const bugAssignLoading = ref(false)
+const assigningBug = ref(null)
+const bugAssignForm = ref({ assigneeId: undefined, reason: '' })
+const personalBugActionId = ref('')
 
 const currentUserId = computed(() => {
   try { return JSON.parse(localStorage.getItem('userInfo') || '{}').userId || null } catch { return null }
 })
+
+const isClosedPersonalBug = bug => bug?.statusCode === 'CLOSED'
+const isPersonalBugCreator = bug => Boolean(currentUserId.value) && String(bug?.creatorId) === String(currentUserId.value)
+const isPersonalBugAssignee = bug => Boolean(currentUserId.value) && String(bug?.assigneeId) === String(currentUserId.value)
+const canAssignPersonalBug = bug => !isClosedPersonalBug(bug) && (isPersonalBugCreator(bug) || isPersonalBugAssignee(bug))
 
 const dailyEditOpen = ref(false)
 const uploadOpen = ref(false)
@@ -1616,6 +1660,53 @@ const handleCreateBug = () => {
   router.push({ name: 'BugCreate' })
 }
 
+const openQuickAssign = record => {
+  if (!canAssignPersonalBug(record)) return
+  assigningBug.value = record
+  bugAssignForm.value = { assigneeId: record.assigneeId || undefined, reason: '' }
+  bugAssignOpen.value = true
+}
+
+const handleQuickAssign = async () => {
+  if (!bugAssignForm.value.assigneeId) {
+    message.warning('请选择负责人')
+    return
+  }
+  if (!assigningBug.value || !canAssignPersonalBug(assigningBug.value)) return
+
+  bugAssignLoading.value = true
+  try {
+    await assignBug(assigningBug.value.id, {
+      assigneeId: bugAssignForm.value.assigneeId,
+      reason: bugAssignForm.value.reason,
+    })
+    message.success('指派成功')
+    bugAssignOpen.value = false
+    assigningBug.value = null
+    bugAssignForm.value = { assigneeId: undefined, reason: '' }
+    await loadMyBugs()
+  } catch (error) {
+    message.error(error.message || '指派失败')
+  } finally {
+    bugAssignLoading.value = false
+  }
+}
+
+const handleClosePersonalBug = async record => {
+  if (isClosedPersonalBug(record) || !isPersonalBugCreator(record)) return
+
+  personalBugActionId.value = record.id + '_close'
+  try {
+    await closeBug(record.id)
+    message.success('Bug已关闭')
+    await loadMyBugs()
+  } catch (error) {
+    message.error(error.message || '关闭失败')
+  } finally {
+    personalBugActionId.value = ''
+  }
+}
+
 const handleOpenBugEditModal = record => {
   bugEditingId.value = record.id
   bugForm.value = {
@@ -1918,6 +2009,7 @@ const personalBugColumns = [
   { title: '创建人', dataIndex: 'creator', width: 100 },
   { title: '指定人', dataIndex: 'assignee', width: 100 },
   { title: '创建时间', dataIndex: 'createdAt', width: 170 },
+  { title: '操作', dataIndex: 'operation', fixed: 'right', width: 90 },
 ]
 
 
@@ -2245,6 +2337,21 @@ const trendPoints = [
   align-self: flex-end;
   height: 32px;
   margin: 10px 0 0;
+}
+
+.bug-operation-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 6px;
+}
+
+.bug-operation-button :deep(svg) {
+  width: 15px;
+  height: 15px;
 }
 
 .personal-bug-group-view {

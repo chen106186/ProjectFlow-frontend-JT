@@ -65,7 +65,7 @@
                   <a-tooltip v-if="!isClosedBug(record)" title="编辑">
                     <a-button type="link" size="small" class="bug-operation-button" aria-label="编辑" @click="handleEdit(record)"><EditOutlined /></a-button>
                   </a-tooltip>
-                  <a-tooltip v-if="!isClosedBug(record)" title="关闭">
+                  <a-tooltip v-if="!isClosedBug(record) && isBugCreator(record)" title="关闭">
                     <a-button type="link" size="small" class="bug-operation-button" aria-label="关闭" danger @click="handleCloseBugFromList(record)"><CloseCircleOutlined /></a-button>
                   </a-tooltip>
                   <a-tooltip v-else-if="isBugCreator(record)" title="重新打开">
@@ -120,7 +120,7 @@
                       <a-tooltip v-if="!isClosedBug(record)" title="编辑">
                         <a-button type="link" size="small" class="bug-operation-button" aria-label="编辑" @click="handleEdit(record)"><EditOutlined /></a-button>
                       </a-tooltip>
-                      <a-tooltip v-if="!isClosedBug(record)" title="关闭">
+                      <a-tooltip v-if="!isClosedBug(record) && isBugCreator(record)" title="关闭">
                         <a-button type="link" size="small" class="bug-operation-button" aria-label="关闭" danger @click="handleCloseBugFromList(record)"><CloseCircleOutlined /></a-button>
                       </a-tooltip>
                       <a-tooltip v-else-if="isBugCreator(record)" title="重新打开">
@@ -833,6 +833,7 @@ const handleBack = () => router.back()
 const handleReopenBug = () => message.info('重新打开接口暂未对接')
 
 const handleCloseBugFromList = async record => {
+  if (isClosedBug(record) || !isBugCreator(record)) return
   try {
     const closed = await closeBug(record.id)
     Object.assign(record, closed || {}, { status: 'CLOSED' })
