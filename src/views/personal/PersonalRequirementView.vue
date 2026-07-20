@@ -33,8 +33,10 @@
           新增需求
         </a-button>
         <div class="requirement-list__display">
-          <span>分组条件：</span>
-          <a-select v-model:value="groupField" :options="groupOptions" />
+          <template v-if="displayMode === 'group'">
+            <span>分组条件：</span>
+            <a-select v-model:value="groupField" :options="groupOptions" />
+          </template>
           <a-radio-group v-model:value="displayMode" button-style="solid">
             <a-radio-button value="list">列表</a-radio-button>
             <a-radio-button value="group">分组</a-radio-button>
@@ -52,6 +54,7 @@
           :pagination="false"
           :loading="loading"
           :scroll="{ x: 1440, y: '100%' }"
+          size="middle"
         >
         <template #bodyCell="{ column, record, text }">
           <template v-if="column.dataIndex === 'requirementNo'">
@@ -102,9 +105,12 @@
             </button>
             <a-tag>{{ group.rows.length }}</a-tag>
           </header>
-          <a-table v-if="!isGroupCollapsed(group.value)" row-key="id" :columns="columns" :data-source="group.rows" :pagination="false" :scroll="{ x: 1440 }">
+          <a-table v-if="!isGroupCollapsed(group.value)" row-key="id" :columns="columns" :data-source="group.rows" :pagination="false" :scroll="{ x: 1440 }" size="middle">
             <template #bodyCell="{ column, record, text }">
-              <template v-if="column.dataIndex === 'title'">
+              <template v-if="column.dataIndex === 'requirementNo'">
+                <span class="requirement-no">{{ text }}</span>
+              </template>
+              <template v-else-if="column.dataIndex === 'title'">
                 <a-button type="link" class="table-link" @click="handleDetail(record)">{{ text }}</a-button>
               </template>
               <template v-else-if="column.dataIndex === 'requirementType'">
@@ -238,9 +244,15 @@ const pagination = reactive({
 })
 
 const displayMode = ref('list')
-const groupField = ref('projectName')
+const groupField = ref('projectId')
 const collapsedGroups = ref([])
-const groupOptions = [{ label: '所属项目', value: 'projectName' }]
+const groupOptions = [
+  { label: '所属项目', value: 'projectId' },
+  { label: '需求类型', value: 'requirementTypeCode' },
+  { label: '优先级', value: 'priorityCode' },
+  { label: '需求状态', value: 'statusCode' },
+  { label: '负责人', value: 'submitter' },
+]
 
 const createDefaultForm = () => ({
   title: '',
@@ -369,15 +381,35 @@ const pagedRows = computed(() => {
 })
 
 const groupedRows = computed(() => {
+  const labelMap = {
+    projectId: '所属项目',
+    requirementTypeCode: '需求类型',
+    priorityCode: '优先级',
+    statusCode: '需求状态',
+    submitter: '负责人',
+  }
   const groups = new Map()
 
   pagedRows.value.forEach(item => {
-    const key = item[groupField.value] || '未分组'
-    if (!groups.has(key)) groups.set(key, [])
-    groups.get(key).push(item)
+    const value = item[groupField.value] || '未设置'
+    if (!groups.has(value)) groups.set(value, [])
+    groups.get(value).push(item)
   })
 
-  return Array.from(groups, ([value, rows]) => ({ value, label: value, rows }))
+  return Array.from(groups, ([value, rows]) => {
+    let valueLabel = value
+    if (value === '未设置') valueLabel = '未设置'
+    else if (groupField.value === 'projectId') valueLabel = projectMap.value[String(value)] || '未设置'
+    else if (groupField.value === 'requirementTypeCode') valueLabel = optionLabel(typeOptions.value, value)
+    else if (groupField.value === 'priorityCode') valueLabel = optionLabel(priorityOptions.value, value)
+    else if (groupField.value === 'statusCode') valueLabel = optionLabel(statusOptions.value, value)
+
+    return {
+      value,
+      label: `${labelMap[groupField.value]}：${valueLabel}`,
+      rows,
+    }
+  })
 })
 
 const isGroupCollapsed = value => collapsedGroups.value.includes(value)
