@@ -108,8 +108,8 @@
             </template>
 
             <a-empty v-if="!relatedBugs.length" description="暂无关联Bug" />
-            <article v-for="bug in relatedBugs" v-else :key="bug.id || bug.code" class="bug-card">
-              <p><BugOutlined /> {{ bug.code || bug.bugNo || bug.id }}</p>
+            <article v-for="bug in relatedBugs" v-else :key="bug.id || bug.bugNo || bug.code" class="bug-card">
+              <p><BugOutlined /> {{ formatBugNo(bug) }}</p>
               <strong>{{ bug.title || bug.name || '-' }}</strong>
               <div>
                 <a-tag :color="getBugLevelColor(bug.priority || bug.severity)">{{ getDictLabel('bugPriority', bug.priority || bug.severity) || bug.priority || bug.severity || '-' }}</a-tag>
@@ -143,7 +143,7 @@ import { message } from 'ant-design-vue'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { deleteProjectFile, downloadProjectFile, getProjectFiles, getTaskById, uploadProjectFile } from '@/api/managementProject'
+import { deleteProjectFile, downloadProjectFile, getProjectBugs, getProjectFiles, getTaskById, uploadProjectFile } from '@/api/managementProject'
 import { useDictStore } from '@/store/dictStore'
 import { formatDateTime } from '@/utils/dateTime'
 
@@ -154,6 +154,7 @@ const dictStore = useDictStore()
 const loading = ref(false)
 const taskDetail = ref(null)
 const attachmentRows = ref([])
+const relatedBugRows = ref([])
 const uploadOpen = ref(false)
 const uploadLoading = ref(false)
 const uploadFiles = ref([])
@@ -181,7 +182,7 @@ const attachments = computed(() =>
 )
 
 const operationLogs = computed(() => Array.isArray(taskDetail.value?.logs) ? taskDetail.value.logs : [])
-const relatedBugs = computed(() => [])
+const relatedBugs = computed(() => relatedBugRows.value)
 
 const getDictLabel = (type, value) => {
   if (!value) {
@@ -248,22 +249,43 @@ const getBugStatusColor = status => {
   return map[status] || 'blue'
 }
 
+const formatBugNo = bug => {
+  if (bug?.bugNo) return `#${String(bug.bugNo).padStart(3, '0')}`
+  if (bug?.code) return bug.code
+  return bug?.id ? `BUG-${bug.id}` : '-'
+}
+
 const fetchTaskDetail = async () => {
   loading.value = true
 
   try {
     await dictStore.loadDicts()
-    const [detail, files] = await Promise.all([
+    const [detail, files, bugs] = await Promise.all([
       getTaskById(route.params.id),
       getProjectFiles({ businessType: 'TASK', businessId: route.params.id }),
+      fetchAllTaskBugs(route.params.id),
     ])
     taskDetail.value = detail
     attachmentRows.value = Array.isArray(files) ? files : []
+    relatedBugRows.value = bugs
   } catch (error) {
     message.error(error.message || '任务详情加载失败')
   } finally {
     loading.value = false
   }
+}
+
+const fetchAllTaskBugs = async taskId => {
+  const pageSize = 200
+  const first = await getProjectBugs({ taskId, pageNo: 1, pageSize })
+  const records = [...(first.records || [])]
+  const total = Number(first.total || records.length)
+  const pages = Math.ceil(total / pageSize)
+  for (let pageNo = 2; pageNo <= pages; pageNo += 1) {
+    const next = await getProjectBugs({ taskId, pageNo, pageSize })
+    records.push(...(next.records || []))
+  }
+  return records
 }
 
 const handleBack = () => router.back()
