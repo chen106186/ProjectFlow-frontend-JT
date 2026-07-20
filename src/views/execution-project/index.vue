@@ -86,6 +86,7 @@
         </a-form-item>
         <a-form-item label="项目负责人" name="managerId"><a-select v-model:value="formState.managerId" :options="managerOptions" placeholder="根据项目名称带出" disabled /></a-form-item>
         <a-form-item label="项目类型" name="projectBusinessType"><a-select v-model:value="formState.projectBusinessType" :options="projectBusinessTypeOptions" placeholder="根据项目名称带出" disabled /></a-form-item>
+        <a-form-item v-if="editingId" label="项目阶段"><a-select v-model:value="formState.stage" :options="currentStageOptions" placeholder="请选择项目阶段" /></a-form-item>
       </a-form>
       <div class="form-actions"><a-button @click="formVisible = false">取消</a-button><a-button type="primary" :loading="submitLoading" @click="handleSubmit">确认</a-button></div>
     </a-modal>
@@ -139,7 +140,23 @@ const columns = [
   { title: '操作', dataIndex: 'operation', width: 96, fixed: 'right' },
 ]
 
-const createDefaultForm = () => ({ name: '', department: '', managerId: undefined, participantIds: [], managementProjectId: undefined, projectBusinessType: undefined, stage: 'REQUIREMENT_ANALYSIS', status: 'NOT_STARTED', description: '' })
+const executionStageMap = {
+  DIGITALIZATION: [
+    { label: '开发', value: 'DEVELOPMENT' },
+    { label: '测试', value: 'TESTING' },
+    { label: '第三方测试', value: 'THIRD_PARTY_TESTING' },
+    { label: '实施部署', value: 'DEPLOYMENT' },
+    { label: '上线试运行', value: 'TRIAL_RUN' },
+  ],
+  EXTERNAL: [
+    { label: '开发', value: 'DEVELOPMENT' },
+    { label: '测试', value: 'TESTING' },
+    { label: '部署实施', value: 'DEPLOYMENT_IMPLEMENTATION' },
+  ],
+}
+const currentStageOptions = computed(() => executionStageMap[formState.projectBusinessType] || [])
+
+const createDefaultForm = () => ({ name: '', department: '', managerId: undefined, participantIds: [], managementProjectId: undefined, projectBusinessType: undefined, stage: 'DEVELOPMENT', status: 'NOT_STARTED', description: '' })
 const formState = reactive(createDefaultForm())
 const formRules = {
   name: [{ required: true, message: '请选择项目名称', trigger: 'change' }],
@@ -258,7 +275,12 @@ const handleEdit = async record => {
       participantIds: detail.participantIds || [],
       managementProjectId: detail.managementProjectId || undefined,
       projectBusinessType: detail.projectBusinessType || undefined,
-      stage: detail.stage,
+      stage: (() => {
+        const type = detail.projectBusinessType
+        const opts = executionStageMap[type] || []
+        const s = detail.stage
+        return opts.some(o => o.value === s) ? s : (opts[0]?.value || 'DEVELOPMENT')
+      })(),
       status: detail.status,
       description: detail.description,
     })

@@ -2104,21 +2104,21 @@ const statCards = computed(() => {
 
 const projectLegendItems = computed(() => {
   const dist = statsData.value?.projectDistribution || {}
-  const total = Object.values(dist).reduce((a, b) => a + b, 0)
+  const total = Object.values(dist).reduce((s, v) => s + Number(v), 0)
   return Object.entries(dist).map(([name, value], i) => ({
     name,
     color: CHART_COLORS[i % CHART_COLORS.length],
-    pct: total ? Math.round(value / total * 100) + '%' : '0%',
+    pct: total ? Math.round(Number(value) / total * 100) + '%' : '0%',
   }))
 })
 
 const statusLegendItems = computed(() => {
   const dist = statsData.value?.taskStatusDistribution || {}
-  const total = Object.values(dist).reduce((a, b) => a + b, 0)
+  const total = Object.values(dist).reduce((s, v) => s + Number(v), 0)
   return Object.entries(dist).map(([code, value]) => ({
     name: STATUS_LABEL_MAP[code] || code,
     color: STATUS_COLOR_MAP[code] || '#c8cfd9',
-    pct: total ? Math.round(value / total * 100) + '%' : '0%',
+    pct: total ? Math.round(Number(value) / total * 100) + '%' : '0%',
   }))
 })
 

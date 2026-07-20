@@ -43,7 +43,7 @@
                 </span>
                 <span class="todo-card__content">
                   <strong>{{ item.title }}</strong>
-                  <small v-if="item.itemType === 'BUG'">{{ item.ownerName || '-' }}　|　{{ item.creatorName || '-' }}　|　{{ item.projectName || '-' }}</small>
+                  <small v-if="item.itemType === 'BUG'">创建人：{{ item.creatorName || '-' }}　|　指定人：{{ item.ownerName || '-' }}　|　项目：{{ item.projectName || '-' }}</small>
                   <small v-else>{{ item.ownerName || '待分配' }}　|　{{ item.plannedEndDate || '-' }} 截止　|　{{ item.projectName || '-' }}</small>
                 </span>
                 <span class="todo-card__badge" :class="`todo-card__badge--${todoBadgeStatus(item)}`">{{ todoStatusLabel(item) }}</span>
@@ -321,21 +321,21 @@ const STATUS_COLOR_MAP = { COMPLETED: '#27c27a', IN_PROGRESS: '#1677ff', DUE_SOO
 
 const projectLegendItems = computed(() => {
   const dist = myStats.projectDistribution || {}
-  const total = Object.values(dist).reduce((a, b) => a + b, 0)
+  const total = Object.values(dist).reduce((s, v) => s + Number(v), 0)
   return Object.entries(dist).map(([name, value], i) => ({
     name,
     color: CHART_COLORS[i % CHART_COLORS.length],
-    pct: total ? Math.round(value / total * 100) + '%' : '0%',
+    pct: total ? Math.round(Number(value) / total * 100) + '%' : '0%',
   }))
 })
 
 const statusLegendItems = computed(() => {
   const dist = myStats.taskStatusDistribution || {}
-  const total = Object.values(dist).reduce((a, b) => a + b, 0)
+  const total = Object.values(dist).reduce((s, v) => s + Number(v), 0)
   return Object.entries(dist).map(([code, value]) => ({
     name: STATUS_LABEL_MAP[code] || code,
     color: STATUS_COLOR_MAP[code] || '#c8cfd9',
-    pct: total ? Math.round(value / total * 100) + '%' : '0%',
+    pct: total ? Math.round(Number(value) / total * 100) + '%' : '0%',
   }))
 })
 const trendChartRef = ref()
