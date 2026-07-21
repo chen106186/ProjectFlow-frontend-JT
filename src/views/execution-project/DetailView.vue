@@ -212,20 +212,21 @@
         <a-pagination class="detail-list-pagination" :current="documentPagination.current" :page-size="documentPagination.pageSize" :total="filteredDocsBySearch.length" :page-size-options="documentPagination.pageSizeOptions" :show-total="documentPagination.showTotal" show-size-changer @change="(page, pageSize) => handleTablePaginationChange(documentPagination, page, pageSize)" />
       </div>
 
+      <div v-show="activeTab === 'logs'" class="execution-tab-panel">
+        <a-card class="operation-lifecycle-card" :bordered="false" :loading="operationLogLoading">
+          <template #title><span class="operation-lifecycle-card__title">操作日志</span></template>
+          <a-empty v-if="!operationLogRows.length" description="暂无操作记录" />
+          <a-timeline v-else class="operation-lifecycle-timeline">
+            <a-timeline-item v-for="log in operationLogRows" :key="log.id" :color="log.operationColor">
+              <div class="operation-timeline__action">{{ log.operatorName || '-' }} · {{ log.operationLabel }}</div>
+              <div v-if="log.content" class="operation-timeline__content">{{ log.content }}</div>
+              <div class="operation-timeline__time">{{ log.time }}</div>
+            </a-timeline-item>
+          </a-timeline>
+        </a-card>
+      </div>
+
     </section>
-    <aside class="project-operation-sidebar">
-      <a-card class="operation-lifecycle-card" :bordered="false" :loading="operationLogLoading">
-        <template #title><span class="operation-lifecycle-card__title">操作日志</span></template>
-        <a-empty v-if="!operationLogRows.length" description="暂无操作记录" />
-        <a-timeline v-else class="operation-lifecycle-timeline">
-          <a-timeline-item v-for="log in operationLogRows" :key="log.id" :color="log.operationColor">
-            <div class="operation-timeline__action">{{ log.operatorName || '-' }} · {{ log.operationLabel }}</div>
-            <div v-if="log.content" class="operation-timeline__content">{{ log.content }}</div>
-            <div class="operation-timeline__time">{{ log.time }}</div>
-          </a-timeline-item>
-        </a-timeline>
-      </a-card>
-    </aside>
     </div>
 
     <a-modal v-model:open="uploadVisible" class="document-upload-modal" title="上传文件" :width="760" :footer="null" destroy-on-close>
@@ -494,6 +495,7 @@ const detailTabs = [
   { key: 'tasks', label: '任务列表', icon: ProfileOutlined },
   { key: 'bugs', label: 'Bug列表', icon: BugOutlined },
   { key: 'documents', label: '文档中心', icon: FolderOpenOutlined },
+  { key: 'logs', label: '操作日志', icon: FileTextOutlined },
 ]
 const ganttSummaryData = reactive({ total: 0, completed: 0, overdue: 0, dueSoon: 0, overallProgress: 0 })
 const ganttSummary = computed(() => [
@@ -1564,9 +1566,8 @@ onMounted(async () => {
 .summary-metrics span { color: #8c8c8c; font-size: 12px; }
 .summary-metrics strong { font-size: 18px; }
 .summary-metrics .danger { color: #ff4d4f; }
-.execution-detail-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; align-items: start; }
+.execution-detail-layout { min-width: 0; }
 .execution-detail-card { min-width: 0; min-height: 560px; overflow: hidden; background: #fff; border-radius: 8px; }
-.project-operation-sidebar { min-width: 0; }
 .operation-lifecycle-card { border: 1px solid #edf0f3; box-shadow: 0 1px 4px rgb(0 0 0 / 4%); }
 .operation-lifecycle-card :deep(.ant-card-head) { min-height: 44px; padding: 0 18px; }
 .operation-lifecycle-card :deep(.ant-card-body) { max-height: 500px; padding: 18px 16px 4px; overflow-x: hidden; overflow-y: auto; }
@@ -1668,17 +1669,17 @@ onMounted(async () => {
 .report-detail-header { display: flex; align-items: center; min-height: 32px; padding-right: 42px; margin-bottom: 14px; }
 .report-detail-header strong { font-size: 16px; }
 .report-detail-info-table { margin-bottom: 24px; border: 1px solid #e5e6eb; border-right: 0; border-bottom: 0; }
-.report-detail-info-grid { display: grid; grid-template-columns: 86px minmax(120px, 1fr) 86px minmax(120px, 1fr) 86px minmax(120px, 1fr) 86px minmax(120px, 1fr); }
+.report-detail-info-grid { display: grid; grid-template-columns: 100px minmax(120px, 1fr) 100px minmax(120px, 1fr) 100px minmax(120px, 1fr) 100px minmax(120px, 1fr); }
 .report-detail-info-grid span,
 .report-detail-info-grid strong,
 .report-detail-description span,
 .report-detail-description p { min-height: 42px; padding: 10px 12px; border-right: 1px solid #e5e6eb; border-bottom: 1px solid #e5e6eb; }
 .report-detail-info-grid span,
-.report-detail-description span { color: #1f1f1f; font-weight: 600; background: #fafafa; }
+.report-detail-description span { color: #1f1f1f; font-weight: 600; white-space: nowrap; background: #fafafa; }
 .report-detail-info-grid strong { min-width: 0; font-weight: 400; overflow-wrap: anywhere; }
 .report-detail-progress { display: grid; grid-template-columns: minmax(0, 80px) 38px; gap: 10px; align-items: center; }
 .report-detail-progress em { font-style: normal; font-size: 12px; }
-.report-detail-description { display: grid; grid-template-columns: 86px minmax(0, 1fr); margin: 0; color: #404040; }
+.report-detail-description { display: grid; grid-template-columns: 100px minmax(0, 1fr); margin: 0; color: #404040; }
 .report-detail-description p { margin: 0; }
 .report-detail-section-title { display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 12px; font-size: 18px; }
 .report-detail-remark { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 10px; align-items: flex-start; margin-bottom: 10px; }

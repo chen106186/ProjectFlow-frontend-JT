@@ -228,21 +228,22 @@
           <a-pagination class="detail-list-pagination" :current="documentPagination.current" :page-size="documentPagination.pageSize" :total="filteredDocsBySearch.length" :page-size-options="paginationOptions.pageSizeOptions" :show-total="paginationOptions.showTotal" show-size-changer @change="handleDocumentPageChange" />
         </section>
 
+        <section v-if="activeTab === 'logs'" class="detail-panel">
+          <a-card class="operation-lifecycle-card" :bordered="false" :loading="operationLogLoading">
+            <template #title><span class="operation-lifecycle-card__title">操作日志</span></template>
+            <a-empty v-if="!operationLogRows.length" description="暂无操作记录" />
+            <a-timeline v-else class="operation-lifecycle-timeline">
+              <a-timeline-item v-for="log in operationLogRows" :key="log.id" :color="log.operationColor">
+                <div class="operation-timeline__action">{{ log.operatorName || '-' }} · {{ log.operationLabel }}</div>
+                <div v-if="log.content" class="operation-timeline__content">{{ log.content }}</div>
+                <div class="operation-timeline__time">{{ log.time }}</div>
+              </a-timeline-item>
+            </a-timeline>
+          </a-card>
+        </section>
+
       </main>
       </div>
-      <aside class="project-operation-sidebar">
-        <a-card class="operation-lifecycle-card" :bordered="false" :loading="operationLogLoading">
-          <template #title><span class="operation-lifecycle-card__title">操作日志</span></template>
-          <a-empty v-if="!operationLogRows.length" description="暂无操作记录" />
-          <a-timeline v-else class="operation-lifecycle-timeline">
-            <a-timeline-item v-for="log in operationLogRows" :key="log.id" :color="log.operationColor">
-              <div class="operation-timeline__action">{{ log.operatorName || '-' }} · {{ log.operationLabel }}</div>
-              <div v-if="log.content" class="operation-timeline__content">{{ log.content }}</div>
-              <div class="operation-timeline__time">{{ log.time }}</div>
-            </a-timeline-item>
-          </a-timeline>
-        </a-card>
-      </aside>
     </div>
   </div>
 </template>
@@ -540,10 +541,6 @@ defineExpose({
 }
 
 .project-detail__layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
-  gap: 16px;
-  align-items: start;
   flex: 1;
   min-height: 0;
   overflow: visible;
@@ -564,10 +561,6 @@ defineExpose({
   min-height: 0;
   overflow: hidden;
   background: #fff;
-}
-
-.project-operation-sidebar {
-  min-width: 0;
 }
 
 .operation-lifecycle-card {

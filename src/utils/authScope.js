@@ -1,3 +1,14 @@
+export const isAdminProfile = profile => {
+  if (!profile) return false
+  if (String(profile.username || '').toLowerCase() === 'admin') return true
+
+  return (profile.roles || []).some(role => {
+    const code = String(role?.code || '').toUpperCase()
+    const name = String(role?.name || '')
+    return code === 'ADMIN' || code === 'SUPER_ADMIN' || name === '超级管理员' || name === '管理员'
+  })
+}
+
 export const canViewAllStatistics = profile => {
   if (!profile) return false
   if (profile.isGmOffice) return true

@@ -26,7 +26,7 @@
           <template v-else-if="column.dataIndex === 'name'"><a-button type="link" class="table-link" @click="handleDetail(record)">{{ text }}</a-button></template>
           <template v-else-if="column.dataIndex === 'status'"><a-tag color="processing">{{ text }}</a-tag></template>
           <template v-else-if="column.dataIndex === 'operation'">
-            <a-space :size="4">
+            <a-space v-if="canManageProject(record)" :size="4">
               <a-tooltip title="编辑">
                 <a-button type="link" size="small" class="operation-icon-button" aria-label="编辑" @click="handleEdit(record)"><EditOutlined /></a-button>
               </a-tooltip>
@@ -49,7 +49,7 @@
               <template v-else-if="column.dataIndex === 'name'"><a-button type="link" class="table-link" @click="handleDetail(record)">{{ text }}</a-button></template>
               <template v-else-if="column.dataIndex === 'status'"><a-tag color="processing">{{ text }}</a-tag></template>
               <template v-else-if="column.dataIndex === 'operation'">
-                <a-space :size="4">
+                <a-space v-if="canManageProject(record)" :size="4">
                   <a-tooltip title="编辑">
                     <a-button type="link" size="small" class="operation-icon-button" aria-label="编辑" @click="handleEdit(record)"><EditOutlined /></a-button>
                   </a-tooltip>
@@ -101,6 +101,8 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { createProject, deleteProject, getDicts, getProjectDetail, getProjectList, getProjectStats, getSystemUsers, updateProject } from '@/api/managementProject'
+import { getCurrentUser } from '@/api/system'
+import { isAdminProfile } from '@/utils/authScope'
 import { OPERATION_ACTIONS, OPERATION_MODULES, recordOperationLog } from '@/utils/operationLog'
 
 const loading = ref(false)
@@ -110,6 +112,11 @@ const editingId = ref(null)
 const formRef = ref()
 const router = useRouter()
 const projects = ref([])
+const currentUserProfile = ref(null)
+const currentUserId = computed(() => currentUserProfile.value?.id)
+const isAdmin = computed(() => isAdminProfile(currentUserProfile.value))
+const canManageProject = project => isAdmin.value
+  || (currentUserId.value != null && String(project?.managerId) === String(currentUserId.value))
 const managerOptions = ref([])
 const managementProjectOptions = ref([])
 const projectBusinessTypeOptions = ref([])
@@ -129,7 +136,7 @@ const query = reactive({ keyword: '', managerId: '全部', stage: '全部', stat
 const appliedQuery = reactive({ ...query })
 const pagination = reactive({ current: 1, pageSize: 10, total: 0, pageSizeOptions: ['10', '50', '100'], showSizeChanger: true, showTotal: total => `共 ${total} 条` })
 
-const columns = [
+const projectColumnDefinitions = [
   { title: '序号', dataIndex: 'index', width: 70 },
   { title: '项目名称', dataIndex: 'name', width: 210 },
   { title: '项目经理', dataIndex: 'manager', width: 120 },
@@ -137,8 +144,13 @@ const columns = [
   { title: '项目状态', dataIndex: 'status', width: 120 },
   { title: '任务数', dataIndex: 'taskCount', width: 100 },
   { title: 'BUG数', dataIndex: 'bugCount', width: 100 },
-  { title: '操作', dataIndex: 'operation', width: 96, fixed: 'right' },
 ]
+const operationColumn = { title: '操作', dataIndex: 'operation', width: 96, fixed: 'right' }
+const columns = computed(() => (
+  isAdmin.value || projects.value.some(canManageProject)
+    ? [...projectColumnDefinitions, operationColumn]
+    : projectColumnDefinitions
+))
 
 const executionStageMap = {
   DIGITALIZATION: [
@@ -189,11 +201,13 @@ const handleProjectNameChange = value => {
 }
 const fetchReferenceData = async () => {
   try {
-    const [dicts, users, managementProjects] = await Promise.all([
+    const [dicts, users, managementProjects, profile] = await Promise.all([
       getDicts(),
       getSystemUsers({ pageNo: 1, pageSize: 200, enabled: true }),
       getProjectList({ projectType: 'MANAGEMENT', pageNo: 1, pageSize: 200 }),
+      getCurrentUser(),
     ])
+    currentUserProfile.value = profile
     stageOptions.value = dicts.find(item => item.type === 'projectStage')?.items || []
     projectBusinessTypeOptions.value = dicts.find(item => item.type === 'projectBusinessType')?.items || []
     const projectStatus = dicts.find(item => item.type === 'projectStatus')?.items || []

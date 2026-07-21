@@ -28,7 +28,7 @@
             <template v-else-if="column.dataIndex === 'name'"><a-button type="link" class="table-link" @click="handleDetail(record)">{{ text }}</a-button></template>
             <template v-else-if="column.dataIndex === 'status'"><a-tag color="green">{{ text }}</a-tag></template>
             <template v-else-if="column.dataIndex === 'contractStatus'"><a-tag color="green">{{ text }}</a-tag></template>
-            <template v-else-if="column.dataIndex === 'operation'"><a-space><a-button type="link" size="small" @click="handleEdit(record)"><EditOutlined /></a-button><a-popconfirm title="确定删除该项目吗？" @confirm="handleDelete(record)"><a-button type="link" size="small" danger><DeleteOutlined /></a-button></a-popconfirm></a-space></template>
+            <template v-else-if="column.dataIndex === 'operation'"><a-space v-if="canManageProject(record)"><a-button type="link" size="small" @click="handleEdit(record)"><EditOutlined /></a-button><a-popconfirm title="确定删除该项目吗？" @confirm="handleDelete(record)"><a-button type="link" size="small" danger><DeleteOutlined /></a-button></a-popconfirm></a-space></template>
           </template>
         </a-table>
         <div v-else class="project-group-list">
@@ -40,7 +40,7 @@
                 <template v-else-if="column.dataIndex === 'name'"><a-button type="link" class="table-link" @click="handleDetail(record)">{{ text }}</a-button></template>
                 <template v-else-if="column.dataIndex === 'status'"><a-tag color="green">{{ text }}</a-tag></template>
                 <template v-else-if="column.dataIndex === 'contractStatus'"><a-tag color="green">{{ text }}</a-tag></template>
-                <template v-else-if="column.dataIndex === 'operation'"><a-space><a-button type="link" size="small" @click="handleEdit(record)"><EditOutlined /></a-button><a-popconfirm title="确定删除该项目吗？" @confirm="handleDelete(record)"><a-button type="link" size="small" danger><DeleteOutlined /></a-button></a-popconfirm></a-space></template>
+                <template v-else-if="column.dataIndex === 'operation'"><a-space v-if="canManageProject(record)"><a-button type="link" size="small" @click="handleEdit(record)"><EditOutlined /></a-button><a-popconfirm title="确定删除该项目吗？" @confirm="handleDelete(record)"><a-button type="link" size="small" danger><DeleteOutlined /></a-button></a-popconfirm></a-space></template>
               </template>
             </a-table>
           </section>
@@ -402,8 +402,9 @@ import {
   updateReportStatus,
   uploadProjectFile,
 } from '@/api/managementProject'
-import { getOperationLogs } from '@/api/system'
+import { getCurrentUser, getOperationLogs } from '@/api/system'
 import { useDictStore } from '@/store/dictStore'
+import { isAdminProfile } from '@/utils/authScope'
 import { formatDateTime } from '@/utils/dateTime'
 import { OPERATION_ACTIONS, OPERATION_MODULES, recordOperationLog } from '@/utils/operationLog'
 import { px2rem, scalePxByRem } from '@/utils/px2rem'
@@ -498,13 +499,18 @@ const contractFilterOptions = computed(() => withAll(contractOptions.value))
 const groupOptions = [{ label: '项目经理', value: 'manager' }, { label: '项目阶段', value: 'stage' }, { label: '项目状态', value: 'status' }, { label: '项目类型', value: 'type' }, { label: '合同状态', value: 'contractStatus' }]
 
 const projects = ref([])
+const currentUserProfile = ref(null)
+const currentUserId = computed(() => currentUserProfile.value?.id)
+const isAdmin = computed(() => isAdminProfile(currentUserProfile.value))
+const canManageProject = project => isAdmin.value
+  || (currentUserId.value != null && String(project?.managerId) === String(currentUserId.value))
 const query = reactive({ keyword: '', managerId: '全部', type: '全部', contractStatus: '全部', stage: '全部', status: '全部' })
 const appliedQuery = reactive({ ...query })
 const displayMode = ref('list')
 const groupField = ref('manager')
 const collapsedGroups = ref([])
 
-const projectColumns = [
+const projectColumnDefinitions = [
   { title: '序号', dataIndex: 'index', width: 65, fixed: 'left' },
   { title: '项目名称', dataIndex: 'name', width: 190 },
   { title: '项目经理', dataIndex: 'manager', width: 100 },
@@ -517,8 +523,13 @@ const projectColumns = [
   { title: '回款金额', dataIndex: 'amount', width: 110, customRender: ({ text }) => `${text}万元` },
   { title: '项目类型', dataIndex: 'type', width: 120 },
   { title: '项目描述', dataIndex: 'description', width: 170 },
-  { title: '操作', dataIndex: 'operation', width: 110, fixed: 'right' },
 ]
+const operationColumn = { title: '操作', dataIndex: 'operation', width: 110, fixed: 'right' }
+const projectColumns = computed(() => (
+  isAdmin.value || projects.value.some(canManageProject)
+    ? [...projectColumnDefinitions, operationColumn]
+    : projectColumnDefinitions
+))
 const projectPagination = reactive({ current: 1, pageSize: 10, total: 0, pageSizeOptions: ['10', '50', '100'], showSizeChanger: true, showTotal: total => `共 ${total} 条` })
 const createDetailPagination = () => reactive({ current: 1, pageSize: 10, total: 0 })
 const taskPagination = createDetailPagination()
@@ -555,6 +566,7 @@ const detailTabs = [
   { key: 'bugs', label: 'Bug列表', icon: BugOutlined },
   { key: 'reports', label: '项目汇报', icon: FlagOutlined },
   { key: 'documents', label: '文档中心', icon: SnippetsOutlined },
+  { key: 'logs', label: '操作日志', icon: FileTextOutlined },
 ]
 const ganttSummaryData = reactive({ total: 0, completed: 0, overdue: 0, dueSoon: 0, overallProgress: 0 })
 const ganttSummary = computed(() => [{ label: '项目状态', value: currentProject.value?.status || '-', desc: `整体进度 ${ganttSummaryData.overallProgress}%`, class: 'gantt-progress', icon: ProjectOutlined }, { label: '延期任务', value: `${ganttSummaryData.overdue} 个`, desc: '需重点关注', class: 'risk-high', icon: WarningOutlined }, { label: '即将到期', value: `${ganttSummaryData.dueSoon} 个`, desc: '未来 3 天内到期', class: 'risk-due', icon: ClockCircleOutlined }])
@@ -950,10 +962,12 @@ const mapProject = project => ({
 
 const fetchReferenceData = async () => {
   try {
-    const [userPage] = await Promise.all([
+    const [userPage, profile] = await Promise.all([
       getSystemUsers({ pageNo: 1, pageSize: 200, enabled: true }),
+      getCurrentUser(),
       dictStore.loadDicts(),
     ])
+    currentUserProfile.value = profile
     const dictGroups = Object.entries(dictStore.state.groups).map(([type, group]) => ({ type, ...group }))
     dictGroups.forEach(group => {
       dictLabels[group.type] = Object.fromEntries(group.items.map(item => [item.value, item.label]))
@@ -1980,17 +1994,17 @@ const handleDeleteReport = async record => {
 .report-detail-header { display: flex; align-items: center; min-height: 32px; padding-right: 42px; margin-bottom: 14px; }
 .report-detail-header strong { font-size: 16px; }
 .report-detail-info-table { margin-bottom: 24px; border: 1px solid #e5e6eb; border-right: 0; border-bottom: 0; }
-.report-detail-info-grid { display: grid; grid-template-columns: 86px minmax(120px, 1fr) 86px minmax(120px, 1fr) 86px minmax(120px, 1fr) 86px minmax(120px, 1fr); }
+.report-detail-info-grid { display: grid; grid-template-columns: 100px minmax(120px, 1fr) 100px minmax(120px, 1fr) 100px minmax(120px, 1fr) 100px minmax(120px, 1fr); }
 .report-detail-info-grid span,
 .report-detail-info-grid strong,
 .report-detail-description span,
 .report-detail-description p { min-height: 42px; padding: 10px 12px; border-right: 1px solid #e5e6eb; border-bottom: 1px solid #e5e6eb; }
 .report-detail-info-grid span,
-.report-detail-description span { color: #1f1f1f; font-weight: 600; background: #fafafa; }
+.report-detail-description span { color: #1f1f1f; font-weight: 600; white-space: nowrap; background: #fafafa; }
 .report-detail-info-grid strong { min-width: 0; font-weight: 400; overflow-wrap: anywhere; }
 .report-detail-progress { display: grid; grid-template-columns: minmax(0, 80px) 38px; gap: 10px; align-items: center; }
 .report-detail-progress em { font-style: normal; font-size: 12px; }
-.report-detail-description { display: grid; grid-template-columns: 86px minmax(0, 1fr); margin: 0; color: #404040; }
+.report-detail-description { display: grid; grid-template-columns: 100px minmax(0, 1fr); margin: 0; color: #404040; }
 .report-detail-description p { margin: 0; }
 .report-detail-section-title { display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 12px; font-size: 18px; }
 .report-detail-remark { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 10px; align-items: flex-start; margin-bottom: 10px; }
