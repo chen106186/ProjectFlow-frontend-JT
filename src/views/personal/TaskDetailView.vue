@@ -108,7 +108,7 @@
             </template>
 
             <a-empty v-if="!relatedBugs.length" description="暂无关联Bug" />
-            <article v-for="bug in relatedBugs" v-else :key="bug.id || bug.bugNo || bug.code" class="bug-card">
+            <article v-for="bug in relatedBugs" v-else :key="bug.id || bug.bugNo || bug.code" class="bug-card" @click="handleBugClick(bug)">
               <p><BugOutlined /> {{ formatBugNo(bug) }}</p>
               <strong>{{ bug.title || bug.name || '-' }}</strong>
               <div>
@@ -289,6 +289,7 @@ const fetchAllTaskBugs = async taskId => {
 }
 
 const handleBack = () => router.back()
+const handleBugClick = bug => router.push({ name: 'BugDetail', params: { id: bug.id } })
 
 const handleBeforeUpload = file => {
   if (file.size > 50 * 1024 * 1024) {
@@ -522,6 +523,12 @@ onMounted(fetchTaskDetail)
   padding: 12px;
   background: #fafafa;
   border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.bug-card:hover {
+  background: #f0f0f0;
 }
 
 .bug-card + .bug-card {

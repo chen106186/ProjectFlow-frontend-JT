@@ -29,8 +29,8 @@
       </table>
       <div class="execution-summary__progress">
         <div class="execution-summary__title">
-          <h3><ProjectOutlined />项目进度</h3>
-          <span>根据项目进度权重计算</span>
+          <h3><ProjectOutlined />开发进度</h3>
+          <span>已完成 {{ ganttSummaryData.completedTaskCount }} / {{ ganttSummaryData.totalTaskCount }} 个任务</span>
         </div>
         <div class="execution-summary__bar">
           <a-progress :percent="ganttSummaryData.overallProgress" :show-info="false" stroke-color="#52c41a" />
@@ -497,7 +497,7 @@ const detailTabs = [
   { key: 'documents', label: '文档中心', icon: FolderOpenOutlined },
   { key: 'logs', label: '操作日志', icon: FileTextOutlined },
 ]
-const ganttSummaryData = reactive({ total: 0, completed: 0, overdue: 0, dueSoon: 0, overallProgress: 0 })
+const ganttSummaryData = reactive({ total: 0, completed: 0, overdue: 0, dueSoon: 0, overallProgress: 0, totalTaskCount: 0, completedTaskCount: 0 })
 const ganttSummary = computed(() => [
   { label: '项目状态', value: currentProject.value?.status || '-', desc: `整体进度 ${ganttSummaryData.overallProgress}%`, class: 'gantt-progress', icon: ProjectOutlined },
   { label: '延期任务', value: `${ganttSummaryData.overdue} 个`, desc: '需重点关注', class: 'risk-high', icon: WarningOutlined },
