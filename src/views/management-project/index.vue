@@ -129,6 +129,7 @@
           :expanded-document-folder-ids="expandedFolderIds"
           :operation-log-rows="operationLogRows"
           :operation-log-loading="operationLogLoading"
+          @refresh-tasks="handleRefreshTasks"
           @task-page-change="handleTaskPageChange"
           @bug-page-change="handleBugPageChange"
           @bug-filter-change="handleBugFilterChange"
@@ -1099,6 +1100,10 @@ const fetchReportPage = async (projectId = route.params.id) => {
   } finally {
     reportLoading.value = false
   }
+}
+const handleRefreshTasks = async () => {
+  taskPagination.current = 1
+  await fetchTaskPage()
 }
 const handleTaskPageChange = async (page, pageSize) => {
   taskPagination.current = page

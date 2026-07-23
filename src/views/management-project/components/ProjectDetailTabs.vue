@@ -296,6 +296,7 @@ const props = defineProps({
 
 const emit = defineEmits([
   'update:activeTab',
+  'refresh-tasks',
   'task-page-change',
   'bug-page-change',
   'bug-filter-change',
@@ -340,12 +341,13 @@ const handleDocumentPageChange = (page, pageSize) => {
   documentPagination.pageSize = pageSize
 }
 
-// reset local filters when switching to tasks tab
+// reset local filters and refresh data when switching to tasks tab
 watch(() => props.activeTab, tab => {
   if (tab === 'tasks') {
     activeRisk.value = ''
     taskStatusFilter.value = ''
     taskPersonFilter.value = ''
+    emit('refresh-tasks')
   }
   if (tab === 'bugs') resetBugFilters()
 })
