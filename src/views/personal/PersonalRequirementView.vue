@@ -6,16 +6,16 @@
           <a-input v-model:value="query.keyword" allow-clear placeholder="请输入关键字" />
         </a-form-item>
         <a-form-item label="所属项目">
-          <a-select v-model:value="query.projectId" allow-clear placeholder="全部" :options="projectFilterOptions" />
+          <a-select v-model:value="query.projectId" allow-clear placeholder="全部" :options="projectFilterOptions" show-search option-filter-prop="label" />
         </a-form-item>
         <a-form-item label="需求类型">
-          <a-select v-model:value="query.requirementType" allow-clear placeholder="全部" :options="typeFilterOptions" />
+          <a-select v-model:value="query.requirementType" allow-clear placeholder="全部" :options="typeFilterOptions" show-search option-filter-prop="label" />
         </a-form-item>
         <a-form-item label="优先级">
-          <a-select v-model:value="query.priority" allow-clear placeholder="全部" :options="priorityFilterOptions" />
+          <a-select v-model:value="query.priority" allow-clear placeholder="全部" :options="priorityFilterOptions" show-search option-filter-prop="label" />
         </a-form-item>
         <a-form-item label="需求状态">
-          <a-select v-model:value="query.status" allow-clear placeholder="全部" :options="statusFilterOptions" />
+          <a-select v-model:value="query.status" allow-clear placeholder="全部" :options="statusFilterOptions" show-search option-filter-prop="label" />
         </a-form-item>
         <a-form-item class="requirement-filter__actions app-filter-actions">
           <a-space>

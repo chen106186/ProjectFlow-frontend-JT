@@ -4,11 +4,11 @@
       <a-card class="project-filter app-filter-card" :bordered="false">
         <a-form class="project-filter__form app-filter-form" layout="inline">
           <a-form-item label="项目名称"><a-input v-model:value="query.keyword" allow-clear /></a-form-item>
-          <a-form-item label="项目经理"><a-select v-model:value="query.managerId" :options="managerFilterOptions" /></a-form-item>
-          <a-form-item label="项目类型"><a-select v-model:value="query.type" :options="typeFilterOptions" /></a-form-item>
-          <a-form-item label="合同状态"><a-select v-model:value="query.contractStatus" :options="contractFilterOptions" /></a-form-item>
-          <a-form-item label="项目阶段"><a-select v-model:value="query.stage" :options="stageFilterOptions" /></a-form-item>
-          <a-form-item label="项目状态"><a-select v-model:value="query.status" :options="projectStatusFilterOptions" /></a-form-item>
+          <a-form-item label="项目经理"><a-select v-model:value="query.managerId" :options="managerFilterOptions" show-search option-filter-prop="label" /></a-form-item>
+          <a-form-item label="项目类型"><a-select v-model:value="query.type" :options="typeFilterOptions" show-search option-filter-prop="label" /></a-form-item>
+          <a-form-item label="合同状态"><a-select v-model:value="query.contractStatus" :options="contractFilterOptions" show-search option-filter-prop="label" /></a-form-item>
+          <a-form-item label="项目阶段"><a-select v-model:value="query.stage" :options="stageFilterOptions" show-search option-filter-prop="label" /></a-form-item>
+          <a-form-item label="项目状态"><a-select v-model:value="query.status" :options="projectStatusFilterOptions" show-search option-filter-prop="label" /></a-form-item>
           <a-form-item class="project-filter__actions app-filter-actions"><a-space><a-button type="primary" @click="handleSearch">查询</a-button><a-button @click="handleReset">重置</a-button></a-space></a-form-item>
         </a-form>
       </a-card>

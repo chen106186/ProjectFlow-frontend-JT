@@ -6,7 +6,7 @@
           <a-input v-model:value="queryParams.keyword" class="filter-input" placeholder="请输入账号/姓名" allow-clear />
         </a-form-item>
         <a-form-item label="状态">
-          <a-select v-model:value="queryParams.enabled" class="filter-select" :options="statusOptions" allow-clear placeholder="全部" />
+          <a-select v-model:value="queryParams.enabled" class="filter-select" :options="statusOptions" allow-clear placeholder="全部" show-search option-filter-prop="label" />
         </a-form-item>
         <a-form-item class="filter-actions app-filter-actions">
           <a-space>

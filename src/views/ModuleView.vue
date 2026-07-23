@@ -115,10 +115,10 @@
         <a-card class="prototype-card filter-panel app-filter-card" :bordered="false">
           <a-form class="prototype-filter app-filter-form" layout="inline">
             <a-form-item label="任务名称"><a-input v-model:value="taskFilter.keyword" placeholder="请输入任务名称" /></a-form-item>
-            <a-form-item label="所属项目"><a-select v-model:value="taskFilter.projectId" allow-clear placeholder="全部" :options="taskFilterProjectOptions" /></a-form-item>
-            <a-form-item v-if="!isPersonalTasks" label="负责人"><a-select v-model:value="taskFilter.assigneeId" allow-clear placeholder="全部" :options="taskUserOptions" /></a-form-item>
-            <a-form-item label="优先级"><a-select v-model:value="taskFilter.priority" allow-clear placeholder="全部" :options="taskPrioritySelectOptions" /></a-form-item>
-            <a-form-item label="状态"><a-select v-model:value="taskFilter.status" allow-clear placeholder="全部" :options="taskStatusSelectOptions" /></a-form-item>
+            <a-form-item label="所属项目"><a-select v-model:value="taskFilter.projectId" allow-clear placeholder="全部" :options="taskFilterProjectOptions" show-search option-filter-prop="label" /></a-form-item>
+            <a-form-item v-if="!isPersonalTasks" label="负责人"><a-select v-model:value="taskFilter.assigneeId" allow-clear placeholder="全部" :options="taskUserOptions" show-search option-filter-prop="label" /></a-form-item>
+            <a-form-item label="优先级"><a-select v-model:value="taskFilter.priority" allow-clear placeholder="全部" :options="taskPrioritySelectOptions" show-search option-filter-prop="label" /></a-form-item>
+            <a-form-item label="状态"><a-select v-model:value="taskFilter.status" allow-clear placeholder="全部" :options="taskStatusSelectOptions" show-search option-filter-prop="label" /></a-form-item>
             <a-form-item class="task-end-date-filter" label="计划结束日期"><a-date-picker v-model:value="taskFilter.plannedEndDate" /></a-form-item>
             <a-form-item class="filter-buttons app-filter-actions">
               <a-space>
@@ -259,15 +259,15 @@
           <a-form class="prototype-filter bug-filter app-filter-form" layout="inline">
             <a-form-item label="搜索"><a-input v-model:value="bugFilter.keyword" placeholder="请输入关键字" allow-clear /></a-form-item>
             <a-form-item label="所属项目">
-              <a-select v-model:value="bugFilter.projectId" placeholder="全部" allow-clear :options="bugProjects.map(p => ({ label: p.name, value: p.id }))" style="width:10rem" @change="handleBugSearch" />
+              <a-select v-model:value="bugFilter.projectId" placeholder="全部" allow-clear :options="bugProjects.map(p => ({ label: p.name, value: p.id }))" show-search option-filter-prop="label" style="width:10rem" @change="handleBugSearch" />
             </a-form-item>
             <a-form-item label="严重等级">
-              <a-select v-model:value="bugFilter.priority" placeholder="全部" allow-clear
+              <a-select v-model:value="bugFilter.priority" placeholder="全部" allow-clear show-search option-filter-prop="label"
                 :options="Object.entries(BUG_PRIORITY_LABELS).map(([value, label]) => ({ label, value }))"
                 style="width:7.5rem" @change="handleBugSearch" />
             </a-form-item>
             <a-form-item label="状态">
-              <a-select v-model:value="bugFilter.status" placeholder="全部" allow-clear
+              <a-select v-model:value="bugFilter.status" placeholder="全部" allow-clear show-search option-filter-prop="label"
                 :options="Object.entries(BUG_STATUS_LABELS).filter(([value]) => value !== 'FIXING').map(([value, label]) => ({ label, value }))"
                 style="width:7.5rem" @change="handleBugSearch" />
             </a-form-item>

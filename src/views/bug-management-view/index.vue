@@ -4,9 +4,9 @@
       <a-card class="bug-filter app-filter-card" :bordered="false">
         <a-form :model="queryParams" class="bug-filter__form app-filter-form" layout="inline">
           <a-form-item label="搜索"><a-input v-model:value="queryParams.keyword" allow-clear placeholder="请输入关键字"  /></a-form-item>
-          <a-form-item label="所属项目"><a-select v-model:value="queryParams.projectId" :options="projectOptions" placeholder="全部" allow-clear @change="handleSearch" /></a-form-item>
-          <a-form-item label="严重等级"><a-select v-model:value="queryParams.priority" :options="priorityFilterOptions" placeholder="全部" allow-clear @change="handleSearch" /></a-form-item>
-          <a-form-item label="状态"><a-select v-model:value="queryParams.status" :options="statusFilterOptions" placeholder="全部" allow-clear @change="handleSearch" /></a-form-item>
+          <a-form-item label="所属项目"><a-select v-model:value="queryParams.projectId" :options="projectOptions" placeholder="全部" allow-clear show-search option-filter-prop="label" @change="handleSearch" /></a-form-item>
+          <a-form-item label="严重等级"><a-select v-model:value="queryParams.priority" :options="priorityFilterOptions" placeholder="全部" allow-clear show-search option-filter-prop="label" @change="handleSearch" /></a-form-item>
+          <a-form-item label="状态"><a-select v-model:value="queryParams.status" :options="statusFilterOptions" placeholder="全部" allow-clear show-search option-filter-prop="label" @change="handleSearch" /></a-form-item>
           <a-form-item label="创建人"><a-select v-model:value="queryParams.creatorId" :options="userOptions" placeholder="全部" allow-clear show-search option-filter-prop="label" @change="handleSearch" /></a-form-item>
           <a-form-item label="指定人"><a-select v-model:value="queryParams.assigneeId" :options="userOptions" placeholder="全部" allow-clear show-search option-filter-prop="label" @change="handleSearch" /></a-form-item>
           <a-form-item class="bug-filter__actions app-filter-actions">

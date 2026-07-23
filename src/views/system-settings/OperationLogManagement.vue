@@ -6,13 +6,13 @@
           <a-input v-model:value="query.keyword" allow-clear placeholder="日志内容关键字" />
         </a-form-item>
         <a-form-item label="模块">
-          <a-select v-model:value="query.module" allow-clear placeholder="全部" :options="moduleOptions" />
+          <a-select v-model:value="query.module" allow-clear placeholder="全部" :options="moduleOptions" show-search option-filter-prop="label" />
         </a-form-item>
         <a-form-item label="业务类型">
-          <a-select v-model:value="query.businessType" allow-clear placeholder="全部" :options="bizTypeOptions" />
+          <a-select v-model:value="query.businessType" allow-clear placeholder="全部" :options="bizTypeOptions" show-search option-filter-prop="label" />
         </a-form-item>
         <a-form-item label="操作类型">
-          <a-select v-model:value="query.operationType" allow-clear placeholder="全部" :options="actionOptions" />
+          <a-select v-model:value="query.operationType" allow-clear placeholder="全部" :options="actionOptions" show-search option-filter-prop="label" />
         </a-form-item>
         <a-form-item label="操作人">
           <a-input v-model:value="query.operatorName" allow-clear placeholder="请输入操作人姓名" />

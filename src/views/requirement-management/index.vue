@@ -9,13 +9,13 @@
           <a-select v-model:value="query.projectId" allow-clear placeholder="全部" :options="projectOptions" option-filter-prop="label" show-search />
         </a-form-item>
         <a-form-item label="需求类型">
-          <a-select v-model:value="query.requirementType" allow-clear placeholder="全部" :options="typeOptions" />
+          <a-select v-model:value="query.requirementType" allow-clear placeholder="全部" :options="typeOptions" show-search option-filter-prop="label" />
         </a-form-item>
         <a-form-item label="优先级">
-          <a-select v-model:value="query.priority" allow-clear placeholder="全部" :options="priorityOptions" />
+          <a-select v-model:value="query.priority" allow-clear placeholder="全部" :options="priorityOptions" show-search option-filter-prop="label" />
         </a-form-item>
         <a-form-item label="需求状态">
-          <a-select v-model:value="query.status" allow-clear placeholder="全部" :options="statusOptions" />
+          <a-select v-model:value="query.status" allow-clear placeholder="全部" :options="statusOptions" show-search option-filter-prop="label" />
         </a-form-item>
         <a-form-item class="filter-actions app-filter-actions">
           <a-space>
