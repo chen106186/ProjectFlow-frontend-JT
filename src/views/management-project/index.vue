@@ -512,17 +512,17 @@ const collapsedGroups = ref([])
 
 const projectColumnDefinitions = [
   { title: '序号', dataIndex: 'index', width: 65, fixed: 'left' },
-  { title: '项目名称', dataIndex: 'name', width: 190 },
-  { title: '项目经理', dataIndex: 'manager', width: 100 },
-  { title: '业务部门', dataIndex: 'department', width: 150 },
-  { title: '承建单位', dataIndex: 'contractor', width: 150 },
-  { title: '业务主管', dataIndex: 'supervisor', width: 100 },
-  { title: '项目阶段', dataIndex: 'stage', width: 110 },
+  { title: '项目名称', dataIndex: 'name', width: 190, ellipsis: true },
+  { title: '项目经理', dataIndex: 'manager', width: 100, ellipsis: true },
+  { title: '业务部门', dataIndex: 'department', width: 150, ellipsis: true },
+  { title: '承建单位', dataIndex: 'contractor', width: 150, ellipsis: true },
+  { title: '业务主管', dataIndex: 'supervisor', width: 100, ellipsis: true },
+  { title: '项目阶段', dataIndex: 'stage', width: 110, ellipsis: true },
   { title: '项目状态', dataIndex: 'status', width: 110 },
   { title: '合同状态', dataIndex: 'contractStatus', width: 110 },
   { title: '回款金额', dataIndex: 'amount', width: 110, customRender: ({ text }) => `${text}万元` },
-  { title: '项目类型', dataIndex: 'type', width: 120 },
-  { title: '项目描述', dataIndex: 'description', width: 170 },
+  { title: '项目类型', dataIndex: 'type', width: 120, ellipsis: true },
+  { title: '项目描述', dataIndex: 'description', width: 170, ellipsis: true },
 ]
 const operationColumn = { title: '操作', dataIndex: 'operation', width: 110, fixed: 'right' }
 const projectColumns = computed(() => (
@@ -947,7 +947,7 @@ const formatNodeDate = value => {
 const mapProject = project => ({
   ...project,
   manager: getUserName(project.managerId),
-  stage: getDictLabel('projectStage', project.stage),
+  stage: dictLabels['projectStage']?.[project.stage] || '-',
   stageCode: project.stage,
   status: getDictLabel('projectStatus', project.status),
   statusCode: project.status,
