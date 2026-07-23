@@ -225,7 +225,7 @@ const navigationItems = [
     label: '任务列表',
     icon: UnorderedListOutlined,
     children: [
-      { key: '/tasks/all', path: '/tasks/all', label: '全部任务', accessCodes: ['task'], matches: [path => path === '/tasks/all'] },
+      { key: '/tasks/all', path: '/tasks/all', label: '全部任务', accessCodes: ['task'], matches: [path => path.startsWith('/tasks/all')] },
       { key: '/tasks/development', path: '/tasks/development', label: '开发任务', accessCodes: ['task'], matches: [path => path === '/tasks/development'] },
       { key: '/tasks/testing', path: '/tasks/testing', label: '测试任务', accessCodes: ['task'], matches: [path => path === '/tasks/testing'] },
     ],
@@ -432,6 +432,7 @@ const selectedKeys = computed(() => {
   if (route.path.startsWith('/personal/daily')) return ['/personal/daily']
   if (route.path.startsWith('/projects/management')) return ['/projects/management']
   if (route.path.startsWith('/projects/execution')) return ['/projects/execution']
+  if (route.path.startsWith('/tasks/all')) return ['/tasks/all']
   return [route.path]
 })
 

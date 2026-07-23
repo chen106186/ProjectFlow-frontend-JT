@@ -208,7 +208,11 @@ const fetchReferenceData = async () => {
       getCurrentUser(),
     ])
     currentUserProfile.value = profile
-    stageOptions.value = dicts.find(item => item.type === 'projectStage')?.items || []
+    const projectStage = dicts.find(item => item.type === 'projectStage')?.items || []
+    stageOptions.value = [
+      ...projectStage,
+      ...Object.values(executionStageMap).flat().filter(item => !projectStage.some(stage => stage.value === item.value)),
+    ]
     projectBusinessTypeOptions.value = dicts.find(item => item.type === 'projectBusinessType')?.items || []
     const projectStatus = dicts.find(item => item.type === 'projectStatus')?.items || []
     statusOptions.value = projectStatus

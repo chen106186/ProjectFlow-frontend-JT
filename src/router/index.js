@@ -169,6 +169,12 @@ const router = createRouter({
           meta: { title: '批量创建任务', group: '任务列表', parentTitle: '全部任务', parentPath: '/tasks/all', hideInMenu: true },
         },
         {
+          path: 'tasks/all/:id',
+          name: 'AllTaskDetail',
+          component: TaskDetailView,
+          meta: { title: '任务详情', group: '任务列表', parentTitle: '全部任务', parentPath: '/tasks/all', hideInMenu: true },
+        },
+        {
           path: 'personal/daily',
           name: 'PersonalDaily',
           component: DailyReportListView,

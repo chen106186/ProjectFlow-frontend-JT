@@ -1409,7 +1409,7 @@ const handleDetail = record => {
   router.push({ name: 'ManagementProjectDetail', params: { id: record.id } })
 }
 const handleBack = () => router.back()
-const handleTaskDetail = record => router.push({ name: 'AllTasks', query: { detail: 'task', taskId: String(record.id) } })
+const handleTaskDetail = record => router.push({ name: 'AllTaskDetail', params: { id: record.id } })
 const handleBugDetail = record => router.push({ name: 'BugDetail', params: { id: String(record.id) } })
 const handleDelete = async record => {
   try {

@@ -230,7 +230,7 @@ const handleToday = onChange => {
 
 const handleTaskClick = task => {
   emit('update:open', false)
-  router.push({ name: 'AllTasks', query: { detail: 'task', taskId: String(task.id) } })
+  router.push({ name: 'AllTaskDetail', params: { id: task.id } })
 }
 
 const handleClose = () => {

@@ -484,7 +484,8 @@ onMounted(fetchTaskDetail)
 
 .log-card :deep(.ant-card-body) {
   max-height: 336px;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .log-meta {

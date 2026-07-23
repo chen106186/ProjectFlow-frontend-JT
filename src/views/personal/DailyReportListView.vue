@@ -1,5 +1,5 @@
 <template>
-  <div class="daily-list-page">
+  <div :class="['daily-list-page', { 'daily-list-page--wide': hideCalendar }]">
     <section class="daily-list-main">
       <div class="daily-list-toolbar">
         <a-space :size="12" wrap>
@@ -17,6 +17,18 @@
               @press-enter="handleSearch"
             />
           </label>
+          <label v-if="canViewAllReports" class="daily-filter-item">
+            <span>提交人</span>
+            <a-select
+              v-model:value="filters.reporterId"
+              allow-clear
+              show-search
+              option-filter-prop="label"
+              placeholder="请输入提交人"
+              :options="reporterOptions"
+              style="width: 10rem"
+            />
+          </label>
           <a-button type="primary" @click="handleSearch">查询</a-button>
           <a-button @click="handleReset">重置</a-button>
         </a-space>
@@ -26,7 +38,7 @@
       <a-table
         class="daily-report-table"
         :columns="columns"
-        :data-source="pagedReports"
+        :data-source="reports"
         :loading="loading"
         :pagination="false"
         :scroll="{ y: '100%' }"
@@ -47,7 +59,7 @@
             </a-tooltip>
           </template>
           <template v-else-if="column.dataIndex === 'updatedAt'">
-            {{ formatDateTime(record.updatedAt || record.createdAt) }}
+            <span class="daily-submit-time">{{ formatDateTime(record.updatedAt || record.createdAt) }}</span>
           </template>
         </template>
       </a-table>
@@ -56,7 +68,7 @@
         <a-pagination
           :current="paginationState.current"
           :page-size="paginationState.pageSize"
-          :total="filteredReports.length"
+          :total="paginationState.total"
           :page-size-options="['10', '50', '100']"
           show-size-changer
           :show-total="total => `共 ${total} 条`"
@@ -66,6 +78,7 @@
     </section>
 
     <DailyReportCalendarPanel
+      v-if="!hideCalendar"
       v-model="calendarValue"
       :reports="reports"
       :loading="loading"
@@ -80,7 +93,8 @@ import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
-import { listMyDailyReports } from '@/api/dailyReports'
+import { fetchDailyReports } from '@/api/dailyReports'
+import { getUserList } from '@/api/system'
 import { formatDateTime } from '@/utils/dateTime'
 import DailyReportCalendarPanel from './DailyReportCalendarPanel.vue'
 
@@ -91,53 +105,71 @@ const calendarValue = ref(today)
 
 const loading = ref(false)
 const reports = ref([])
+const users = ref([])
 const filters = reactive({
   month: null,
   keyword: '',
+  reporterId: undefined,
 })
 const query = reactive({
   month: null,
   keyword: '',
+  reporterId: undefined,
 })
 const paginationState = reactive({
   current: 1,
   pageSize: 10,
+  total: 0,
 })
 
 const columns = [
-  { title: '日期', dataIndex: 'reportDate', width: 140 },
-  { title: '提交人', dataIndex: 'reporterName', width: 120 },
-  { title: '内容', dataIndex: 'content', ellipsis: true },
+  { title: '日期', dataIndex: 'reportDate', width: 160 },
+  { title: '提交人', dataIndex: 'reporterName', width: 200 },
+  { title: '内容', dataIndex: 'content', ellipsis: true,minWidth:200 },
   { title: '提交时间', dataIndex: 'updatedAt', width: 220 },
   { title: '操作', dataIndex: 'operation', width: 90 },
 ]
 
-const filteredReports = computed(() => {
-  const keyword = query.keyword.trim().toLowerCase()
-  const month = query.month?.format('YYYY-MM')
+const profile = JSON.parse(localStorage.getItem('authProfile') || '{}')
+const hasRole = code => (profile.roles || []).some(role => String(role?.code || '').toUpperCase() === code)
+const canViewAllReports = computed(() => hasRole('GMO'))
+const hideCalendar = computed(() => hasRole('GMO'))
 
-  return reports.value.filter(report => {
-    const matchesMonth = !month || String(report.reportDate).slice(0, 7) === month
-    const content = getReportContent(report).toLowerCase()
-    const matchesKeyword = !keyword || content.includes(keyword)
-    return matchesMonth && matchesKeyword
-  })
-})
-
-const pagedReports = computed(() => {
-  const start = (paginationState.current - 1) * paginationState.pageSize
-  return filteredReports.value.slice(start, start + paginationState.pageSize)
-})
+const userNames = computed(() => Object.fromEntries(users.value.map(user => [user.id, user.realName || user.username])))
+const reporterOptions = computed(() => users.value.map(user => ({ label: user.realName || user.username, value: user.id })))
 
 
 onMounted(async () => {
+  await loadUsers()
   await loadReports()
 })
+
+async function loadUsers() {
+  try {
+    const result = await getUserList({ pageNo: 1, pageSize: 200 })
+    users.value = result.records || []
+  } catch {
+    users.value = []
+  }
+}
 
 async function loadReports() {
   loading.value = true
   try {
-    reports.value = await listMyDailyReports() || []
+    const month = query.month
+    const result = await fetchDailyReports({
+      pageNo: paginationState.current,
+      pageSize: paginationState.pageSize,
+      reporterId: query.reporterId || undefined,
+      dateFrom: month?.startOf('month').format('YYYY-MM-DD'),
+      dateTo: month?.endOf('month').format('YYYY-MM-DD'),
+      keyword: query.keyword.trim() || undefined,
+    })
+    reports.value = (result.records || []).map(report => ({
+      ...report,
+      reporterName: report.reporterName || userNames.value[report.reporterId] || '-',
+    }))
+    paginationState.total = result.total || 0
   } finally {
     loading.value = false
   }
@@ -148,23 +180,29 @@ function getReportContent(report) {
   return text || '-'
 }
 
-function handleSearch() {
+async function handleSearch() {
   query.month = filters.month
   query.keyword = filters.keyword
+  query.reporterId = filters.reporterId
   paginationState.current = 1
+  await loadReports()
 }
 
-function handleReset() {
+async function handleReset() {
   filters.month = null
   filters.keyword = ''
+  filters.reporterId = undefined
   query.month = null
   query.keyword = ''
+  query.reporterId = undefined
   paginationState.current = 1
+  await loadReports()
 }
 
-function handlePageChange(page, pageSize) {
+async function handlePageChange(page, pageSize) {
   paginationState.current = pageSize === paginationState.pageSize ? page : 1
   paginationState.pageSize = pageSize
+  await loadReports()
 }
 
 function goDetail(target) {
@@ -186,6 +224,10 @@ function goDetail(target) {
   grid-template-columns: minmax(0, 1fr) 500px;
   gap: 16px;
   overflow: clip;
+}
+
+.daily-list-page--wide {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .daily-list-main {
@@ -246,6 +288,7 @@ function goDetail(target) {
 
 .operation-icon-button { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border-radius: 6px; }
 .operation-icon-button :deep(svg) { width: 15px; height: 15px; }
+.daily-submit-time { white-space: nowrap; }
 
 .daily-report-table {
   flex: 1;

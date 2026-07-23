@@ -1392,6 +1392,10 @@ const handleTaskDetail = async record => {
     router.push(`/personal/tasks/${record.id}`)
     return
   }
+  if (route.name === 'AllTasks') {
+    router.push({ name: 'AllTaskDetail', params: { id: record.id } })
+    return
+  }
 
   personalMode.value = 'task-detail'
   updateDetailQuery('task', record.id)
@@ -2527,6 +2531,10 @@ const trendPoints = [
   background: #fff;
 }
 
+.task-prototype-table {
+  min-width: max-content;
+}
+
 .prototype-table th,
 .prototype-table td {
   height: 45px;
@@ -2545,6 +2553,23 @@ const trendPoints = [
   height: 46px;
   font-weight: 700;
   background: #fafafa;
+}
+
+.task-prototype-table th:last-child,
+.task-prototype-table td:last-child {
+  position: sticky;
+  right: 0;
+  background: #fff;
+  box-shadow: -6px 0 6px -6px rgb(0 0 0 / 12%);
+}
+
+.task-prototype-table th:last-child {
+  z-index: 3;
+  background: #fafafa;
+}
+
+.task-prototype-table td:last-child {
+  z-index: 1;
 }
 
 .text-link,
