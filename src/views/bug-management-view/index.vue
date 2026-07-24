@@ -546,7 +546,7 @@ const normalizeRichHtml = html => {
       img.setAttribute('src', src.trim())
     }
     img.setAttribute('referrerpolicy', 'no-referrer')
-    img.setAttribute('loading', 'lazy')
+    img.removeAttribute('loading')
     img.setAttribute('decoding', 'async')
     img.classList.add('rich-image')
   })

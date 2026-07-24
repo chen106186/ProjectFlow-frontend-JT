@@ -487,6 +487,14 @@ const reportTypeOptions = ref([])
 const reportStatusOptions = ref([])
 const fileCategoryOptions = ref([])
 const dictLabels = reactive({})
+const executionStageLabels = {
+  DEVELOPMENT: '开发',
+  TESTING: '测试',
+  THIRD_PARTY_TESTING: '第三方测试',
+  DEPLOYMENT: '实施部署',
+  TRIAL_RUN: '上线试运行',
+  DEPLOYMENT_IMPLEMENTATION: '部署实施',
+}
 let ganttInstance
 
 const toOptions = values => values.map(value => ({ label: value, value }))
@@ -836,8 +844,12 @@ const summaryItems = computed(() => [
   { label: '项目类型', value: '执行类项目' },
   { label: '业务部门', value: currentProject.value?.department || '-' },
   { label: '项目经理', value: currentProject.value?.manager || '-' },
+  { label: '承建单位', value: currentProject.value?.contractor || '-' },
+  { label: '业务主管', value: currentProject.value?.supervisor || '-' },
   { label: '项目阶段', value: currentProject.value?.stage || '-' },
   { label: '项目状态', value: currentProject.value?.status || '-', tag: true, color: 'processing' },
+  { label: '合同状态', value: currentProject.value?.contractStatus || '-', tag: true, color: 'green' },
+  { label: '回款金额', value: currentProject.value?.amount ? `${currentProject.value.amount}万元` : '0万元' },
   { label: '计划开始', value: currentProject.value?.plannedStartDate || '-' },
   { label: '计划结束', value: currentProject.value?.plannedEndDate || '-' },
 ])
@@ -849,6 +861,7 @@ const summaryRows = computed(() => {
   return rows
 })
 const getDictLabel = (type, value) => dictLabels[type]?.[value] || value || '-'
+const getProjectStageLabel = value => dictLabels.projectStage?.[value] || executionStageLabels[value] || value || '-'
 const getUserName = id => managerOptions.value.find(item => item.value === id)?.label || (id ? `用户 ${id}` : '-')
 const resolveFileCategory = value => {
   const options = [...defaultFileCategories, ...fileCategoryOptions.value]
@@ -897,10 +910,15 @@ const mapProject = project => ({
   ...project,
   department: project.department || project.businessDepartment || '-',
   manager: getUserName(project.managerId),
-  stage: getDictLabel('projectStage', project.stage),
+  stage: getProjectStageLabel(project.stage),
   stageCode: project.stage,
   status: getDictLabel('projectStatus', project.status),
   statusCode: project.status,
+  contractStatus: getDictLabel('contractStatus', project.contractStatus),
+  contractStatusCode: project.contractStatus,
+  contractor: project.contractor || project.contractorUnit || '-',
+  supervisor: project.supervisor || project.businessSupervisor || '-',
+  amount: project.amount ?? project.receivableAmount ?? 0,
 })
 const handleBack = () => router.back()
 const handleTaskDetail = record => router.push({ name: 'AllTaskDetail', params: { id: record.id } })
@@ -1068,7 +1086,27 @@ const fetchProjectRelatedData = async projectId => {
       getProjectFiles({ businessType: 'PROJECT', businessId: projectId }),
       getProjectFolders({ businessType: 'PROJECT', businessId: projectId }),
     ])
-    currentProject.value = mapProject(project)
+    const managementProject = project.managementProjectId
+      ? await getProjectDetail(project.managementProjectId)
+      : null
+    currentProject.value = mapProject({
+      ...project,
+      managerId: project.managerId || managementProject?.managerId,
+      businessDepartment: project.businessDepartment || managementProject?.businessDepartment,
+      department: project.department || managementProject?.department,
+      contractorUnit: project.contractorUnit || managementProject?.contractorUnit,
+      contractor: project.contractor || managementProject?.contractor,
+      businessSupervisor: project.businessSupervisor || managementProject?.businessSupervisor,
+      supervisor: project.supervisor || managementProject?.supervisor,
+      contractStatus: project.contractStatus || managementProject?.contractStatus,
+      receivableAmount: project.receivableAmount ?? managementProject?.receivableAmount,
+      amount: project.amount ?? managementProject?.amount,
+      description: project.description || managementProject?.description,
+      plannedStartDate: project.plannedStartDate || managementProject?.plannedStartDate,
+      plannedEndDate: project.plannedEndDate || managementProject?.plannedEndDate,
+      actualStartDate: project.actualStartDate || managementProject?.actualStartDate,
+      actualEndDate: project.actualEndDate || managementProject?.actualEndDate,
+    })
     void recordOperationLog({
       module: OPERATION_MODULES.EXECUTION_PROJECT,
       action: OPERATION_ACTIONS.DETAIL,

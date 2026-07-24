@@ -264,6 +264,7 @@ function goDetail(target) {
 .daily-filter-item span {
   flex-shrink: 0;
   color: #262626;
+  font-size: 0.875rem;
 }
 
 .daily-content-link {

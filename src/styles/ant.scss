@@ -8,6 +8,10 @@ $spacing-xs: 4px;
 $spacing-sm: 8px;
 $spacing-md: 16px;
 $spacing-lg: 24px;
+$input-select-control-height: 2rem;
+$input-select-font-size: 0.875rem;
+$input-select-font-size-sm: 0.75rem;
+$input-select-border-radius: 0.5rem;
 
 /* Layout */
 .ant-layout-header {
@@ -54,22 +58,27 @@ $spacing-lg: 24px;
 .ant-input-affix-wrapper,
 .ant-input-number,
 .ant-input-group-addon {
-  min-height: $control-height;
-  font-size: $font-size;
-  border-radius: $border-radius;
+  min-height: $input-select-control-height;
+  font-size: $input-select-font-size;
+  border-radius: $input-select-border-radius;
 }
 
 .ant-input {
-  padding: 4px 11px;
+  padding: 0.25rem 0.6875rem;
+  font-size: $input-select-font-size;
+}
+
+.ant-input::placeholder {
+  font-size: $input-select-font-size;
 }
 
 textarea.ant-input {
-  min-height: 32px;
-  padding: 4px 11px;
+  min-height: $input-select-control-height;
+  padding: 0.25rem 0.6875rem;
 }
 
 .ant-input-affix-wrapper {
-  padding: 4px 11px;
+  padding: 0.25rem 0.6875rem;
 }
 
 .ant-input-affix-wrapper > input.ant-input {
@@ -78,98 +87,115 @@ textarea.ant-input {
 }
 
 .ant-input-group-addon {
-  padding-inline: 11px;
+  padding-inline: 0.6875rem;
 }
 
 .ant-input-search .ant-input-search-button {
-  width: $control-height;
-  height: $control-height;
+  width: $input-select-control-height;
+  height: $input-select-control-height;
   padding-inline: 0;
 }
 
 .ant-input-number-input {
-  height: 30px;
-  padding: 0 11px;
+  height: 1.875rem;
+  padding: 0 0.6875rem;
+  font-size: $input-select-font-size;
 }
 
-.ant-input-number-handler-wrap { width: 22px; }
-.ant-input-number-handler { height: 15px; }
+.ant-input-number-input::placeholder {
+  font-size: $input-select-font-size;
+}
+
+.ant-input-number-handler-wrap { width: 1.375rem; }
+.ant-input-number-handler { height: 0.9375rem; }
 
 /* Select and tree select */
 .ant-select.ant-select {
   min-width: 0;
-  font-size: $font-size;
+  font-size: $input-select-font-size;
 }
 
 .ant-select.ant-select-single {
-  height: $control-height;
+  height: $input-select-control-height;
 }
 
 .ant-select.ant-select-single .ant-select-selector {
-  height: $control-height;
-  padding: 0 11px;
-  font-size: $font-size;
-  border-radius: $border-radius;
+  height: $input-select-control-height;
+  padding: 0 0.6875rem;
+  font-size: $input-select-font-size;
+  border-radius: $input-select-border-radius;
 }
 
 .ant-select.ant-select-single .ant-select-selection-item,
 .ant-select.ant-select-single .ant-select-selection-placeholder,
 .ant-select.ant-select-single .ant-select-selection-search-input {
-  height: 30px;
-  font-size: $font-size;
-  line-height: 30px;
+  height: 1.875rem;
+  font-size: $input-select-font-size;
+  line-height: 1.875rem;
 }
 
 .ant-select.ant-select-multiple .ant-select-selector {
-  min-height: $control-height;
-  padding: 1px 4px;
-  font-size: $font-size;
-  border-radius: $border-radius;
+  min-height: $input-select-control-height;
+  padding: 0.0625rem 0.25rem;
+  font-size: $input-select-font-size;
+  border-radius: $input-select-border-radius;
 }
 
 .ant-select.ant-select-multiple .ant-select-selection-item {
-  height: 24px;
-  margin-block: 2px;
-  margin-inline-end: 4px;
-  padding-inline: 8px 4px;
-  font-size: $font-size;
-  line-height: 22px;
+  height: 1.5rem;
+  margin-block: 0.125rem;
+  margin-inline-end: 0.25rem;
+  padding-inline: 0.5rem 0.25rem;
+  font-size: $input-select-font-size;
+  line-height: 1.375rem;
 }
 
 .ant-select.ant-select .ant-select-arrow {
-  inset-inline-end: 11px;
-  font-size: 12px;
+  inset-inline-end: 0.6875rem;
+  font-size: $input-select-font-size-sm;
+}
+
+.ant-select .ant-select-selection-item,
+.ant-select .ant-select-selection-placeholder,
+.ant-select .ant-select-selection-search-input,
+.ant-select .ant-select-selection-search-input::placeholder {
+  font-size: $input-select-font-size;
 }
 
 .ant-select-dropdown.ant-select-dropdown,
 .ant-tree-select-dropdown.ant-tree-select-dropdown {
-  padding: 4px;
-  font-size: $font-size;
-  border-radius: 8px;
+  padding: 0.25rem;
+  font-size: $input-select-font-size;
+  border-radius: $input-select-border-radius;
 }
 
 .ant-select-dropdown .ant-select-item.ant-select-item,
 .ant-tree-select-dropdown .ant-select-tree-node-content-wrapper {
-  min-height: $control-height;
-  padding: 5px 12px;
-  font-size: $font-size;
-  border-radius: 4px;
+  min-height: $input-select-control-height;
+  padding: 0.3125rem 0.75rem;
+  font-size: $input-select-font-size;
+  border-radius: 0.25rem;
 }
 
 .ant-select-dropdown .ant-select-item-option-content,
 .ant-tree-select-dropdown .ant-select-tree-title {
-  font-size: $font-size;
+  font-size: $input-select-font-size;
 }
 
 /* Date picker */
 .ant-picker {
   min-height: $control-height;
   padding: 4px 11px;
-  font-size: $font-size;
+  font-size: $input-select-font-size;
   border-radius: $border-radius;
 }
 
-.ant-picker-input > input { font-size: $font-size; }
+.ant-picker,
+.ant-picker input,
+.ant-picker-input,
+.ant-picker-input input {
+  font-size: $input-select-font-size !important;
+}
 .ant-picker-range .ant-picker-active-bar { height: 2px; }
 .ant-picker-dropdown .ant-picker-panel-container { border-radius: 8px; }
 .ant-picker-header { height: 40px; padding-inline: 8px; }
