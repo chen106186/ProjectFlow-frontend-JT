@@ -171,7 +171,7 @@
     >
       <div class="role-assign-tip">为用户 <strong>{{ assigningUserName }}</strong> 分配角色：</div>
       <a-checkbox-group v-model:value="selectedRoleIds" class="role-checkbox-group">
-        <a-checkbox v-for="role in roles" :key="role.id" :value="role.id">{{ role.name }}</a-checkbox>
+        <a-checkbox v-for="role in assignableRoles" :key="role.id" :value="role.id">{{ role.name }}</a-checkbox>
       </a-checkbox-group>
     </a-modal>
 
@@ -305,6 +305,8 @@ const departmentMap = computed(() =>
 const departmentOptions = computed(() => departments.value.map(item => ({ label: item.name, value: item.id })))
 const departmentOptionsWithoutAll = computed(() => departmentOptions.value)
 const roleOptions = computed(() => roles.value.map(item => ({ label: item.name, value: item.id })))
+const isSuperAdminRole = role => String(role?.code || '').toUpperCase() === 'SUPER_ADMIN' || role?.name === '超级管理员'
+const assignableRoles = computed(() => roles.value.filter(role => !isSuperAdminRole(role)))
 const departmentTree = computed(() => filterDepartmentTree(buildDepartmentTree(departments.value), appliedDepartmentKeyword.value))
 const departmentSelectTree = computed(() => {
   const disabledIds = editingDepartmentId.value ? getDepartmentChildrenIds(editingDepartmentId.value) : []
@@ -362,7 +364,7 @@ const getDepartmentChildrenIds = departmentId => {
 const getDepartmentById = id => departments.value.find(item => item.id === id)
 const isAdminRole = role => {
   const code = String(role?.code || '').toUpperCase()
-  return code === 'ADMIN' || code === 'SUPER_ADMIN' || role?.name === '超级管理员'
+  return code === 'ADMIN' || isSuperAdminRole(role)
 }
 const isSuperAdminUser = record => {
   const roleIds = record.roleIds || []
