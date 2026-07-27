@@ -1088,7 +1088,7 @@ async function loadTasks() {
     })
     taskPaginationTotal.value = result.total || 0
     taskApiRows.value = (result.records || []).map((task, index) => {
-      const statusCode = resolveTaskStatusCode(task)
+      const statusCode = task.status || 'NOT_STARTED'
       return ({
       id: task.id,
       index: index + 1,
@@ -1364,7 +1364,7 @@ async function loadTaskDetailData(taskId) {
       getProjectFiles({ businessType: 'TASK', businessId: taskId }),
       fetchAllTaskBugs(taskId),
     ])
-    selectedTaskDetail.value = { ...detail, status: resolveTaskStatusCode(detail) }
+    selectedTaskDetail.value = { ...detail, status: detail.status || 'NOT_STARTED' }
     taskAttachmentRows.value = Array.isArray(files) ? files : []
     taskRelatedBugRows.value = bugs
   } catch (error) {
