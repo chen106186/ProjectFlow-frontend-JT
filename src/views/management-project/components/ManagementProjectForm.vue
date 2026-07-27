@@ -4,7 +4,7 @@
       <h2 v-if="isEdit">编辑项目</h2>
       <a-form ref="formRef" :model="formState" :rules="formRules" :label-col="{ span: 5 }" :wrapper-col="{ span: 19 }">
         <a-form-item label="项目名称" name="name"><a-input v-model:value="formState.name" placeholder="请输入项目名称" /></a-form-item>
-        <a-form-item label="项目经理" name="managerId"><a-select v-model:value="formState.managerId" :options="managerOptions" placeholder="请选择项目经理" /></a-form-item>
+        <a-form-item label="项目经理" name="managerIds"><a-select mode="multiple" v-model:value="formState.managerIds" :options="managerOptions" placeholder="请选择项目经理（可多选）" /></a-form-item>
         <a-form-item label="项目类型" name="type"><a-select v-model:value="formState.type" :options="projectTypeOptions" /></a-form-item>
         <template v-if="formState.type !== 'EXTERNAL'">
           <a-form-item label="业务部门"><a-input v-model:value="formState.department" placeholder="请输入业务部门" /></a-form-item>
@@ -101,9 +101,9 @@ const projectNodeMap = {
 }
 
 const getProjectNodeCodes = type => (projectNodeMap[type] || []).map(item => item.value)
-const createDefaultForm = () => ({ name: '', managerId: undefined, department: '', contractor: '', supervisor: '', type: 'DIGITALIZATION', nodes: getProjectNodeCodes('DIGITALIZATION'), stage: 'BUSINESS_OPPORTUNITY', status: 'NOT_STARTED', contractStatus: 'NOT_SIGNED', plannedStartDate: undefined, plannedEndDate: undefined, actualStartDate: undefined, actualEndDate: undefined, amount: 0, description: '' })
+const createDefaultForm = () => ({ name: '', managerIds: [], department: '', contractor: '', supervisor: '', type: 'DIGITALIZATION', nodes: getProjectNodeCodes('DIGITALIZATION'), stage: 'BUSINESS_OPPORTUNITY', status: 'NOT_STARTED', contractStatus: 'NOT_SIGNED', plannedStartDate: undefined, plannedEndDate: undefined, actualStartDate: undefined, actualEndDate: undefined, amount: 0, description: '' })
 const formState = reactive(createDefaultForm())
-const formRules = { name: [{ required: true, message: '请输入项目名称', trigger: 'blur' }], managerId: [{ required: true, message: '请选择项目经理', trigger: 'change' }], type: [{ required: true, message: '请选择项目类型', trigger: 'change' }], description: [{ required: true, message: '请输入项目描述', trigger: 'blur' }] }
+const formRules = { name: [{ required: true, message: '请输入项目名称', trigger: 'blur' }], managerIds: [{ required: true, type: 'array', min: 1, message: '请选择项目经理', trigger: 'change' }], type: [{ required: true, message: '请选择项目类型', trigger: 'change' }], description: [{ required: true, message: '请输入项目描述', trigger: 'blur' }] }
 const allNodeOptions = computed(() => Object.values(projectNodeMap).flat())
 const getProjectNodeName = code => allNodeOptions.value.find(item => item.value === code)?.label || code
 const getProjectNodeCode = name => allNodeOptions.value.find(item => item.label === name || item.value === name)?.value || name
@@ -152,7 +152,7 @@ const loadProject = async () => {
     : []
   Object.assign(formState, createDefaultForm(), {
     name: project.name || '',
-    managerId: project.managerId,
+    managerIds: project.managerIds || (project.managerId ? [project.managerId] : []),
     department: project.department || project.businessDepartment || '',
     contractor: project.contractor || project.contractorUnit || '',
     supervisor: project.supervisor || project.businessSupervisor || '',
@@ -214,7 +214,7 @@ const handleSubmit = async () => {
       plannedEndDate: formState.plannedEndDate || null,
       actualStartDate: formState.actualStartDate || null,
       actualEndDate: formState.actualEndDate || null,
-      managerId: formState.managerId,
+      managerIds: formState.managerIds,
       businessDepartment: formState.department,
       contractorUnit: formState.contractor,
       businessSupervisor: formState.supervisor,

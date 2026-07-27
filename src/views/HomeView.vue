@@ -433,11 +433,29 @@ const fetchMyStats = async () => {
   }
 }
 
+const fetchSummary = async () => {
+  summaryLoading.value = true
+  try {
+    summary.value = await getDashboardSummary()
+  } catch {
+    // silent
+  } finally {
+    summaryLoading.value = false
+  }
+}
+
 const handlePeriodChange = period => {
   statsPeriod.value = period
 }
 
 watch(statsPeriod, fetchMyStats)
+
+const handleVisibilityChange = () => {
+  if (document.visibilityState === 'visible') {
+    fetchSummary()
+    fetchMyStats()
+  }
+}
 
 onMounted(async () => {
   const profile = JSON.parse(localStorage.getItem('authProfile') || '{}')
@@ -468,12 +486,14 @@ onMounted(async () => {
     todoLoading.value = false
   }
   fetchMyStats()
+  document.addEventListener('visibilitychange', handleVisibilityChange)
 })
 
 onBeforeUnmount(() => {
   trendChart?.dispose()
   projectChart?.dispose()
   statusChart?.dispose()
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 
 const handleMetricClick = async metric => {

@@ -30,7 +30,7 @@
       <div class="execution-summary__progress">
         <div class="execution-summary__title">
           <h3><ProjectOutlined />开发进度</h3>
-          <span>已完成 {{ ganttSummaryData.completedTaskCount }} / {{ ganttSummaryData.totalTaskCount }} 个任务</span>
+          <span>已完成 {{ ganttSummaryData.completed }} / {{ ganttSummaryData.total }} 个阶段</span>
         </div>
         <div class="execution-summary__bar">
           <a-progress :percent="ganttSummaryData.overallProgress" :show-info="false" stroke-color="#52c41a" />
