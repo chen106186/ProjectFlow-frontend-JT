@@ -425,6 +425,10 @@ textarea.ant-input {
 .ant-tree-checkbox { margin: 4px 8px 0 0; }
 
 /* Calendar and upload */
+.ant-picker-calendar,
+.ant-picker-calendar .ant-picker-calendar-date-value,
+.ant-picker-calendar .ant-picker-calendar-date-content,
+.ant-picker-calendar .ant-picker-content th { font-size: $input-select-font-size; }
 .ant-picker-calendar-header { padding: 12px 0; }
 .ant-picker-calendar-header .ant-select { min-width: 80px; }
 .ant-picker-calendar-date { margin: 0 4px; padding: 4px 8px 0; }

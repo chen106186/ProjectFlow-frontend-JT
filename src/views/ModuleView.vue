@@ -163,8 +163,8 @@
               <tbody>
                 <tr v-for="(record, index) in pagedVisibleTasks" :key="record.id">
                   <td>{{ (taskCurrentPage - 1) * taskPageSize + index + 1 }}</td>
-                  <td><button class="text-link" type="button" @click="handleTaskDetail(record)">{{ record.name }}</button></td>
                   <td><button class="text-link" type="button">{{ record.project }}</button></td>
+                  <td><button class="text-link" type="button" @click="handleTaskDetail(record)">{{ record.name }}</button></td>
                   <td>{{ record.role }}</td>
                   <td>{{ record.tag }}</td>
                   <td>{{ record.owner }}</td>
@@ -211,8 +211,8 @@
                   <tbody>
                     <tr v-for="record in group.rows" :key="record.id">
                       <td>{{ record.index }}</td>
-                      <td><button class="text-link" type="button" @click="handleTaskDetail(record)">{{ record.name }}</button></td>
                       <td><button class="text-link" type="button">{{ record.project }}</button></td>
+                      <td><button class="text-link" type="button" @click="handleTaskDetail(record)">{{ record.name }}</button></td>
                       <td>{{ record.role }}</td>
                       <td>{{ record.tag }}</td>
                       <td>{{ record.owner }}</td>
@@ -242,7 +242,7 @@
             <a-pagination
               v-model:current="taskCurrentPage"
               v-model:page-size="taskPageSize"
-              :total="visibleTasks.length"
+              :total="route.name === 'AllTasks' ? taskPaginationTotal : visibleTasks.length"
               :page-size-options="['10', '50', '100']"
               show-size-changer
               :show-total="total => `共 ${total} 条`"
@@ -869,6 +869,7 @@ const visibleTasks = computed(() => {
   return taskApiRows.value
 })
 const pagedVisibleTasks = computed(() => {
+  if (route.name === 'AllTasks') return visibleTasks.value
   const start = (taskCurrentPage.value - 1) * taskPageSize.value
   return visibleTasks.value.slice(start, start + taskPageSize.value)
 })
@@ -1077,8 +1078,8 @@ async function loadTasks() {
     const profile = JSON.parse(window.localStorage.getItem('authProfile') || '{}')
     const f = taskFilter.value
     const result = await getProjectTasks({
-      pageNo: 1,
-      pageSize: 200,
+      pageNo: route.name === 'AllTasks' ? taskCurrentPage.value : 1,
+      pageSize: route.name === 'AllTasks' ? taskPageSize.value : 200,
       keyword: f.keyword || undefined,
       projectId: f.projectId || undefined,
       assigneeId: route.name === 'PersonalTasks' ? profile.id : (f.assigneeId || undefined),
@@ -1091,7 +1092,7 @@ async function loadTasks() {
       const statusCode = resolveTaskStatusCode(task)
       return ({
       id: task.id,
-      index: index + 1,
+      index: (route.name === 'AllTasks' ? (taskCurrentPage.value - 1) * taskPageSize.value : 0) + index + 1,
       name: task.name,
       project: task.projectName || getTaskProjectName(task.projectId),
       projectId: task.projectId,
@@ -1114,7 +1115,8 @@ async function loadTasks() {
       remark: task.remark || '',
     })
     })
-    const lastPage = Math.max(1, Math.ceil(visibleTasks.value.length / taskPageSize.value))
+    const total = route.name === 'AllTasks' ? taskPaginationTotal.value : visibleTasks.value.length
+    const lastPage = Math.max(1, Math.ceil(total / taskPageSize.value))
     taskCurrentPage.value = Math.min(taskCurrentPage.value, lastPage)
   } catch (error) {
     taskApiRows.value = []
@@ -1571,6 +1573,7 @@ const handleTaskReset = () => {
 const handleTaskPageChange = (current, pageSize) => {
   taskCurrentPage.value = current
   taskPageSize.value = pageSize
+  if (route.name === 'AllTasks') loadTasks()
 }
 
 const isTaskGroupCollapsed = value => collapsedTaskGroups.value.includes(value)
@@ -1993,8 +1996,8 @@ const smallPagination = {
 
 const personalTaskColumns = [
   { title: '序号', dataIndex: 'index', width: 70 },
-  { title: '任务名称', dataIndex: 'name', width: 190 },
   { title: '所属项目', dataIndex: 'project', width: 210 },
+  { title: '任务名称', dataIndex: 'name', width: 190 },
   { title: '角色', dataIndex: 'role', width: 90 },
   { title: '标签', dataIndex: 'tag', width: 90 },
   { title: '负责人', dataIndex: 'owner', width: 90 },
@@ -2009,8 +2012,8 @@ const personalTaskColumns = [
 
 const taskModuleColumns = [
   { title: '序号', dataIndex: 'index', width: 70 },
-  { title: '任务名称', dataIndex: 'name', width: 190 },
   { title: '所属项目', dataIndex: 'project', width: 210 },
+  { title: '任务名称', dataIndex: 'name', width: 190 },
   { title: '角色', dataIndex: 'role', width: 90 },
   { title: '标签', dataIndex: 'tag', width: 100 },
   { title: '负责人', dataIndex: 'owner', width: 100 },

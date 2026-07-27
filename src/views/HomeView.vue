@@ -880,6 +880,10 @@ const handleTodoClick = item => {
   padding-inline: 0;
 }
 
+.calendar-panel :deep(.ant-picker-cell-inner) {
+  height: 48px;
+}
+
 .calendar-panel__header {
   display: flex;
   align-items: center;

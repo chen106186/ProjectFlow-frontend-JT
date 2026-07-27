@@ -58,7 +58,7 @@
             </a-sub-menu>
 
             <a-menu-item v-else :key="item.key" @click="handleNavigate(item.path)">
-              <component :is="item.icon" />
+              <template #icon><component :is="item.icon" /></template>
               <span>{{ item.label }}</span>
             </a-menu-item>
           </template>
@@ -150,7 +150,7 @@ const fixedListRouteNames = new Set([
   'RequirementManagement',
   'BugList',
 ])
-const isFixedListPage = computed(() => fixedListRouteNames.has(route.name))
+const isFixedListPage = computed(() => fixedListRouteNames.has(route.name) && route.query.detail !== 'task')
 
 const AUTH_PROFILE_KEY = 'authProfile'
 const USER_INFO_KEY = 'userInfo'
@@ -688,8 +688,19 @@ const handleUserMenuClick = ({ key }) => {
   background: transparent;
 }
 
-.app-sider :deep(.ant-menu-inline.ant-menu-root > .ant-menu-item) {
-  padding-inline-start: 14px !important;
+.app-sider :deep(.ant-menu-inline.ant-menu-root > .ant-menu-item),
+.app-sider :deep(.ant-menu-inline.ant-menu-root > .ant-menu-submenu > .ant-menu-submenu-title) {
+  display: flex;
+  align-items: center;
+  padding-inline-start: 20px !important;
+}
+
+.app-sider :deep(.ant-menu-inline.ant-menu-root > .ant-menu-item > .anticon),
+.app-sider :deep(.ant-menu-inline.ant-menu-root > .ant-menu-submenu > .ant-menu-submenu-title > .anticon) {
+  flex: 0 0 16px;
+  width: 16px;
+  margin-inline-end: 10px;
+  text-align: center;
 }
 
 .app-content {
