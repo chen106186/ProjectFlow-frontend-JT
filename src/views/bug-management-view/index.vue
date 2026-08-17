@@ -242,7 +242,7 @@
                 </section>
                 <section class="detail-section">
                   <h3>重现步骤</h3>
-                <div class="detail-rich" v-html="bugReproduceStepsHtml" @click="handleRichImageClick"></div>
+                <div class="detail-rich detail-rich--reproduce" v-html="bugReproduceStepsHtml" @click="handleRichImageClick"></div>
                 </section>
                 <section v-if="isResolvedBug(selectedBug)" class="detail-section">
                   <h3>解决方案</h3>
@@ -315,7 +315,7 @@
                 <a-timeline v-else class="lifecycle-timeline">
                   <a-timeline-item v-for="log in selectedBug.logs" :key="log.id">
                     <div class="timeline-action">{{ log.operatorName }} · {{ operationLabel(log.operationType) }}</div>
-                    <div v-if="log.content" class="timeline-content">{{ log.content }}</div>
+                    <div v-if="log.content" class="timeline-content">{{ timelineContent(log.content) }}</div>
                     <div class="timeline-time">{{ formatDateTime(log.createdAt) }}</div>
                   </a-timeline-item>
                 </a-timeline>
@@ -485,6 +485,15 @@ const OPERATION_LABELS = {
   COMMENT: '评论', EXPORT: '导出', UPDATE_STATUS: '更新状态',
 }
 const operationLabel = type => OPERATION_LABELS[type] || type || '操作'
+const timelineContent = content => {
+  if (/<img\b|&lt;img\b/i.test(content)) return '🖼️'
+  const text = String(content)
+    .replace(/<img\b[^>]*>/gi, '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return text
+}
 
 const loadBugs = async () => {
   listLoading.value = true
@@ -1040,7 +1049,7 @@ onMounted(async () => {
 .lifecycle-timeline { margin-top: 4px; }
 .lifecycle-timeline :deep(.ant-timeline-item-tail) { border-inline-start-color: #e0e7ef; }
 .lifecycle-timeline :deep(.ant-timeline-item-head) { background: #1677ff; border-color: #1677ff; width: 9px; height: 9px; }
-.lifecycle-timeline :deep(.ant-timeline-item-content) { inset-inline-start: 20px; margin-inline-start: 20px; }
+.lifecycle-timeline :deep(.ant-timeline-item-content) { inset-inline-start: 20px; margin-inline-start: 20px; padding-inline-end: 5px; }
 
 .timeline-action { font-size: 13px; font-weight: 600; color: #1f2937; line-height: 1.4; }
 .timeline-content { margin-top: 3px; font-size: 12px; color: #6b7280; line-height: 1.5; word-break: break-word; }
@@ -1169,13 +1178,13 @@ onMounted(async () => {
 .comment-item__meta small { color: #bfbfbf; font-size: 12px; }
 .comment-item__content { color: #555; font-size: 13px; line-height: 1.65; }
 .comment-item__content :deep(p) { margin: 0; }
-.comment-item__content :deep(img),
-.comment-item__content :deep(.rich-image) {
+.comment-item__content :deep(img:not(.rich-image--failed)) {
   display: block;
-  max-width: min(100%, 720px);
-  height: auto !important;
+  width: min(480px, 100%);
+  height: min(320px, 66.67vw) !important;
   margin: 8px 0;
   object-fit: contain;
+  background: #fafafa;
   border: 1px solid #edf0f3;
   border-radius: 8px;
 }
@@ -1185,6 +1194,13 @@ onMounted(async () => {
   overflow: hidden;
   background: #fff;
   border-radius: 8px;
+}
+.detail-rich--reproduce :deep(img),
+.detail-rich--reproduce :deep(.rich-image) {
+  width: min(480px, 100%);
+  height: min(320px, 66.67vw) !important;
+  object-fit: contain;
+  background: #fafafa;
 }
 
 .send-row { display: flex; justify-content: flex-end; margin-top: 10px; }
