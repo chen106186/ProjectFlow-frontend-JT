@@ -32,8 +32,7 @@
               </a-form-item>
               <a-form-item label="日报内容">
                 <div class="dr-rich-editor">
-                  <Toolbar v-if="editorRef && isEditableDate" :editor="editorRef" :default-config="toolbarConfig" mode="default" />
-                  <Editor v-model="form.content" :default-config="editorConfig" mode="default" @on-created="handleEditorCreated" />
+                  <TinymceEditor ref="editorRef" v-model="form.content" :disabled="!isEditableDate" :height="240" placeholder="请输入日报内容" />
                 </div>
               </a-form-item>
               <a-form-item label="附件上传">
@@ -82,9 +81,7 @@
 import { FileOutlined, LeftOutlined, UploadOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
-import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
-import '@wangeditor/editor/dist/css/style.css'
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import { computed, onMounted, ref, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import {
@@ -94,6 +91,7 @@ import {
   updateDailyReport,
   uploadDailyReportFile,
 } from '@/api/dailyReports'
+import TinymceEditor from '@/components/TinymceEditor.vue'
 import DailyReportCalendarPanel from './DailyReportCalendarPanel.vue'
 
 const route = useRoute()
@@ -113,56 +111,6 @@ const form = ref({ reportDate: editableDate, content: '' })
 const pendingFiles = ref([])
 const existingFiles = ref([])
 const editorRef = shallowRef()
-
-const richTextImageUploadConf = {
-  MENU_CONF: {
-    uploadImage: {
-      async customUpload(file, insertFn) {
-        const fd = new FormData()
-        fd.append('file', file)
-        const res = await fetch('/api/files/upload-image', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
-          body: fd,
-        }).catch(() => null)
-        if (!res || !res.ok) {
-          message.error('图片上传失败')
-          return
-        }
-        const json = await res.json()
-        if (json.errno === 0) {
-          insertFn(json.data.url, json.data.alt || '', json.data.href || '')
-        } else {
-          message.error('图片上传失败')
-        }
-      },
-    },
-  },
-}
-
-const toolbarConfig = {
-  toolbarKeys: [
-    'headerSelect',
-    'fontSize',
-    '|',
-    'bold',
-    'italic',
-    'underline',
-    'through',
-    'color',
-    'bgColor',
-    '|',
-    'bulletedList',
-    'numberedList',
-    'justifyLeft',
-    'justifyCenter',
-    'justifyRight',
-    '|',
-    'uploadImage',
-    'insertImage',
-  ],
-}
-const editorConfig = { placeholder: '请输入日报内容', scroll: true, ...richTextImageUploadConf }
 
 const reportMap = computed(() => {
   const map = {}
@@ -194,10 +142,6 @@ const pageTitle = computed(() => {
 onMounted(async () => {
   await loadAll()
   syncForm()
-})
-
-onBeforeUnmount(() => {
-  editorRef.value?.destroy()
 })
 
 watch(
@@ -235,19 +179,6 @@ watch(
       loadFiles(id)
     } else {
       existingFiles.value = []
-    }
-  },
-  { immediate: true }
-)
-
-watch(
-  isEditableDate,
-  editable => {
-    if (!editorRef.value) return
-    if (editable) {
-      editorRef.value.enable()
-    } else {
-      editorRef.value.disable()
     }
   },
   { immediate: true }
@@ -300,13 +231,6 @@ function getRouteDate() {
 }
 
 const handleBack = () => router.back()
-
-const handleEditorCreated = editor => {
-  editorRef.value = editor
-  if (!isEditableDate.value) {
-    editor.disable()
-  }
-}
 
 const isContentEmpty = () => {
   if (editorRef.value) {
@@ -460,27 +384,7 @@ const handleSave = async () => {
 .dr-rich-editor {
   position: relative;
   overflow: visible;
-  border: 1px solid #d9d9d9;
   border-radius: 8px;
-}
-
-.dr-rich-editor :deep(.w-e-toolbar) {
-  z-index: 10;
-  border-bottom: 1px solid #d9d9d9;
-}
-
-.dr-rich-editor :deep(.w-e-drop-panel),
-.dr-rich-editor :deep(.w-e-select-list) {
-  z-index: 1000;
-}
-
-.dr-rich-editor :deep(.w-e-text-container) {
-  min-height: 180px;
-}
-
-.dr-rich-editor :deep(.w-e-text-container img) {
-  max-width: 100%;
-  height: auto;
 }
 
 .dr-upload :deep(.ant-upload-drag) {

@@ -4,11 +4,11 @@
       <a-card class="bug-filter app-filter-card" :bordered="false">
         <a-form :model="queryParams" class="bug-filter__form app-filter-form" layout="inline">
           <a-form-item label="搜索"><a-input v-model:value="queryParams.keyword" allow-clear placeholder="请输入关键字"  /></a-form-item>
-          <a-form-item label="所属项目"><a-select v-model:value="queryParams.projectId" :options="projectOptions" placeholder="全部" allow-clear show-search option-filter-prop="label" @change="handleSearch" /></a-form-item>
+          <a-form-item label="所属项目" class="bug-filter__field--project"><a-select v-model:value="queryParams.projectId" :options="projectOptions" placeholder="全部" allow-clear show-search option-filter-prop="label" @change="handleSearch" /></a-form-item>
           <a-form-item label="严重等级"><a-select v-model:value="queryParams.priority" :options="priorityFilterOptions" placeholder="全部" allow-clear show-search option-filter-prop="label" @change="handleSearch" /></a-form-item>
           <a-form-item label="状态"><a-select v-model:value="queryParams.status" :options="statusFilterOptions" placeholder="全部" allow-clear show-search option-filter-prop="label" @change="handleSearch" /></a-form-item>
-          <a-form-item label="创建人"><a-select v-model:value="queryParams.creatorId" :options="userOptions" placeholder="全部" allow-clear show-search option-filter-prop="label" @change="handleSearch" /></a-form-item>
-          <a-form-item label="指定人"><a-select v-model:value="queryParams.assigneeId" :options="userOptions" placeholder="全部" allow-clear show-search option-filter-prop="label" @change="handleSearch" /></a-form-item>
+          <a-form-item label="创建人" class="bug-filter__field--creator"><a-select v-model:value="queryParams.creatorId" :options="userOptions" placeholder="全部" allow-clear show-search option-filter-prop="label" @change="handleSearch" /></a-form-item>
+          <a-form-item label="指定人" class="bug-filter__field--assignee"><a-select v-model:value="queryParams.assigneeId" :options="userOptions" placeholder="全部" allow-clear show-search option-filter-prop="label" @change="handleSearch" /></a-form-item>
           <a-form-item class="bug-filter__actions app-filter-actions">
             <a-space><a-button type="primary" @click="handleSearch">查询</a-button><a-button @click="handleReset">重置</a-button></a-space>
           </a-form-item>
@@ -94,7 +94,7 @@
                 :columns="columns.filter(c => c.dataIndex !== 'index')"
                 :data-source="group"
                 :pagination="false"
-                :scroll="{ x: 1200 }"
+                :scroll="{ x: 1260 }"
                 size="middle"
                 table-layout="fixed"
               >
@@ -166,8 +166,7 @@
           </a-form-item>
           <a-form-item label="重现步骤">
             <div class="bug-rich-editor">
-              <Toolbar v-if="editorRef" :editor="editorRef" :default-config="toolbarConfig" mode="default" />
-              <Editor v-model="formState.reproduceSteps" :default-config="editorConfig" mode="default" @on-created="handleEditorCreated" />
+              <TinymceEditor ref="editorRef" v-model="formState.reproduceSteps" :height="310" placeholder="请输入重现步骤" />
             </div>
           </a-form-item>
         </div>
@@ -291,8 +290,7 @@
                 </a-spin>
                 <template v-if="!isClosedBug(selectedBug)">
                   <div class="comment-rich-editor">
-                    <Toolbar v-if="commentEditorRef" :editor="commentEditorRef" :default-config="toolbarConfig" mode="default" />
-                    <Editor :key="commentEditorKey" v-model="commentContent" :default-config="commentEditorConfig" mode="default" @on-created="handleCommentEditorCreated" />
+                    <TinymceEditor :key="commentEditorKey" ref="commentEditorRef" v-model="commentContent" :height="200" placeholder="请输入评论内容" />
                   </div>
                   <div class="send-row"><a-button type="primary" :loading="commentLoading" @click="handleSendComment">发送</a-button></div>
                 </template>
@@ -358,8 +356,7 @@
         </a-form-item>
         <a-form-item label="备注">
           <div class="resolve-rich-editor">
-            <Toolbar v-if="resolveEditorRef" :editor="resolveEditorRef" :default-config="toolbarConfig" mode="default" />
-            <Editor :key="resolveEditorKey" v-model="resolveForm.remark" :default-config="resolveEditorConfig" mode="default" @on-created="handleResolveEditorCreated" />
+            <TinymceEditor :key="resolveEditorKey" ref="resolveEditorRef" v-model="resolveForm.remark" :height="280" placeholder="请输入备注信息..." />
           </div>
         </a-form-item>
       </a-form>
@@ -384,15 +381,15 @@
 import { ArrowLeftOutlined, CheckCircleFilled, CheckOutlined, CloseCircleOutlined, CloseOutlined, DownOutlined, EditOutlined, EyeOutlined, PlusOutlined, RedoOutlined, RightOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
-import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
-import '@wangeditor/editor/dist/css/style.css'
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   getProjectBugs, getBugById, createBug, updateBug, closeBug, reopenBug, assignBug,
   addBugComment, listBugComments, getProjectList, getProjectTasks, getSystemUsers, resolveBug,
 } from '@/api/managementProject'
+import TinymceEditor from '@/components/TinymceEditor.vue'
 import { formatDateTime } from '@/utils/dateTime'
+import { request } from '@/utils/request'
 
 const route = useRoute()
 const router = useRouter()
@@ -443,8 +440,8 @@ const queryParams = reactive({ keyword: '', projectId: undefined, priority: unde
 
 const columns = [
   { title: '编号', dataIndex: 'bugNo', width: 80 },
-  { title: 'Bug标题', dataIndex: 'title', width: 240, ellipsis: true },
-  { title: '所属项目', dataIndex: 'projectName', width: 210 },
+  { title: 'Bug标题', dataIndex: 'title', width: 360, ellipsis: true },
+  { title: '所属项目', dataIndex: 'projectName', width: 130, ellipsis: true },
   { title: '严重等级', dataIndex: 'priority', width: 110 },
   { title: '状态', dataIndex: 'status', width: 110 },
   { title: '创建人', dataIndex: 'creatorName', width: 90 },
@@ -531,6 +528,7 @@ const previewImage = ref('')
 const previewVisible = ref(false)
 const richImageObjectUrls = new Set()
 const ossHostPattern = /^https:\/\/company-project-oss\.oss-cn-shanghai\.aliyuncs\.com\/(.+)$/i
+const inlineImagePattern = /^(?:https?:\/\/[^/]+)?\/api\/files\/[^/?#]+\/inline(?:[?#].*)?$/i
 const normalizeRichHtml = html => {
   if (!html) return '<p>-</p>'
   if (typeof window === 'undefined' || typeof DOMParser === 'undefined') return html
@@ -542,6 +540,8 @@ const normalizeRichHtml = html => {
     if (privateOssMatch) {
       img.removeAttribute('src')
       img.setAttribute('data-rich-image-key', decodeURIComponent(privateOssMatch[1]))
+    } else if (src?.trim().match(inlineImagePattern)) {
+      img.setAttribute('src', src.trim())
     } else if (src) {
       img.setAttribute('src', src.trim())
     }
@@ -556,22 +556,23 @@ const clearRichImageObjectUrls = () => {
   richImageObjectUrls.forEach(url => URL.revokeObjectURL(url))
   richImageObjectUrls.clear()
 }
-const hydratePrivateRichImages = async () => {
+const hydrateRichImages = async () => {
   await nextTick()
   clearRichImageObjectUrls()
-  const images = document.querySelectorAll('.detail-rich img[data-rich-image-key], .comment-item__content img[data-rich-image-key]')
+  const images = document.querySelectorAll(
+    '.detail-rich img[data-rich-image-key], .detail-rich img[data-rich-image-url], .comment-item__content img[data-rich-image-key], .comment-item__content img[data-rich-image-url]'
+  )
   await Promise.all(Array.from(images).map(async img => {
     const key = img.getAttribute('data-rich-image-key')
-    if (!key) return
+    const imageUrl = img.getAttribute('data-rich-image-url')
+    if (!key && !imageUrl) return
     try {
-      const response = await fetch(`/api/files/rich-text-image?key=${encodeURIComponent(key)}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
+      const response = await request(key ? `/api/files/rich-text-image?key=${encodeURIComponent(key)}` : imageUrl, {
+        responseType: 'blob',
       })
-      if (!response.ok) throw new Error('图片加载失败')
-      const objectUrl = URL.createObjectURL(await response.blob())
+      const objectUrl = URL.createObjectURL(response.data)
       richImageObjectUrls.add(objectUrl)
       img.setAttribute('src', objectUrl)
-      img.removeAttribute('data-rich-image-key')
     } catch {
       img.setAttribute('alt', '图片加载失败')
       img.classList.add('rich-image--failed')
@@ -591,51 +592,7 @@ const handleRichImageClick = event => {
 const handlePreviewVisibleChange = visible => {
   previewVisible.value = visible
 }
-const richTextImageUploadConf = {
-  MENU_CONF: {
-    uploadImage: {
-      async customUpload(file, insertFn) {
-        const fd = new FormData()
-        fd.append('file', file)
-        const res = await fetch('/api/files/upload-image', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-          body: fd,
-        }).catch(() => null)
-        if (!res || !res.ok) { message.error('图片上传失败'); return }
-        const json = await res.json()
-        if (json.errno === 0) insertFn(json.data.url, json.data.alt || '', json.data.href || '')
-        else message.error('图片上传失败')
-      },
-    },
-  },
-}
 
-const toolbarConfig = {
-  toolbarKeys: [
-    'headerSelect',
-    'fontSize',
-    '|',
-    'bold',
-    'italic',
-    'underline',
-    'through',
-    'color',
-    'bgColor',
-    '|',
-    'bulletedList',
-    'numberedList',
-    'justifyLeft',
-    'justifyCenter',
-    'justifyRight',
-    '|',
-    'uploadImage',
-    'insertImage',
-  ],
-}
-const commentEditorConfig = { placeholder: '请输入评论内容', scroll: true, ...richTextImageUploadConf }
-
-const handleCommentEditorCreated = editor => { commentEditorRef.value = editor }
 const resetCommentEditor = () => {
   commentEditorRef.value?.clear()
   commentContent.value = ''
@@ -660,6 +617,7 @@ const handleSendComment = async () => {
   try {
     const comment = await addBugComment(selectedBug.value.id, { content: commentContent.value })
     comments.value.unshift(comment)
+    void hydrateRichImages()
     resetCommentEditor()
     message.success('评论发送成功')
   } catch (e) {
@@ -706,7 +664,6 @@ const formRef = ref()
 const editingId = ref(null)
 const submitLoading = ref(false)
 const editorRef = shallowRef()
-const editorConfig = { placeholder: '请输入重现步骤', scroll: true, ...richTextImageUploadConf }
 
 const createDefaultFormState = () => ({ title: '', projectId: undefined, relatedTaskIds: [], assigneeId: undefined, priority: 'MEDIUM', description: '', reproduceSteps: '' })
 const formState = reactive(createDefaultFormState())
@@ -719,8 +676,6 @@ const formRules = {
   priority: [{ required: true, message: '请选择严重等级', trigger: 'change' }],
   description: [{ required: true, message: '请输入问题描述', trigger: 'blur' }],
 }
-
-const handleEditorCreated = editor => { editorRef.value = editor }
 
 const fetchAllProjectTasks = async projectId => {
   const pageSize = 200
@@ -773,9 +728,7 @@ const resolveSolutionOptions = [
   { label: '不予解决', value: 'WONT_FIX' },
 ]
 const resolveSolutionLabels = Object.fromEntries(resolveSolutionOptions.map(item => [item.value, item.label]))
-const resolveEditorConfig = { placeholder: '请输入备注信息...', scroll: true, ...richTextImageUploadConf }
 
-const handleResolveEditorCreated = editor => { resolveEditorRef.value = editor }
 const resetResolveForm = () => {
   Object.assign(resolveForm, createDefaultResolveForm())
   resolveEditorRef.value = undefined
@@ -916,7 +869,7 @@ const syncRouteState = async () => {
       const [bug, cmts] = await Promise.all([getBugById(id), listBugComments(id)])
       selectedBug.value = bug
       comments.value = cmts
-      void hydratePrivateRichImages()
+      void hydrateRichImages()
     } catch (e) {
       message.error(e.message || '加载失败')
     } finally {
@@ -928,9 +881,6 @@ const syncRouteState = async () => {
 watch(() => [route.name, route.params.id], syncRouteState, { immediate: true })
 
 onBeforeUnmount(() => {
-  editorRef.value?.destroy()
-  commentEditorRef.value?.destroy()
-  resolveEditorRef.value?.destroy()
   clearRichImageObjectUrls()
 })
 
@@ -950,12 +900,14 @@ onMounted(async () => {
 .bug-filter, .bug-list, .bug-form-card { border: 1px solid #edf0f3; box-shadow: 0 2px 8px rgb(0 0 0 / 3%); }
 .bug-filter { flex: none; margin-bottom: 16px; }
 .bug-filter :deep(.ant-card-body) { padding: 16px 18px 2px; }
-.bug-filter__form.app-filter-form { display: grid; grid-template-columns: minmax(180px, 1.4fr) repeat(5, minmax(130px, 1fr)) max-content !important; column-gap: 16px !important; align-items: end; }
+.bug-filter__form.app-filter-form { display: grid; grid-template-columns: minmax(220px, 1.4fr) 280px minmax(160px, 1fr) minmax(150px, 1fr); column-gap: 16px !important; align-items: end; }
 .bug-filter__form :deep(.ant-form-item) { margin: 0 0 14px; }
 .bug-filter__form :deep(.ant-form-item-row) { width: 100%; flex-wrap: nowrap; }
 .bug-filter__form :deep(.ant-form-item-control) { flex: 1; }
 .bug-filter__form :deep(.ant-input), .bug-filter__form :deep(.ant-select) { width: 100%; }
-.bug-filter__actions { grid-column: auto !important; justify-self: end; }
+.bug-filter__field--creator { grid-row: 2; grid-column: 1; }
+.bug-filter__field--assignee { grid-row: 2; grid-column: 2; }
+.bug-filter__actions { grid-row: 2; grid-column: 4 !important; justify-self: end; }
 .bug-list__toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .bug-list__group { display: flex; align-items: center; gap: 12px; color: #666; }
 .bug-list__group :deep(.ant-select) { width: 130px; }
@@ -987,10 +939,7 @@ onMounted(async () => {
 .bug-form-fields { max-width: 980px; }
 .bug-form-fields :deep(.ant-form-item) { margin-bottom: 20px; }
 .bug-form-fields :deep(.ant-form-item-label) { max-width: 150px; }
-.bug-rich-editor { border: 1px solid #d9d9d9; border-radius: 8px; overflow: hidden; }
-.bug-rich-editor :deep(.w-e-toolbar) { border-bottom: 1px solid #d9d9d9; }
-.bug-rich-editor :deep(.w-e-text-container) { min-height: 260px; }
-.bug-rich-editor :deep(.w-e-text-container img) { max-width: 100%; height: auto; }
+.bug-rich-editor { overflow: hidden; border-radius: 8px; }
 .bug-form-card { padding-bottom: 96px; }
 
 .form-actions {
@@ -1235,21 +1184,14 @@ onMounted(async () => {
 .comment-rich-editor {
   overflow: hidden;
   background: #fff;
-  border: 1px solid #d9d9d9;
   border-radius: 8px;
 }
-.comment-rich-editor :deep(.w-e-toolbar) { border-bottom: 1px solid #d9d9d9; }
-.comment-rich-editor :deep(.w-e-text-container) { min-height: 120px; }
-.comment-rich-editor :deep(.w-e-text-container img) { max-width: 100%; height: auto; }
 
 .send-row { display: flex; justify-content: flex-end; margin-top: 10px; }
 
 .resolve-form { margin-top: 12px; }
 .resolve-form :deep(.ant-form-item) { margin-bottom: 20px; }
-.resolve-rich-editor { overflow: hidden; background: #fff; border: 1px solid #d9d9d9; border-radius: 8px; }
-.resolve-rich-editor :deep(.w-e-toolbar) { border-bottom: 1px solid #d9d9d9; }
-.resolve-rich-editor :deep(.w-e-text-container) { min-height: 220px; }
-.resolve-rich-editor :deep(.w-e-text-container img) { max-width: 100%; height: auto; }
+.resolve-rich-editor { overflow: hidden; background: #fff; border-radius: 8px; }
 .resolve-actions { display: flex; justify-content: center; gap: 16px; margin-top: 28px; }
 .resolve-actions :deep(.ant-btn) { min-width: 72px; }
 
@@ -1289,6 +1231,8 @@ onMounted(async () => {
 :deep(.ant-modal-body) { padding-top: 10px; }
 @media (max-width: 960px) {
   .bug-filter__form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bug-filter__field--creator,
+  .bug-filter__field--assignee { grid-row: auto; grid-column: auto; }
   .bug-filter__actions { grid-column: 2; }
 }
 </style>
