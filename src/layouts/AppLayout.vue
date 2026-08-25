@@ -7,11 +7,41 @@
       </router-link>
 
       <a-space :size="20">
-        <a-badge :count="unreadNoticeCount" :overflow-count="99">
-          <a-button class="app-header__icon" type="text" aria-label="通知" @click="handleNavigate('/notifications')">
-            <BellOutlined />
-          </a-button>
-        </a-badge>
+        <a-dropdown v-model:open="noticeDropdownOpen" :trigger="['click']" placement="bottomRight" @open-change="handleNoticeDropdownOpen">
+          <a-badge :count="unreadNoticeCount" :overflow-count="99">
+            <a-button class="app-header__icon" type="text" aria-label="通知">
+              <BellOutlined />
+            </a-button>
+          </a-badge>
+          <template #overlay>
+            <section class="notice-dropdown">
+              <header class="notice-dropdown__header">
+                <strong>消息通知</strong>
+                <span v-if="unreadNoticeCount" class="notice-dropdown__unread">
+                  未读 {{ unreadNoticeCount > 99 ? '99+' : unreadNoticeCount }}
+                </span>
+              </header>
+              <a-spin :spinning="recentNoticesLoading">
+                <div v-if="recentNotices.length" class="notice-dropdown__list">
+                  <button
+                    v-for="notice in recentNotices"
+                    :key="notice.id"
+                    :class="['notice-dropdown__item', { 'notice-dropdown__item--unread': !notice.read }]"
+                    type="button"
+                  >
+                    <span class="notice-dropdown__title">{{ notice.title }}</span>
+                    <span class="notice-dropdown__content">{{ notice.content }}</span>
+                    <span class="notice-dropdown__time">{{ formatNoticeTime(notice.createdAt) }}</span>
+                  </button>
+                </div>
+                <a-empty v-else-if="!recentNoticesLoading" description="暂无消息" class="notice-dropdown__empty" />
+              </a-spin>
+              <div class="notice-dropdown__footer">
+                <a-button type="link" block @click="handleViewAllNotices">查看所有消息</a-button>
+              </div>
+            </section>
+          </template>
+        </a-dropdown>
         <a-dropdown>
           <a-button class="app-user" type="text">
             <a-avatar :size="34"><UserOutlined /></a-avatar>
@@ -170,6 +200,9 @@ const openKeys = ref([])
 const profileLoading = ref(false)
 const profileReady = ref(false)
 const unreadNoticeCount = ref(0)
+const noticeDropdownOpen = ref(false)
+const recentNoticesLoading = ref(false)
+const recentNotices = ref([])
 const authProfile = ref({
   menus: [],
   permissions: [],
@@ -483,6 +516,8 @@ const clearAuthCache = () => {
   localStorage.removeItem(TOKEN_KEY)
   MENU_CACHE_KEYS.forEach(key => localStorage.removeItem(key))
   unreadNoticeCount.value = 0
+  noticeDropdownOpen.value = false
+  recentNotices.value = []
   authProfile.value = {
     menus: [],
     permissions: [],
@@ -504,6 +539,40 @@ const loadUnreadNoticeCount = async () => {
   } catch {
     unreadNoticeCount.value = 0
   }
+}
+
+const loadRecentNotices = async () => {
+  if (!localStorage.getItem(TOKEN_KEY)) {
+    recentNotices.value = []
+    return
+  }
+
+  recentNoticesLoading.value = true
+  try {
+    const result = await getNotices({ pageNo: 1, pageSize: 5 })
+    recentNotices.value = result?.records || result?.data?.records || []
+  } catch {
+    recentNotices.value = []
+  } finally {
+    recentNoticesLoading.value = false
+  }
+}
+
+const formatNoticeTime = value => {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  const pad = number => String(number).padStart(2, '0')
+  return `${date.getMonth() + 1}-${date.getDate()} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+const handleNoticeDropdownOpen = open => {
+  if (open) loadRecentNotices()
+}
+
+const handleViewAllNotices = () => {
+  noticeDropdownOpen.value = false
+  handleNavigate('/notifications')
 }
 
 const loadCurrentUserProfile = async () => {
@@ -634,6 +703,137 @@ const handleUserMenuClick = ({ key }) => {
 .app-header__icon:hover,
 .app-user:hover {
   color: #1677ff;
+}
+
+.notice-dropdown {
+  display: flex;
+  flex-direction: column;
+  width: 380px;
+  max-height: 440px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #eef1f5;
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgb(15 23 42 / 16%);
+}
+
+.notice-dropdown__header {
+  display: flex;
+  flex: 0 0 52px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 18px;
+  background: linear-gradient(90deg, #f7fbff 0%, #fff 58%);
+  border-bottom: 1px solid #eef1f5;
+}
+
+.notice-dropdown__header strong {
+  color: #1f2937;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.notice-dropdown__unread {
+  padding: 3px 8px;
+  color: #1677ff;
+  font-size: 12px;
+  line-height: 18px;
+  background: #e6f4ff;
+  border-radius: 10px;
+}
+
+.notice-dropdown__list {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-color: #c9d1dc transparent;
+  scrollbar-width: thin;
+}
+
+.notice-dropdown__list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.notice-dropdown__list::-webkit-scrollbar-thumb {
+  background: #c9d1dc;
+  border-radius: 3px;
+}
+
+.notice-dropdown__item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 5px;
+  padding: 14px 18px 13px 22px;
+  overflow: hidden;
+  color: #1f2937;
+  text-align: left;
+  background: #fff;
+  border: 0;
+  border-bottom: 1px solid #f0f2f5;
+  cursor: default;
+  transition: background-color 0.2s ease;
+}
+
+.notice-dropdown__item:hover {
+  background: #f6faff;
+}
+
+.notice-dropdown__item--unread::before {
+  position: absolute;
+  top: 22px;
+  left: 10px;
+  width: 6px;
+  height: 6px;
+  content: '';
+  background: #1677ff;
+  border-radius: 50%;
+}
+
+.notice-dropdown__title,
+.notice-dropdown__content,
+.notice-dropdown__time {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notice-dropdown__title {
+  line-height: 20px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.notice-dropdown__content {
+  color: #7b8494;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.notice-dropdown__time {
+  color: #a3acb9;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.notice-dropdown__empty {
+  min-height: 200px;
+  margin: 0;
+}
+
+.notice-dropdown__footer {
+  flex: 0 0 52px;
+  padding: 8px 14px;
+  background: #fff;
+  border-top: 1px solid #eef1f5;
+}
+
+.notice-dropdown__footer :deep(.ant-btn) {
+  height: 34px;
+  color: #1677ff;
+  font-weight: 500;
+  background: #f3f8ff;
+  border-radius: 6px;
 }
 
 .app-user {
