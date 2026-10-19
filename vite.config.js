@@ -1,10 +1,8 @@
 import { fileURLToPath, URL } from 'node:url'
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
-const proxyTarget = process.env.VITE_PROXY_TARGET || 'http://localhost:8080'
-
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [vue()],
   build: {
     rollupOptions: {
@@ -33,7 +31,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://47.116.143.208:19090',
+        target: loadEnv(mode, process.cwd()).VITE_PROXY_TARGET || 'http://localhost:8080',
         changeOrigin: true,
       },
     },
@@ -45,4 +43,4 @@ export default defineConfig({
       // 'frappe-gantt-css': fileURLToPath(new URL('./src/vendor/frappe-gantt.css', import.meta.url)),
     },
   },
-})
+}))

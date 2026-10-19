@@ -38,7 +38,7 @@
             :data-source="bugs"
             :pagination="false"
             :loading="listLoading"
-            :scroll="{ x: 1260, y: '100%' }"
+            :scroll="{ x: 1380, y: '100%' }"
             size="middle"
             table-layout="fixed"
           >
@@ -57,12 +57,13 @@
                 <a-tag :color="statusColors[text]">{{ statusLabels[text] || text }}</a-tag>
               </template>
               <template v-else-if="column.dataIndex === 'createdAt'">{{ formatDateTime(text) }}</template>
+              <template v-else-if="column.dataIndex === 'resolvedDate'">{{ text || '-' }}</template>
               <template v-else-if="column.dataIndex === 'operation'">
                 <a-space>
                   <a-tooltip title="详情">
                     <a-button type="link" size="small" class="bug-operation-button" aria-label="详情" @click="handleDetail(record)"><EyeOutlined /></a-button>
                   </a-tooltip>
-                  <a-tooltip v-if="!isClosedBug(record)" title="编辑">
+                  <a-tooltip v-if="!isClosedBug(record) && isBugCreator(record)" title="编辑">
                     <a-button type="link" size="small" class="bug-operation-button" aria-label="编辑" @click="handleEdit(record)"><EditOutlined /></a-button>
                   </a-tooltip>
                   <a-tooltip v-if="!isClosedBug(record) && isBugCreator(record)" title="关闭">
@@ -94,7 +95,7 @@
                 :columns="columns.filter(c => c.dataIndex !== 'index')"
                 :data-source="group"
                 :pagination="false"
-                :scroll="{ x: 1260 }"
+                :scroll="{ x: 1380 }"
                 size="middle"
                 table-layout="fixed"
               >
@@ -112,12 +113,13 @@
                     <a-tag :color="statusColors[text]">{{ statusLabels[text] || text }}</a-tag>
                   </template>
                   <template v-else-if="column.dataIndex === 'createdAt'">{{ formatDateTime(text) }}</template>
+                  <template v-else-if="column.dataIndex === 'resolvedDate'">{{ text || '-' }}</template>
                   <template v-else-if="column.dataIndex === 'operation'">
                     <a-space>
                       <a-tooltip title="详情">
                         <a-button type="link" size="small" class="bug-operation-button" aria-label="详情" @click="handleDetail(record)"><EyeOutlined /></a-button>
                       </a-tooltip>
-                      <a-tooltip v-if="!isClosedBug(record)" title="编辑">
+                      <a-tooltip v-if="!isClosedBug(record) && isBugCreator(record)" title="编辑">
                         <a-button type="link" size="small" class="bug-operation-button" aria-label="编辑" @click="handleEdit(record)"><EditOutlined /></a-button>
                       </a-tooltip>
                       <a-tooltip v-if="!isClosedBug(record) && isBugCreator(record)" title="关闭">
@@ -326,7 +328,7 @@
             <a-button v-if="isClosedBug(selectedBug)" type="primary" @click="handleReopenBug(selectedBug)"><RedoOutlined />重新打开</a-button>
             <template v-else>
               <template v-if="!isResolvedBug(selectedBug)">
-                <a-button type="primary" @click="handleEditFromDetail">编辑 Bug</a-button>
+                <a-button v-if="isBugCreator(selectedBug)" type="primary" @click="handleEditFromDetail">编辑 Bug</a-button>
                 <a-button @click="assignVisible = true">重新指派</a-button>
                 <a-button type="primary" class="resolve-button" @click="openResolveModal">解决</a-button>
               </template>
@@ -447,6 +449,7 @@ const columns = [
   { title: '创建人', dataIndex: 'creatorName', width: 90 },
   { title: '指定人', dataIndex: 'assigneeName', width: 90 },
   { title: '创建时间', dataIndex: 'createdAt', width: 170 },
+  { title: '解决日期', dataIndex: 'resolvedDate', width: 120 },
   { title: '操作', dataIndex: 'operation', width: 120, fixed: 'right' },
 ]
 
@@ -671,6 +674,7 @@ const handleCloseBug = async () => {
 
 const formRef = ref()
 const editingId = ref(null)
+const editingBug = ref(null)
 const submitLoading = ref(false)
 const editorRef = shallowRef()
 
@@ -774,6 +778,10 @@ const handleProjectChange = projectId => {
 
 const handleSubmit = async () => {
   if (submitLoading.value) return
+  if (viewMode.value === 'edit' && (!isBugCreator(editingBug.value) || isClosedBug(editingBug.value))) {
+    message.warning('仅提出人可以编辑未关闭的Bug')
+    return
+  }
   await formRef.value?.validate()
   if (formState.assigneeId && String(formState.assigneeId) === String(currentUserId.value)) {
     message.warning('Bug 不能指定给自己，请选择其他负责人')
@@ -807,9 +815,12 @@ const handleSubmit = async () => {
 }
 
 const handleCreate = () => router.push({ name: 'BugCreate' })
-const handleEdit = record => router.push({ name: 'BugEdit', params: { id: record.id } })
+const handleEdit = record => {
+  if (!isBugCreator(record) || isClosedBug(record)) return
+  router.push({ name: 'BugEdit', params: { id: record.id } })
+}
 const handleDetail = record => router.push({ name: 'BugDetail', params: { id: record.id } })
-const handleEditFromDetail = () => router.push({ name: 'BugEdit', params: { id: selectedBug.value.id } })
+const handleEditFromDetail = () => handleEdit(selectedBug.value)
 const handleBack = () => router.back()
 const handleReopenBug = async record => {
   const bug = record || selectedBug.value
@@ -843,17 +854,20 @@ const syncRouteState = async () => {
     Object.assign(formState, createDefaultFormState())
     relatedTaskOptions.value = []
     editingId.value = null
+    editingBug.value = null
     return
   }
   if (viewMode.value === 'edit') {
     editingId.value = id
+    editingBug.value = null
     try {
       const bug = await getBugById(id)
-      if (bug.status === 'CLOSED') {
-        message.warning('已关闭的Bug不可编辑')
+      if (isClosedBug(bug) || !isBugCreator(bug)) {
+        message.warning(isClosedBug(bug) ? '已关闭的Bug不可编辑' : '仅提出人可以编辑Bug')
         router.replace({ name: 'BugDetail', params: { id } })
         return
       }
+      editingBug.value = bug
       formState.title = bug.title || ''
       formState.projectId = bug.projectId
       await loadRelatedTasks(bug.projectId)
