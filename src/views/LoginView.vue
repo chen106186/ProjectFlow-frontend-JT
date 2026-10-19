@@ -92,6 +92,7 @@ const handleSubmit = async () => {
     localStorage.setItem('token', user.token)
     localStorage.setItem('userInfo', JSON.stringify({
       userId: user.userId,
+      id: user.userId,
       realName: user.realName,
     }))
     try {

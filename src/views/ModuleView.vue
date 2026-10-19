@@ -129,16 +129,17 @@
           </a-form>
         </a-card>
 
-        <a-card class="prototype-card list-card task-list-card" :bordered="false">
+        <a-card class="prototype-card list-card task-list-card" :bordered="false" :loading="taskListLoading">
           <div class="list-toolbar">
-            <a-space v-if="isTaskModule">
-              <a-button type="primary" @click="openTaskModal('create')">
+            <a-space>
+              <a-button v-if="isTaskModule" type="primary" @click="openTaskModal('create')">
                 <template #icon><PlusOutlined /></template>
                 新建任务
               </a-button>
               <a-button v-if="route.name === 'AllTasks'" @click="router.push({ name: 'TaskBatchCreate' })">批量创建任务</a-button>
+              <a-button :loading="exporting" @click="exportRows('tasks', getTaskFilters(), 'tasks.xlsx')">导出任务</a-button>
+              <SavedFilterBar scope="TASK" :filters="getTaskFilters()" @apply="applySavedTaskFilters" />
             </a-space>
-            <span v-else></span>
             <div class="task-list__display">
               <template v-if="taskDisplayMode === 'group'">
                 <span>分组条件：</span>
@@ -242,7 +243,7 @@
             <a-pagination
               v-model:current="taskCurrentPage"
               v-model:page-size="taskPageSize"
-              :total="route.name === 'AllTasks' ? taskPaginationTotal : visibleTasks.length"
+              :total="taskPaginationTotal"
               :page-size-options="['10', '50', '100']"
               show-size-changer
               :show-total="total => `共 ${total} 条`"
@@ -285,10 +286,13 @@
 
         <a-card class="prototype-card list-card bug-list-card" :bordered="false">
           <div class="list-toolbar">
+            <a-space>
             <a-button type="primary" @click="handleCreateBug">
               <template #icon><PlusOutlined /></template>
               新增Bug
             </a-button>
+            <a-button :loading="exporting" @click="exportRows('bugs', buildBugFilters(bugFilter, { mineOnly: true }), 'bugs.xlsx')">导出 Bug</a-button>
+            </a-space>
             <div class="bug-list__display">
               <template v-if="bugDisplayMode === 'group'">
                 <span>分组条件：</span>
@@ -718,18 +722,23 @@ import {
   getProjectFiles,
   getProjectList,
   getProjectTasks,
-  getSystemUsers,
   getTaskById,
   updateBug,
   updateTask,
   uploadProjectFile,
 } from '@/api/managementProject'
+import { getAllUsers } from '@/api/system'
+import { useExport } from '@/composables/useExport'
+import { buildBugFilters, buildTaskFilters } from '@/utils/exportFilters'
 import { formatDateTime } from '@/utils/dateTime'
 import { OPERATION_ACTIONS, OPERATION_MODULES, recordOperationLog } from '@/utils/operationLog'
-import { canViewAllStatistics } from '@/utils/authScope'
+import { canViewAllStatistics, getStoredProfile } from '@/utils/authScope'
+import SavedFilterBar from '@/components/SavedFilterBar.vue'
 
 const route = useRoute()
 const router = useRouter()
+const { exporting, exportRows } = useExport()
+const getTaskFilters = () => buildTaskFilters(taskFilter.value, { routeName: route.name, userId: getStoredProfile().id })
 const personalMode = ref('task-list')
 const taskEditOpen = ref(false)
 const taskModalMode = ref('edit')
@@ -770,6 +779,8 @@ const taskUsers = ref([])
 const taskProjects = ref([])
 const taskDictLabels = ref({ taskPriority: {}, taskStatus: {} })
 const taskPaginationTotal = ref(0)
+const taskListLoading = ref(false)
+let taskListRequest = 0
 const taskSubmitLoading = ref(false)
 const taskDetailLoading = ref(false)
 const selectedTaskDetail = ref(null)
@@ -800,7 +811,7 @@ const bugFilter = ref({
 })
 const taskFilter = ref({
   keyword: '',
-  projectId: undefined,
+  projectId: route.query.projectId ? Number(route.query.projectId) : undefined,
   assigneeId: undefined,
   priority: undefined,
   status: undefined,
@@ -859,20 +870,8 @@ const taskGroupOptions = [
   { label: '状态', value: 'status' },
 ]
 const taskGroupLabelMap = { project: '所属项目', owner: '负责人', role: '角色', priority: '优先级', status: '状态' }
-const visibleTasks = computed(() => {
-  if (route.name === 'TestingTasks') {
-    return taskApiRows.value.filter(task => task.role === '测试')
-  }
-  if (route.name === 'DevelopmentTasks') {
-    return taskApiRows.value.filter(task => task.role !== '测试')
-  }
-  return taskApiRows.value
-})
-const pagedVisibleTasks = computed(() => {
-  if (route.name === 'AllTasks') return visibleTasks.value
-  const start = (taskCurrentPage.value - 1) * taskPageSize.value
-  return visibleTasks.value.slice(start, start + taskPageSize.value)
-})
+const visibleTasks = computed(() => taskApiRows.value)
+const pagedVisibleTasks = computed(() => visibleTasks.value)
 const groupedTasks = computed(() => {
   const groups = new Map()
   pagedVisibleTasks.value.forEach(task => {
@@ -975,11 +974,9 @@ watch(
       isGmOffice.value = canViewAllStatistics(profile)
       if (isGmOffice.value && statsUserOptions.value.length === 0) {
         try {
-          const { getUserList } = await import('@/api/system')
-          const result = await getUserList({ pageSize: 500, enabled: true })
-          const records = result?.records || result || []
+          const records = await getAllUsers({ enabled: true })
           statsUserOptions.value = records.map(u => ({ value: u.id, label: u.realName || u.username }))
-        } catch { /* ignore */ }
+        } catch (error) { message.error(error.message || '人员列表加载失败') }
       }
       loadMyStatistics()
     }
@@ -1037,13 +1034,14 @@ function getTaskProgress(status) {
 }
 
 async function fetchTaskModuleData() {
+  taskListLoading.value = true
   try {
     const [dicts, users, projects] = await Promise.all([
       getDicts(),
-      getSystemUsers({ pageNo: 1, pageSize: 200, enabled: true }),
+      getAllUsers({ enabled: true }),
       getProjectList({ pageNo: 1, pageSize: 200, projectType: 'EXECUTION' }),
     ])
-    taskUsers.value = users.records || []
+    taskUsers.value = users
     taskProjects.value = projects.records || []
     taskDictLabels.value = {
       taskPriority: Object.fromEntries((dicts.find(item => item.type === 'taskPriority')?.items || []).map(item => [item.value, item.label])),
@@ -1052,6 +1050,7 @@ async function fetchTaskModuleData() {
     await loadTasks()
   } catch (error) {
     taskApiRows.value = []
+    taskListLoading.value = false
     message.error(error.message)
   }
 }
@@ -1074,25 +1073,24 @@ function resolveTaskStatusCode(task) {
 }
 
 async function loadTasks() {
+  const requestId = ++taskListRequest
+  const routeName = route.name
+  const pageNo = taskCurrentPage.value
+  const pageSize = taskPageSize.value
+  taskListLoading.value = true
   try {
-    const profile = JSON.parse(window.localStorage.getItem('authProfile') || '{}')
-    const f = taskFilter.value
     const result = await getProjectTasks({
-      pageNo: route.name === 'AllTasks' ? taskCurrentPage.value : 1,
-      pageSize: route.name === 'AllTasks' ? taskPageSize.value : 200,
-      keyword: f.keyword || undefined,
-      projectId: f.projectId || undefined,
-      assigneeId: route.name === 'PersonalTasks' ? profile.id : (f.assigneeId || undefined),
-      priority: f.priority || undefined,
-      status: f.status || undefined,
-      plannedEndDate: f.plannedEndDate ? f.plannedEndDate.format('YYYY-MM-DD') : undefined,
+      pageNo,
+      pageSize,
+      ...getTaskFilters(),
     })
+    if (requestId !== taskListRequest || route.name !== routeName) return
     taskPaginationTotal.value = result.total || 0
     taskApiRows.value = (result.records || []).map((task, index) => {
       const statusCode = task.status || 'NOT_STARTED'
       return ({
       id: task.id,
-      index: (route.name === 'AllTasks' ? (taskCurrentPage.value - 1) * taskPageSize.value : 0) + index + 1,
+      index: (pageNo - 1) * pageSize + index + 1,
       name: task.name,
       project: task.projectName || getTaskProjectName(task.projectId),
       projectId: task.projectId,
@@ -1115,12 +1113,19 @@ async function loadTasks() {
       remark: task.remark || '',
     })
     })
-    const total = route.name === 'AllTasks' ? taskPaginationTotal.value : visibleTasks.value.length
+    const total = taskPaginationTotal.value
     const lastPage = Math.max(1, Math.ceil(total / taskPageSize.value))
-    taskCurrentPage.value = Math.min(taskCurrentPage.value, lastPage)
+    if (taskCurrentPage.value > lastPage) {
+      taskCurrentPage.value = lastPage
+      await loadTasks()
+    }
   } catch (error) {
+    if (requestId !== taskListRequest || route.name !== routeName) return
     taskApiRows.value = []
+    taskPaginationTotal.value = 0
     message.error(error.message)
+  } finally {
+    if (requestId === taskListRequest) taskListLoading.value = false
   }
 }
 
@@ -1145,10 +1150,10 @@ async function fetchBugModuleData() {
   try {
     const [dicts, users, projects] = await Promise.all([
       getDicts(),
-      getSystemUsers({ pageNo: 1, pageSize: 200, enabled: true }),
+      getAllUsers({ enabled: true }),
       getProjectList({ pageNo: 1, pageSize: 200, projectType: 'MANAGEMENT' }),
     ])
-    bugUsers.value = users.records || []
+    bugUsers.value = users
     bugProjects.value = projects.records || []
     // reuse taskPriority dict for bug priority labels
     const priorityItems = dicts.find(item => item.type === 'taskPriority')?.items || []
@@ -1399,6 +1404,11 @@ const handleTaskDetail = async record => {
     return
   }
 
+  if (isTaskModule.value) {
+    router.push({ name: 'AllTaskDetail', params: { id: record.id } })
+    return
+  }
+
   personalMode.value = 'task-detail'
   updateDetailQuery('task', record.id)
   await loadTaskDetailData(record.id)
@@ -1557,6 +1567,17 @@ const handleTaskSearch = () => {
   })
 }
 
+const applySavedTaskFilters = filters => {
+  taskFilter.value = {
+    keyword: filters.keyword || '', projectId: filters.projectId ? Number(filters.projectId) : undefined,
+    assigneeId: filters.assigneeId ? Number(filters.assigneeId) : undefined,
+    priority: filters.priority || undefined, status: filters.status || undefined,
+    plannedEndDate: filters.plannedEndDate ? dayjs(filters.plannedEndDate) : undefined,
+  }
+  taskCurrentPage.value = 1
+  loadTasks()
+}
+
 const handleTaskReset = () => {
   taskFilter.value = {
     keyword: '',
@@ -1573,7 +1594,7 @@ const handleTaskReset = () => {
 const handleTaskPageChange = (current, pageSize) => {
   taskCurrentPage.value = current
   taskPageSize.value = pageSize
-  if (route.name === 'AllTasks') loadTasks()
+  loadTasks()
 }
 
 const isTaskGroupCollapsed = value => collapsedTaskGroups.value.includes(value)
@@ -1598,8 +1619,8 @@ const handleTaskSubmit = async () => {
     let body
     if (isPersonalTasks.value && editingTaskId.value) {
       body = {
-        actualStartDate: fs.actualStartDate ? fs.actualStartDate.format('YYYY-MM-DD') : undefined,
-        actualEndDate: fs.actualEndDate ? fs.actualEndDate.format('YYYY-MM-DD') : undefined,
+        actualStartDate: fs.actualStartDate ? fs.actualStartDate.format('YYYY-MM-DD') : null,
+        actualEndDate: fs.actualEndDate ? fs.actualEndDate.format('YYYY-MM-DD') : null,
         remark: fs.remark || undefined,
       }
     } else {
@@ -1616,8 +1637,8 @@ const handleTaskSubmit = async () => {
         status: fs.status || undefined,
         plannedStartDate: fs.plannedStartDate ? fs.plannedStartDate.format('YYYY-MM-DD') : undefined,
         plannedEndDate: fs.plannedEndDate ? fs.plannedEndDate.format('YYYY-MM-DD') : undefined,
-        actualStartDate: fs.actualStartDate ? fs.actualStartDate.format('YYYY-MM-DD') : undefined,
-        actualEndDate: fs.actualEndDate ? fs.actualEndDate.format('YYYY-MM-DD') : undefined,
+        actualStartDate: fs.actualStartDate ? fs.actualStartDate.format('YYYY-MM-DD') : null,
+        actualEndDate: fs.actualEndDate ? fs.actualEndDate.format('YYYY-MM-DD') : null,
         description: fs.description || undefined,
         tags: fs.tags || undefined,
       }

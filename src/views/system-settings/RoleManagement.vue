@@ -4,7 +4,7 @@
       <a-card class="prototype-card role-card" :bordered="false">
         <div class="role-card__header">
           <strong>角色列表</strong>
-          <a-button type="primary" size="small" @click="handleAddRole">
+          <a-button v-if="isAdmin" type="primary" size="small" @click="handleAddRole">
             <template #icon><PlusOutlined /></template>
             新增
           </a-button>
@@ -24,7 +24,7 @@
                 <strong>{{ role.name }}</strong>
                 <span>{{ role.code }}</span>
               </div>
-              <a-space v-if="!isAdminRole(role)" class="role-item__actions" :size="2">
+              <a-space v-if="isAdmin && !isAdminRole(role)" class="role-item__actions" :size="2">
                 <a-button type="text" size="small" @click.stop="handleEditRole(role)">
                   <template #icon><EditOutlined /></template>
                 </a-button>
@@ -42,7 +42,7 @@
       <a-card class="prototype-card permission-card" :bordered="false">
         <div class="permission-title">
           <span><DownOutlined /> 菜单权限</span>
-          <a-button type="primary" size="small" :loading="permissionSaving" :disabled="!currentRoleId || isCurrentAdminRole" @click="handleSavePermissions">保存权限</a-button>
+          <a-button v-if="isAdmin" type="primary" size="small" :loading="permissionSaving" :disabled="!currentRoleId || isCurrentAdminRole" @click="handleSavePermissions">保存权限</a-button>
         </div>
         <a-spin :spinning="menuLoading || permissionLoading">
           <a-tree
@@ -51,7 +51,7 @@
             :tree-data="permissionTree"
             checkable
             default-expand-all
-            :disabled="isCurrentAdminRole"
+            :disabled="!isAdmin || isCurrentAdminRole"
           />
         </a-spin>
       </a-card>
@@ -83,6 +83,7 @@
 import { DeleteOutlined, DownOutlined, EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { getStoredProfile, isAdminProfile } from '@/utils/authScope'
 import {
   assignSystemRoleMenus,
   createSystemRole,
@@ -92,6 +93,8 @@ import {
   getSystemRoles,
   updateSystemRole,
 } from '@/api/systemSettings'
+
+const isAdmin = isAdminProfile(getStoredProfile())
 
 const defaultRoleForm = () => ({
   id: undefined,

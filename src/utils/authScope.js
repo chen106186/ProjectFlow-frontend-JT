@@ -1,26 +1,37 @@
 export const isAdminProfile = profile => {
   if (!profile) return false
-  if (String(profile.username || '').toLowerCase() === 'admin') return true
 
   return (profile.roles || []).some(role => {
     const code = String(role?.code || '').toUpperCase()
-    const name = String(role?.name || '')
-    return code === 'ADMIN' || code === 'SUPER_ADMIN' || name === '超级管理员' || name === '管理员'
+    return code === 'ADMIN' || code === 'SUPER_ADMIN'
   })
 }
+
+export const getStoredProfile = () => {
+  try {
+    const profile = JSON.parse(localStorage.getItem('authProfile') || '{}')
+    const user = JSON.parse(localStorage.getItem('userInfo') || '{}')
+    return { ...profile, id: profile.id ?? user.userId ?? user.id }
+  } catch {
+    return {}
+  }
+}
+
+export const canEditRequirement = (requirement, profile = getStoredProfile()) =>
+  Boolean(requirement && profile.id != null && (isAdminProfile(profile) || String(requirement.createdBy) === String(profile.id)))
+
+export const canReviewRequirement = (requirement, profile = getStoredProfile()) =>
+  Boolean(requirement && profile.id != null && (isAdminProfile(profile)
+    || (requirement.reviewerId != null && String(requirement.reviewerId) === String(profile.id))
+    || (requirement.reviewerId == null && String(requirement.createdBy) === String(profile.id))))
 
 export const canViewAllStatistics = profile => {
   if (!profile) return false
   if (profile.isGmOffice) return true
 
   const permissions = profile.permissions || []
-  if (permissions.includes('system:user:update') || permissions.includes('system:role:update')) {
+  if (permissions.includes('data:view:all')) {
     return true
   }
-
-  return (profile.roles || []).some(role => {
-    const code = String(role?.code || '').toUpperCase()
-    const name = String(role?.name || '')
-    return code === 'ADMIN' || code === 'SUPER_ADMIN' || name === '超级管理员' || name === '管理员'
-  })
+  return isAdminProfile(profile)
 }

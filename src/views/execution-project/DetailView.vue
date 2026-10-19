@@ -3,6 +3,7 @@
     <div class="execution-detail__heading">
       <a-button @click="handleBack"><ArrowLeftOutlined />返回</a-button>
       <a-tag color="processing">{{ currentProject?.status || '-' }}</a-tag>
+      <a-button type="primary" @click="router.push({ name: 'WorkHub', query: { projectId: String(route.params.id) } })">项目工作台 / 交付版本</a-button>
     </div>
 
     <section class="execution-summary">
@@ -99,7 +100,12 @@
             <small class="filter-hint">已筛选 {{ filteredTaskRows.length }} 条</small>
             <a-button type="link" size="small" @click="activeRisk = ''">清除筛选</a-button>
           </a-space>
-          <a-space class="task-table-filters"><a-select value="全部状态" :options="taskStatusFilters" /><a-select value="全部负责人" :options="personFilterOptions" /></a-space>
+          <a-space class="task-table-filters">
+            <small v-if="activeRisk">请先清除风险筛选后导出</small>
+            <a-button :disabled="Boolean(activeRisk)" :loading="exporting" @click="exportRows('tasks', getTaskFilterParams(), 'tasks.xlsx')">导出任务</a-button>
+            <a-select v-model:value="taskStatusFilter" :options="taskStatusFilters" />
+            <a-select v-model:value="taskAssigneeFilter" :options="personFilterOptions" />
+          </a-space>
         </div>
         <a-table row-key="id" class="project-task-table" :columns="taskColumns" :data-source="filteredTaskRows" :loading="taskLoading" :pagination="false" size="small" :scroll="{ x: 1390, y: 500 }">
           <template #bodyCell="{ column, record, text }">
@@ -124,7 +130,10 @@
             <small class="filter-hint">已筛选 {{ bugPagination.total }} 条</small>
             <a-button type="link" size="small" @click="resetBugFilters">清除筛选</a-button>
           </a-space>
-          <a-space class="bug-table-filters"><a-select v-model:value="bugStatusFilter" :options="bugStatusFilters" /><a-select v-model:value="bugAssigneeFilter" :options="personFilterOptions" /></a-space>
+          <a-space class="bug-table-filters">
+            <a-button :loading="exporting" @click="exportRows('bugs', buildBugFilters(bugQueryParams, { projectId: route.params.id }), 'bugs.xlsx')">导出 Bug</a-button>
+            <a-select v-model:value="bugStatusFilter" :options="bugStatusFilters" /><a-select v-model:value="bugAssigneeFilter" :options="personFilterOptions" />
+          </a-space>
         </div>
         <a-table row-key="id" class="project-bug-table" :columns="bugColumns" :data-source="bugRows" :loading="bugLoading" :pagination="false" size="small" :scroll="{ x: 840, y: 500 }">
           <template #bodyCell="{ column, record, text }">
@@ -215,6 +224,7 @@
       <div v-show="activeTab === 'logs'" class="execution-tab-panel">
         <a-card class="operation-lifecycle-card" :bordered="false" :loading="operationLogLoading">
           <template #title><span class="operation-lifecycle-card__title">操作日志</span></template>
+          <template #extra><a-button :loading="exporting" @click="exportRows('operation-logs', { module: 'project', businessType: 'Project', businessId: route.params.id }, 'operation-logs.xlsx')">导出日志</a-button></template>
           <a-empty v-if="!operationLogRows.length" description="暂无操作记录" />
           <a-timeline v-else class="operation-lifecycle-timeline">
             <a-timeline-item v-for="log in operationLogRows" :key="log.id" :color="log.operationColor">
@@ -445,11 +455,16 @@ import {
   deleteProjectFolder,
 } from '@/api/managementProject'
 import { getOperationLogs } from '@/api/system'
+import { useExport } from '@/composables/useExport'
+import { buildBugFilters, buildTaskFilters } from '@/utils/exportFilters'
+import { getStoredProfile, isAdminProfile } from '@/utils/authScope'
 import { formatDateTime } from '@/utils/dateTime'
 import { OPERATION_ACTIONS, OPERATION_MODULES, recordOperationLog } from '@/utils/operationLog'
 import { px2rem, scalePxByRem } from '@/utils/px2rem'
 
 const route = useRoute()
+const { exporting, exportRows } = useExport()
+const getTaskFilterParams = () => buildTaskFilters({ status: taskStatusFilter.value, assigneeId: taskAssigneeFilter.value }, { projectId: route.params.id })
 const router = useRouter()
 const activeTab = ref('gantt')
 const ganttRef = ref()
@@ -498,13 +513,17 @@ const executionStageLabels = {
 let ganttInstance
 
 const toOptions = values => values.map(value => ({ label: value, value }))
-const detailTabs = [
+const canViewLogs = computed(() => {
+  const profile = getStoredProfile()
+  return isAdminProfile(profile) || (profile.permissions || []).includes('system:log:view')
+})
+const detailTabs = computed(() => [
   { key: 'gantt', label: '项目甘特图', icon: ProjectOutlined },
   { key: 'tasks', label: '任务列表', icon: ProfileOutlined },
   { key: 'bugs', label: 'Bug列表', icon: BugOutlined },
   { key: 'documents', label: '文档中心', icon: FolderOpenOutlined },
-  { key: 'logs', label: '操作日志', icon: FileTextOutlined },
-]
+  ...(canViewLogs.value ? [{ key: 'logs', label: '操作日志', icon: FileTextOutlined }] : []),
+])
 const ganttSummaryData = reactive({ total: 0, completed: 0, overdue: 0, dueSoon: 0, overallProgress: 0, totalTaskCount: 0, completedTaskCount: 0 })
 const ganttSummary = computed(() => [
   { label: '项目状态', value: currentProject.value?.status || '-', desc: `整体进度 ${ganttSummaryData.overallProgress}%`, class: 'gantt-progress', icon: ProjectOutlined },
@@ -588,6 +607,8 @@ const taskRiskKey = task => {
   return planEnd.diff(today, 'day') <= 3 ? 'due' : 'normal'
 }
 const activeRisk = ref('')
+const taskStatusFilter = ref('')
+const taskAssigneeFilter = ref('')
 const activeBugFilter = ref('')
 const bugStatusFilter = ref('')
 const bugAssigneeFilter = ref('')
@@ -642,7 +663,7 @@ const taskColumns = [
 ]
 const taskPagination = createTablePagination()
 const taskRows = ref([])
-const taskStatusFilters = toOptions(['全部状态', '未开始', '进行中', '已完成'])
+const taskStatusFilters = computed(() => [{ label: '全部状态', value: '' }, ...taskStatusOptions.value])
 const personFilterOptions = computed(() => [{ label: '全部指定人', value: '' }, ...managerOptions.value])
 const bugPriorityLabels = { LOW: '轻微', MEDIUM: '一般', HIGH: '严重', URGENT: '致命' }
 const bugPriorityColors = { LOW: 'blue', MEDIUM: 'orange', HIGH: 'error', URGENT: 'red' }
@@ -1011,7 +1032,7 @@ const getReportQueryParams = projectId => {
 const fetchTaskPage = async () => {
   taskLoading.value = true
   try {
-    applyTaskResult(await getProjectTasks({ projectId: route.params.id, pageNo: taskPagination.current, pageSize: taskPagination.pageSize }))
+    applyTaskResult(await getProjectTasks({ ...getTaskFilterParams(), pageNo: taskPagination.current, pageSize: taskPagination.pageSize }))
   } catch (error) {
     message.error(error.message)
   } finally {
@@ -1039,6 +1060,7 @@ const fetchReportPage = async () => {
   }
 }
 const fetchProjectOperationLogs = async projectId => {
+  if (!canViewLogs.value) return
   operationLogLoading.value = true
   try {
     const query = {

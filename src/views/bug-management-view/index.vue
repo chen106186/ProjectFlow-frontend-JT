@@ -9,6 +9,7 @@
           <a-form-item label="状态"><a-select v-model:value="queryParams.status" :options="statusFilterOptions" placeholder="全部" allow-clear show-search option-filter-prop="label" @change="handleSearch" /></a-form-item>
           <a-form-item label="创建人" class="bug-filter__field--creator"><a-select v-model:value="queryParams.creatorId" :options="userOptions" placeholder="全部" allow-clear show-search option-filter-prop="label" @change="handleSearch" /></a-form-item>
           <a-form-item label="指定人" class="bug-filter__field--assignee"><a-select v-model:value="queryParams.assigneeId" :options="userOptions" placeholder="全部" allow-clear show-search option-filter-prop="label" @change="handleSearch" /></a-form-item>
+          <a-form-item label="创建时间" class="bug-filter__field--date"><a-range-picker v-model:value="queryParams.createdAtRange" value-format="YYYY-MM-DD" allow-clear @change="handleSearch" /></a-form-item>
           <a-form-item class="bug-filter__actions app-filter-actions">
             <a-space><a-button type="primary" @click="handleSearch">查询</a-button><a-button @click="handleReset">重置</a-button></a-space>
           </a-form-item>
@@ -17,7 +18,11 @@
 
       <a-card class="bug-list" :bordered="false">
         <div class="bug-list__toolbar">
-          <a-button type="primary" @click="handleCreate"><PlusOutlined />新增Bug</a-button>
+          <a-space>
+            <a-button type="primary" @click="handleCreate"><PlusOutlined />新增Bug</a-button>
+            <a-button :loading="exporting" @click="exportRows('bugs', buildBugFilters(queryParams), 'bugs.xlsx')">导出 Bug</a-button>
+            <SavedFilterBar scope="BUG" :filters="buildBugFilters(queryParams)" @apply="applySavedBugFilters" />
+          </a-space>
           <div class="bug-list__group">
             <template v-if="displayMode === 'group'">
               <span>分组条件：</span>
@@ -38,7 +43,7 @@
             :data-source="bugs"
             :pagination="false"
             :loading="listLoading"
-            :scroll="{ x: 1380, y: '100%' }"
+            :scroll="{ x: 1500, y: '100%' }"
             size="middle"
             table-layout="fixed"
           >
@@ -55,6 +60,15 @@
               </template>
               <template v-else-if="column.dataIndex === 'status'">
                 <a-tag :color="statusColors[text]">{{ statusLabels[text] || text }}</a-tag>
+              </template>
+              <template v-else-if="column.dataIndex === 'solution'">
+                <a-tooltip :title="solutionHoverText(record)">
+                  <span class="bug-solution-cell">
+                    <a-tag v-if="text" :color="text === 'DEFERRED' ? 'orange' : 'blue'">{{ resolveSolutionLabels[text] || text }}</a-tag>
+                    <span v-else>-</span>
+                    <span v-if="solutionSummary(record)" class="bug-solution-note">{{ solutionSummary(record) }}</span>
+                  </span>
+                </a-tooltip>
               </template>
               <template v-else-if="column.dataIndex === 'createdAt'">{{ formatDateTime(text) }}</template>
               <template v-else-if="column.dataIndex === 'resolvedDate'">{{ text || '-' }}</template>
@@ -95,7 +109,7 @@
                 :columns="columns.filter(c => c.dataIndex !== 'index')"
                 :data-source="group"
                 :pagination="false"
-                :scroll="{ x: 1380 }"
+                :scroll="{ x: 1500 }"
                 size="middle"
                 table-layout="fixed"
               >
@@ -111,6 +125,15 @@
                   </template>
                   <template v-else-if="column.dataIndex === 'status'">
                     <a-tag :color="statusColors[text]">{{ statusLabels[text] || text }}</a-tag>
+                  </template>
+                  <template v-else-if="column.dataIndex === 'solution'">
+                    <a-tooltip :title="solutionHoverText(record)">
+                      <span class="bug-solution-cell">
+                        <a-tag v-if="text" :color="text === 'DEFERRED' ? 'orange' : 'blue'">{{ resolveSolutionLabels[text] || text }}</a-tag>
+                        <span v-else>-</span>
+                        <span v-if="solutionSummary(record)" class="bug-solution-note">{{ solutionSummary(record) }}</span>
+                      </span>
+                    </a-tooltip>
                   </template>
                   <template v-else-if="column.dataIndex === 'createdAt'">{{ formatDateTime(text) }}</template>
                   <template v-else-if="column.dataIndex === 'resolvedDate'">{{ text || '-' }}</template>
@@ -169,6 +192,16 @@
           <a-form-item label="重现步骤">
             <div class="bug-rich-editor">
               <TinymceEditor ref="editorRef" v-model="formState.reproduceSteps" :height="310" placeholder="请输入重现步骤" />
+            </div>
+          </a-form-item>
+          <a-form-item label="操作录屏">
+            <div class="recording-picker">
+              <a-upload accept=".mp4,.webm,.mov" :before-upload="handleRecordingBeforeUpload" :show-upload-list="false">
+                <a-button>选择录屏</a-button>
+              </a-upload>
+              <span v-if="recordingFile" class="recording-picker__selected">{{ recordingFile.name }} <a-button type="link" size="small" @click="clearRecordingFile">移除</a-button></span>
+              <small>支持 MP4、WebM、MOV，单个文件不超过 100MB；保存 Bug 后自动上传。</small>
+              <div v-if="editingId && recordingFiles.length" class="recording-existing">已上传 {{ recordingFiles.length }} 个录屏，可在详情页查看。</div>
             </div>
           </a-form-item>
         </div>
@@ -245,6 +278,29 @@
                 <section class="detail-section">
                   <h3>重现步骤</h3>
                 <div class="detail-rich detail-rich--reproduce" v-html="bugReproduceStepsHtml" @click="handleRichImageClick"></div>
+                </section>
+                <section class="detail-section">
+                  <h3>操作录屏</h3>
+                  <a-spin :spinning="recordingsLoading">
+                    <div v-if="recordingFiles.length" class="recording-list">
+                      <div v-for="file in recordingFiles" :key="file.id" class="recording-item">
+                        <span class="recording-item__name" :title="file.originalName">{{ file.originalName }}</span>
+                        <a-space>
+                          <a-button v-if="isPlayableRecording(file)" type="link" size="small" @click="handlePreviewRecording(file)">播放</a-button>
+                          <a-button type="link" size="small" @click="handleDownloadRecording(file)">下载</a-button>
+                          <a-popconfirm v-if="canDeleteRecording(file)" title="删除这段录屏？" @confirm="handleDeleteRecording(file)">
+                            <a-button type="link" size="small" danger>删除</a-button>
+                          </a-popconfirm>
+                        </a-space>
+                      </div>
+                    </div>
+                    <a-empty v-else-if="!recordingsLoading" description="暂无录屏" />
+                  </a-spin>
+                  <div v-if="!isClosedBug(selectedBug)" class="recording-detail-upload">
+                    <a-upload accept=".mp4,.webm,.mov" :before-upload="handleRecordingBeforeUpload" :show-upload-list="false"><a-button>选择录屏</a-button></a-upload>
+                    <span v-if="recordingFile">{{ recordingFile.name }} <a-button type="link" size="small" @click="clearRecordingFile">移除</a-button></span>
+                    <a-button v-if="recordingFile" type="primary" :loading="recordingUploading" @click="handleUploadRecording">上传录屏</a-button>
+                  </div>
                 </section>
                 <section v-if="isResolvedBug(selectedBug)" class="detail-section">
                   <h3>解决方案</h3>
@@ -376,6 +432,11 @@
         onVisibleChange: handlePreviewVisibleChange,
       }"
     />
+    <a-modal v-model:open="recordingPreviewVisible" :title="recordingPreviewName" :footer="null" :width="860" @after-close="clearRecordingPreview">
+      <a-spin :spinning="recordingPreviewLoading">
+        <video v-if="recordingPreviewUrl" :src="recordingPreviewUrl" controls playsinline class="recording-preview" />
+      </a-spin>
+    </a-modal>
   </div>
 </template>
 
@@ -388,12 +449,17 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   getProjectBugs, getBugById, createBug, updateBug, closeBug, reopenBug, assignBug,
   addBugComment, listBugComments, getProjectList, getProjectTasks, getSystemUsers, resolveBug,
+  getProjectFiles, uploadProjectFile, downloadProjectFile, deleteProjectFile,
 } from '@/api/managementProject'
 import TinymceEditor from '@/components/TinymceEditor.vue'
 import { formatDateTime } from '@/utils/dateTime'
 import { request } from '@/utils/request'
+import { useExport } from '@/composables/useExport'
+import { buildBugFilters } from '@/utils/exportFilters'
+import SavedFilterBar from '@/components/SavedFilterBar.vue'
 
 const route = useRoute()
+const { exporting, exportRows } = useExport()
 const router = useRouter()
 const viewMode = computed(() => route.meta.bugView || 'list')
 
@@ -438,7 +504,7 @@ const listLoading = ref(false)
 const displayMode = ref('list')
 const groupField = ref('projectName')
 const collapsedGroups = ref([])
-const queryParams = reactive({ keyword: '', projectId: undefined, priority: undefined, status: undefined, creatorId: undefined, assigneeId: undefined })
+const queryParams = reactive({ keyword: '', projectId: route.query.projectId ? Number(route.query.projectId) : undefined, priority: undefined, status: undefined, creatorId: undefined, assigneeId: undefined, createdAtRange: [] })
 
 const columns = [
   { title: '编号', dataIndex: 'bugNo', width: 80 },
@@ -446,6 +512,7 @@ const columns = [
   { title: '所属项目', dataIndex: 'projectName', width: 130, ellipsis: true },
   { title: '严重等级', dataIndex: 'priority', width: 110 },
   { title: '状态', dataIndex: 'status', width: 110 },
+  { title: '解决方案', dataIndex: 'solution', width: 210, ellipsis: true },
   { title: '创建人', dataIndex: 'creatorName', width: 90 },
   { title: '指定人', dataIndex: 'assigneeName', width: 90 },
   { title: '创建时间', dataIndex: 'createdAt', width: 170 },
@@ -504,12 +571,7 @@ const loadBugs = async () => {
     const res = await getProjectBugs({
       pageNo: current.value,
       pageSize: pageSize.value,
-      keyword: queryParams.keyword || undefined,
-      projectId: queryParams.projectId || undefined,
-      priority: queryParams.priority || undefined,
-      status: queryParams.status || undefined,
-      creatorId: queryParams.creatorId || undefined,
-      assigneeId: queryParams.assigneeId || undefined,
+      ...buildBugFilters(queryParams),
     })
     bugs.value = res.records || []
     total.value = res.total || 0
@@ -522,9 +584,19 @@ const loadBugs = async () => {
 
 const handleSearch = () => { current.value = 1; loadBugs() }
 const handleReset = () => {
-  Object.assign(queryParams, { keyword: '', projectId: undefined, priority: undefined, status: undefined, creatorId: undefined, assigneeId: undefined })
+  Object.assign(queryParams, { keyword: '', projectId: undefined, priority: undefined, status: undefined, creatorId: undefined, assigneeId: undefined, createdAtRange: [] })
   current.value = 1
   loadBugs()
+}
+const applySavedBugFilters = filters => {
+  Object.assign(queryParams, {
+    keyword: filters.keyword || '', projectId: filters.projectId ? Number(filters.projectId) : undefined,
+    priority: filters.priority || undefined, status: filters.status || undefined,
+    creatorId: filters.creatorId ? Number(filters.creatorId) : undefined,
+    assigneeId: filters.assigneeId ? Number(filters.assigneeId) : undefined,
+    createdAtRange: [filters.createdFrom, filters.createdTo].filter(Boolean),
+  })
+  handleSearch()
 }
 const handleGroupPageChange = (page, size) => { current.value = page; pageSize.value = size; loadBugs() }
 
@@ -677,6 +749,113 @@ const editingId = ref(null)
 const editingBug = ref(null)
 const submitLoading = ref(false)
 const editorRef = shallowRef()
+const recordingFile = shallowRef(null)
+const recordingPendingBugId = ref(null)
+const recordingFiles = ref([])
+const recordingsLoading = ref(false)
+const recordingUploading = ref(false)
+const recordingPreviewVisible = ref(false)
+const recordingPreviewLoading = ref(false)
+const recordingPreviewUrl = ref('')
+const recordingPreviewName = ref('')
+const recordingExtensions = ['mp4', 'webm', 'mov']
+const maxRecordingSize = 100 * 1024 * 1024
+
+const clearRecordingFile = () => { recordingFile.value = null; recordingPendingBugId.value = null }
+const handleRecordingBeforeUpload = file => {
+  const extension = file.name?.split('.').pop()?.toLowerCase()
+  if (!recordingExtensions.includes(extension)) {
+    message.error('仅支持 MP4、WebM、MOV 录屏')
+    return false
+  }
+  if (file.size > maxRecordingSize) {
+    message.error('录屏不能超过 100MB')
+    return false
+  }
+  recordingFile.value = file
+  return false
+}
+const loadRecordings = async bugId => {
+  recordingsLoading.value = true
+  try {
+    recordingFiles.value = await getProjectFiles({ businessType: 'BUG', businessId: bugId, fileCategory: 'SCREEN_RECORDING' })
+  } catch (error) {
+    recordingFiles.value = []
+    message.error(error.message || '录屏列表加载失败')
+  } finally {
+    recordingsLoading.value = false
+  }
+}
+const uploadRecording = async bugId => {
+  if (!recordingFile.value) return true
+  recordingUploading.value = true
+  try {
+    const data = new FormData()
+    data.append('businessType', 'BUG')
+    data.append('businessId', String(bugId))
+    data.append('fileCategory', 'SCREEN_RECORDING')
+    data.append('file', recordingFile.value)
+    await uploadProjectFile(data, { timeout: 300000 })
+    clearRecordingFile()
+    await loadRecordings(bugId)
+    return true
+  } catch (error) {
+    recordingPendingBugId.value = String(bugId)
+    message.error(error.message || '录屏上传失败')
+    return false
+  } finally {
+    recordingUploading.value = false
+  }
+}
+const handleUploadRecording = async () => {
+  if (!selectedBug.value || !recordingFile.value) return
+  if (await uploadRecording(selectedBug.value.id)) message.success('录屏上传成功')
+}
+const isPlayableRecording = file => ['video/mp4', 'video/webm'].includes(file.contentType)
+const clearRecordingPreview = () => {
+  if (recordingPreviewUrl.value) URL.revokeObjectURL(recordingPreviewUrl.value)
+  recordingPreviewUrl.value = ''
+  recordingPreviewName.value = ''
+}
+const handlePreviewRecording = async file => {
+  clearRecordingPreview()
+  recordingPreviewVisible.value = true
+  recordingPreviewName.value = file.originalName
+  recordingPreviewLoading.value = true
+  try {
+    const response = await request(`/api/files/${file.id}/inline`, { responseType: 'blob', timeout: 300000 })
+    recordingPreviewUrl.value = URL.createObjectURL(response.data)
+  } catch (error) {
+    recordingPreviewVisible.value = false
+    message.error(error.message || '录屏播放失败')
+  } finally {
+    recordingPreviewLoading.value = false
+  }
+}
+const handleDownloadRecording = async file => {
+  try {
+    const result = await downloadProjectFile(file.id, { timeout: 300000 })
+    const url = URL.createObjectURL(result.blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = result.fileName || file.originalName
+    link.click()
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+  } catch (error) {
+    message.error(error.message || '录屏下载失败')
+  }
+}
+const canDeleteRecording = file => !isClosedBug(selectedBug.value)
+  && currentUserId.value != null && String(file.uploaderId) === String(currentUserId.value)
+const handleDeleteRecording = async file => {
+  try {
+    await deleteProjectFile(file.id)
+    recordingFiles.value = recordingFiles.value.filter(item => item.id !== file.id)
+    message.success('录屏已删除')
+  } catch (error) {
+    message.error(error.message || '删除录屏失败')
+  }
+}
 
 const createDefaultFormState = () => ({ title: '', projectId: undefined, relatedTaskIds: [], assigneeId: undefined, priority: 'MEDIUM', description: '', reproduceSteps: '' })
 const formState = reactive(createDefaultFormState())
@@ -741,6 +920,21 @@ const resolveSolutionOptions = [
   { label: '不予解决', value: 'WONT_FIX' },
 ]
 const resolveSolutionLabels = Object.fromEntries(resolveSolutionOptions.map(item => [item.value, item.label]))
+const solutionText = bug => {
+  const html = bug?.resolveRemark || ''
+  if (!html) return ''
+  if (typeof DOMParser === 'undefined') return String(html).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+  return new DOMParser().parseFromString(html, 'text/html').body.textContent?.replace(/\s+/g, ' ').trim() || ''
+}
+const solutionSummary = bug => {
+  const text = solutionText(bug)
+  return text.length > 16 ? `${text.slice(0, 16)}…` : text
+}
+const solutionHoverText = bug => [
+  resolveSolutionLabels[bug?.solution] || bug?.solution || '尚未解决',
+  bug?.resolvedDate ? `日期：${bug.resolvedDate}` : '',
+  solutionText(bug),
+].filter(Boolean).join(' · ')
 
 const resetResolveForm = () => {
   Object.assign(resolveForm, createDefaultResolveForm())
@@ -799,14 +993,13 @@ const handleSubmit = async () => {
       description: formState.description,
       reproduceSteps: formState.reproduceSteps || '<p><br></p>',
     }
-    if (editingId.value) {
-      await updateBug(editingId.value, body)
-      message.success('Bug编辑成功')
-    } else {
-      await createBug(body)
-      message.success('Bug新增成功')
-    }
-    handleBack()
+    const saved = editingId.value ? await updateBug(editingId.value, body) : await createBug(body)
+    const bugId = saved?.id || editingId.value
+    const recordingSaved = await uploadRecording(bugId)
+    message[recordingSaved ? 'success' : 'warning'](recordingSaved
+      ? (editingId.value ? 'Bug编辑成功' : 'Bug新增成功')
+      : 'Bug已保存，但录屏上传失败，请在详情页重试')
+    router.replace({ name: 'BugDetail', params: { id: String(bugId) } })
   } catch (e) {
     message.error(e.message || '操作失败')
   } finally {
@@ -848,11 +1041,13 @@ const handleCloseBugFromList = async record => {
 }
 
 const syncRouteState = async () => {
-  if (viewMode.value === 'list') { loadBugs(); return }
+  if (viewMode.value === 'list') { clearRecordingFile(); loadBugs(); return }
   const id = route.params.id
   if (viewMode.value === 'create') {
     Object.assign(formState, createDefaultFormState())
     relatedTaskOptions.value = []
+    recordingFiles.value = []
+    clearRecordingFile()
     editingId.value = null
     editingBug.value = null
     return
@@ -860,6 +1055,7 @@ const syncRouteState = async () => {
   if (viewMode.value === 'edit') {
     editingId.value = id
     editingBug.value = null
+    clearRecordingFile()
     try {
       const bug = await getBugById(id)
       if (isClosedBug(bug) || !isBugCreator(bug)) {
@@ -877,6 +1073,7 @@ const syncRouteState = async () => {
       formState.description = bug.description || ''
       formState.reproduceSteps = bug.reproduceSteps || ''
       editorRef.value?.setHtml(bug.reproduceSteps || '')
+      await loadRecordings(id)
     } catch (e) {
       message.error('加载Bug失败')
       handleBack()
@@ -884,6 +1081,7 @@ const syncRouteState = async () => {
     return
   }
   if (viewMode.value === 'detail') {
+    if (recordingPendingBugId.value !== String(id)) clearRecordingFile()
     resetCommentEditor()
     detailLoading.value = true
     selectedBug.value = null
@@ -892,6 +1090,7 @@ const syncRouteState = async () => {
       const [bug, cmts] = await Promise.all([getBugById(id), listBugComments(id)])
       selectedBug.value = bug
       comments.value = cmts
+      await loadRecordings(id)
       void hydrateRichImages()
     } catch (e) {
       message.error(e.message || '加载失败')
@@ -905,6 +1104,7 @@ watch(() => [route.name, route.params.id], syncRouteState, { immediate: true })
 
 onBeforeUnmount(() => {
   clearRichImageObjectUrls()
+  clearRecordingPreview()
 })
 
 onMounted(async () => {
@@ -927,9 +1127,10 @@ onMounted(async () => {
 .bug-filter__form :deep(.ant-form-item) { margin: 0 0 14px; }
 .bug-filter__form :deep(.ant-form-item-row) { width: 100%; flex-wrap: nowrap; }
 .bug-filter__form :deep(.ant-form-item-control) { flex: 1; }
-.bug-filter__form :deep(.ant-input), .bug-filter__form :deep(.ant-select) { width: 100%; }
+.bug-filter__form :deep(.ant-input), .bug-filter__form :deep(.ant-select), .bug-filter__form :deep(.ant-picker) { width: 100%; }
 .bug-filter__field--creator { grid-row: 2; grid-column: 1; }
 .bug-filter__field--assignee { grid-row: 2; grid-column: 2; }
+.bug-filter__field--date { grid-row: 2; grid-column: 3; }
 .bug-filter__actions { grid-row: 2; grid-column: 4 !important; justify-self: end; }
 .bug-list__toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .bug-list__group { display: flex; align-items: center; gap: 12px; color: #666; }
@@ -949,6 +1150,17 @@ onMounted(async () => {
 .bug-list :deep(.ant-table-cell) { white-space: nowrap; }
 .bug-title-text { display: block; width: 100%; overflow: hidden; color: #1677ff; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 .bug-no { color: #1677ff; font-size: 12px; font-weight: 600; font-family: monospace; }
+.bug-solution-cell { display: flex; align-items: center; min-width: 0; overflow: hidden; }
+.bug-solution-cell :deep(.ant-tag) { flex: none; margin-inline-end: 6px; }
+.bug-solution-note { overflow: hidden; color: #667085; text-overflow: ellipsis; white-space: nowrap; }
+.recording-picker { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.recording-picker small, .recording-existing { width: 100%; color: #8c8c8c; }
+.recording-picker__selected { min-width: 0; overflow-wrap: anywhere; }
+.recording-list { display: grid; gap: 8px; }
+.recording-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; background: #fafafa; border: 1px solid #edf0f3; border-radius: 6px; }
+.recording-item__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recording-detail-upload { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
+.recording-preview { display: block; width: 100%; max-height: 70vh; background: #000; }
 .bug-operation-button { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border-radius: 6px; }
 .bug-operation-button :deep(svg) { width: 15px; height: 15px; }
 .bug-group { margin-bottom: 24px; }
@@ -1262,7 +1474,8 @@ onMounted(async () => {
 @media (max-width: 960px) {
   .bug-filter__form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .bug-filter__field--creator,
-  .bug-filter__field--assignee { grid-row: auto; grid-column: auto; }
+  .bug-filter__field--assignee,
+  .bug-filter__field--date { grid-row: auto; grid-column: auto; }
   .bug-filter__actions { grid-column: 2; }
 }
 </style>

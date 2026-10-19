@@ -53,6 +53,15 @@
 
       <div class="detail-content-grid">
         <main class="detail-main">
+          <a-card class="detail-card" :bordered="false" title="阻塞情况">
+            <a-tag :color="blocker.reason ? 'red' : 'green'">{{ blocker.reason ? '处理中' : '无阻塞' }}</a-tag>
+            <p v-if="blocker.reason" style="white-space: pre-wrap; margin-top: 10px">{{ blocker.reason }}</p>
+            <div v-if="blocker.canEdit" style="display: flex; gap: 10px; margin-top: 12px">
+              <a-input v-model:value="blockerReason" :maxlength="2000" placeholder="填写阻塞原因；清空后保存可解除阻塞" />
+              <a-button :loading="blockerSaving" @click="saveBlocker">保存</a-button>
+            </div>
+          </a-card>
+          <WorkDiscussion v-if="taskDetail" type="tasks" :id="taskDetail.id" />
           <a-card class="detail-card attachment-card" :bordered="false">
             <template #title>
               <span class="section-title"><FileTextOutlined /> 附件展示</span>
@@ -102,6 +111,13 @@
         </main>
 
         <aside class="related-bugs-card">
+          <a-card class="detail-card" :bordered="false" title="关联需求">
+            <a-empty v-if="!relatedRequirements.length" description="暂无关联需求" />
+            <div v-for="item in relatedRequirements" :key="item.id" style="margin-bottom: 10px">
+              <a-button type="link" @click="router.push({ name: 'PersonalRequirementDetail', params: { id: item.id } })">#{{ item.requirementNo }} {{ item.title }}</a-button>
+              <a-tag :color="item.acceptanceResult === 'PASSED' ? 'green' : 'orange'">{{ item.acceptanceResult === 'PASSED' ? '已验收' : '待验收' }}</a-tag>
+            </div>
+          </a-card>
           <a-card class="detail-card" :bordered="false">
             <template #title>
               <span class="section-title"><BugOutlined /> 关联Bug ({{ relatedBugs.length }})</span>
@@ -140,10 +156,12 @@
 <script setup>
 import { BugOutlined, EditOutlined, FileOutlined, FileTextOutlined, InboxOutlined, LeftOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { deleteProjectFile, downloadProjectFile, getProjectBugs, getProjectFiles, getTaskById, uploadProjectFile } from '@/api/managementProject'
+import { getTaskBlocker, getTaskRequirements, setTaskBlocker } from '@/api/workhub'
+import WorkDiscussion from '@/components/WorkDiscussion.vue'
 import { useDictStore } from '@/store/dictStore'
 import { formatDateTime } from '@/utils/dateTime'
 
@@ -153,11 +171,16 @@ const dictStore = useDictStore()
 
 const loading = ref(false)
 const taskDetail = ref(null)
+const blocker = ref({})
+const relatedRequirements = ref([])
+const blockerReason = ref('')
+const blockerSaving = ref(false)
 const attachmentRows = ref([])
 const relatedBugRows = ref([])
 const uploadOpen = ref(false)
 const uploadLoading = ref(false)
 const uploadFiles = ref([])
+let taskDetailRequest = 0
 
 const attachmentColumns = [
   { title: '文件名', dataIndex: 'name', width: 230 },
@@ -256,22 +279,48 @@ const formatBugNo = bug => {
 }
 
 const fetchTaskDetail = async () => {
+  const taskId = route.params.id
+  const requestId = ++taskDetailRequest
   loading.value = true
+  taskDetail.value = null
+  uploadOpen.value = false
+  uploadFiles.value = []
+  attachmentRows.value = []
+  relatedBugRows.value = []
 
   try {
     await dictStore.loadDicts()
-    const [detail, files, bugs] = await Promise.all([
-      getTaskById(route.params.id),
-      getProjectFiles({ businessType: 'TASK', businessId: route.params.id }),
-      fetchAllTaskBugs(route.params.id),
+    const [detail, files, bugs, blockerInfo, requirements] = await Promise.all([
+      getTaskById(taskId),
+      getProjectFiles({ businessType: 'TASK', businessId: taskId }),
+      fetchAllTaskBugs(taskId),
+      getTaskBlocker(taskId),
+      getTaskRequirements(taskId),
     ])
+    if (requestId !== taskDetailRequest) return
     taskDetail.value = detail
     attachmentRows.value = Array.isArray(files) ? files : []
     relatedBugRows.value = bugs
+    blocker.value = blockerInfo || {}
+    blockerReason.value = blockerInfo?.reason || ''
+    relatedRequirements.value = requirements || []
   } catch (error) {
-    message.error(error.message || '任务详情加载失败')
+    if (requestId === taskDetailRequest) message.error(error.message || '任务详情加载失败')
   } finally {
-    loading.value = false
+    if (requestId === taskDetailRequest) loading.value = false
+  }
+}
+
+const saveBlocker = async () => {
+  blockerSaving.value = true
+  try {
+    blocker.value = await setTaskBlocker(route.params.id, blockerReason.value)
+    blockerReason.value = blocker.value.reason || ''
+    message.success('阻塞情况已更新')
+  } catch (error) {
+    message.error(error.message || '阻塞情况保存失败')
+  } finally {
+    blockerSaving.value = false
   }
 }
 
@@ -364,7 +413,7 @@ const handleDeleteAttachment = async record => {
   }
 }
 
-onMounted(fetchTaskDetail)
+watch(() => route.params.id, fetchTaskDetail, { immediate: true })
 </script>
 
 <style scoped>

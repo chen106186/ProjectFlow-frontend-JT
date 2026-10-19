@@ -1,10 +1,13 @@
 <template>
   <div class="home-view">
+    <a-alert v-if="summaryError" type="error" :message="summaryError" show-icon style="margin-bottom: 12px">
+      <template #action><a-button size="small" @click="fetchSummary">重试</a-button></template>
+    </a-alert>
     <section class="home-metrics" aria-label="项目概览">
       <button v-for="metric in metrics" :key="metric.title" class="metric-card" type="button" @click="handleMetricClick(metric)">
         <span class="metric-card__icon" :class="metric.iconClass"><component :is="metric.icon" /></span>
         <span class="metric-card__label">{{ metric.title }}</span>
-        <span class="metric-card__value">{{ summaryLoading ? '--' : metric.value }}</span>
+        <span class="metric-card__value">{{ summaryLoading || summaryError ? '--' : metric.value }}</span>
       </button>
     </section>
 
@@ -24,7 +27,10 @@
           </a-tabs>
         </template>
         <a-spin :spinning="todoLoading">
-          <template v-if="filteredTodos.length > 0">
+          <a-alert v-if="todoError" type="error" :message="todoError" show-icon>
+            <template #action><a-button size="small" @click="fetchTodos">重试</a-button></template>
+          </a-alert>
+          <template v-else-if="filteredTodos.length > 0">
             <div class="todo-list">
               <button
                 v-for="item in filteredTodos"
@@ -104,34 +110,37 @@
           </div>
         </div>
       </div>
-      <div class="stats-kpi">
+      <a-alert v-if="statsError" type="error" :message="statsError" show-icon style="margin-bottom: 12px">
+        <template #action><a-button size="small" @click="fetchMyStats">重试</a-button></template>
+      </a-alert>
+      <div v-show="!statsError" class="stats-kpi">
         <div class="kpi-card kpi-card--blue">
-          <span class="kpi-label">总任务</span>
+          <span class="kpi-label">{{ statsPeriod === 'all' ? '任务总数' : '期间新增任务' }}</span>
           <strong class="kpi-value">{{ statsLoading ? '--' : myStats.myTaskTotal }}</strong>
-          <small class="kpi-sub">已完成 {{ myStats.myTaskCompleted }} 个</small>
+          <small class="kpi-sub">按创建日期统计</small>
         </div>
         <div class="kpi-card kpi-card--cyan">
-          <span class="kpi-label">已完成</span>
+          <span class="kpi-label">{{ statsPeriod === 'all' ? '已完成任务' : '期间完成任务' }}</span>
           <strong class="kpi-value">{{ statsLoading ? '--' : myStats.myTaskCompleted }}</strong>
-          <small class="kpi-sub">个任务</small>
+          <small class="kpi-sub">按实际完成日期统计</small>
         </div>
         <div class="kpi-card kpi-card--red">
-          <span class="kpi-label">逾期</span>
+          <span class="kpi-label">当前逾期</span>
           <strong class="kpi-value">{{ statsLoading ? '--' : myStats.myTaskOverdue }}</strong>
-          <small class="kpi-sub">个任务</small>
+          <small class="kpi-sub">未完成且超过截止日</small>
         </div>
         <div class="kpi-card kpi-card--orange">
-          <span class="kpi-label">我的 Bug</span>
+          <span class="kpi-label">{{ statsPeriod === 'all' ? 'Bug 总数' : '期间新增 Bug' }}</span>
           <strong class="kpi-value">{{ statsLoading ? '--' : myStats.myBugTotal }}</strong>
-          <small class="kpi-sub">未关闭 {{ myStats.myBugOpen }}</small>
+          <small class="kpi-sub">按创建日期统计</small>
         </div>
         <div class="kpi-card kpi-card--purple">
           <span class="kpi-label">未关闭 Bug</span>
           <strong class="kpi-value">{{ statsLoading ? '--' : myStats.myBugOpen }}</strong>
-          <small class="kpi-sub">个 Bug</small>
+          <small class="kpi-sub">当前未关闭</small>
         </div>
       </div>
-      <div class="stats-charts">
+      <div v-show="!statsError" class="stats-charts">
         <a-card class="chart-card" :bordered="false" :body-style="{ padding: '0.75rem 1rem' }">
           <template #title><span class="chart-title">任务完成趋势</span></template>
           <a-spin :spinning="statsLoading">
@@ -195,8 +204,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } 
 import { useRouter } from 'vue-router'
 
 import { getDashboardSummary, getDashboardTodos, getMyStatistics } from '@/api/dashboard'
-import { getProjectList } from '@/api/managementProject'
-import { getUserList } from '@/api/system'
+import { getAllUsers } from '@/api/system'
 import TaskCalendarModal from '@/components/TaskCalendarModal.vue'
 import { canViewAllStatistics } from '@/utils/authScope'
 import { useDictStore } from '@/store/dictStore'
@@ -210,6 +218,9 @@ const calendarValue = ref(dayjs())
 const isCalendarVisible = ref(false)
 const summaryLoading = ref(false)
 const todoLoading = ref(false)
+const summaryError = ref('')
+const todoError = ref('')
+const statsError = ref('')
 const summary = ref({ managementProjectCount: 0, executionProjectCount: 0, inProgressProjectCount: 0, completedProjectCount: 0 })
 const todos = ref([])
 
@@ -220,8 +231,8 @@ const userOptions = ref([])
 const metrics = computed(() => [
   { title: '管理类项目', path: '/projects/management', icon: FolderOpenOutlined, iconClass: 'metric-card__icon--blue', value: summary.value.managementProjectCount },
   { title: '执行类项目', path: '/projects/execution', icon: CheckCircleOutlined, iconClass: 'metric-card__icon--green', value: summary.value.executionProjectCount },
-  { title: '进行中项目', path: { path: '/projects/management', query: { status: 'IN_PROGRESS' } }, detailStatus: 'IN_PROGRESS', icon: ClockCircleOutlined, iconClass: 'metric-card__icon--orange', value: summary.value.inProgressProjectCount },
-  { title: '已完成项目', path: { path: '/projects/management', query: { status: 'COMPLETED' } }, detailStatus: 'COMPLETED', icon: CheckCircleOutlined, iconClass: 'metric-card__icon--purple', value: summary.value.completedProjectCount },
+  { title: '进行中项目', path: { path: '/projects/management', query: { status: 'IN_PROGRESS' } }, icon: ClockCircleOutlined, iconClass: 'metric-card__icon--orange', value: summary.value.inProgressProjectCount },
+  { title: '已完成项目', path: { path: '/projects/management', query: { status: 'COMPLETED_OR_OVERDUE_COMPLETED' } }, icon: CheckCircleOutlined, iconClass: 'metric-card__icon--purple', value: summary.value.completedProjectCount },
 ])
 
 const filteredTodos = computed(() => {
@@ -320,6 +331,7 @@ const periods = [
 ]
 const statsPeriod = ref('week')
 const statsLoading = ref(false)
+let statisticsRequest = 0
 const myStats = reactive({ myTaskTotal: 0, myTaskCompleted: 0, myTaskOverdue: 0, myBugTotal: 0, myBugOpen: 0, myRequirementTotal: 0, myRequirementAccepted: 0, unreadNoticeCount: 0, completionTrend: [], projectDistribution: {}, taskStatusDistribution: {} })
 
 const CHART_COLORS = ['#1677ff', '#69b1ff', '#27c27a', '#ff7a45', '#9254de', '#c8cfd9']
@@ -418,29 +430,45 @@ const renderDistCharts = () => {
 }
 
 const fetchMyStats = async () => {
+  const requestId = ++statisticsRequest
   statsLoading.value = true
+  statsError.value = ''
   try {
     const data = await getMyStatistics(statsPeriod.value, statsTargetUserId.value)
+    if (requestId !== statisticsRequest) return
     Object.assign(myStats, data)
     await nextTick()
     initCharts()
     renderTrendChart()
     renderDistCharts()
-  } catch {
-    // silent
+  } catch (error) {
+    if (requestId === statisticsRequest) statsError.value = error.message || '统计加载失败'
   } finally {
-    statsLoading.value = false
+    if (requestId === statisticsRequest) statsLoading.value = false
   }
 }
 
 const fetchSummary = async () => {
   summaryLoading.value = true
+  summaryError.value = ''
   try {
     summary.value = await getDashboardSummary()
-  } catch {
-    // silent
+  } catch (error) {
+    summaryError.value = error.message || '项目概览加载失败'
   } finally {
     summaryLoading.value = false
+  }
+}
+
+const fetchTodos = async () => {
+  todoLoading.value = true
+  todoError.value = ''
+  try {
+    todos.value = await getDashboardTodos()
+  } catch (error) {
+    todoError.value = error.message || '待办加载失败'
+  } finally {
+    todoLoading.value = false
   }
 }
 
@@ -454,6 +482,7 @@ const handleVisibilityChange = () => {
   if (document.visibilityState === 'visible') {
     fetchSummary()
     fetchMyStats()
+    fetchTodos()
   }
 }
 
@@ -462,30 +491,11 @@ onMounted(async () => {
   isGmOffice.value = canViewAllStatistics(profile)
 
   dictStore.loadDicts()
-  summaryLoading.value = true
-  todoLoading.value = true
-  try {
-    const requests = [getDashboardSummary(), getDashboardTodos()]
-    if (isGmOffice.value) requests.push(getUserList({ pageSize: 500, enabled: true }))
-    const [summaryResult, todoResult, userResult] = await Promise.allSettled(requests)
-
-    if (summaryResult.status === 'fulfilled') {
-      summary.value = summaryResult.value
-    }
-
-    if (todoResult.status === 'fulfilled') {
-      todos.value = todoResult.value
-    }
-
-    if (isGmOffice.value && userResult?.status === 'fulfilled') {
-      const records = userResult.value?.records || userResult.value || []
-      userOptions.value = records.map(u => ({ value: u.id, label: u.realName || u.username }))
-    }
-  } finally {
-    summaryLoading.value = false
-    todoLoading.value = false
-  }
-  fetchMyStats()
+  const requests = [fetchSummary(), fetchTodos(), fetchMyStats()]
+  if (isGmOffice.value) requests.push(getAllUsers({ enabled: true }).then(records => {
+    userOptions.value = records.map(u => ({ value: u.id, label: u.realName || u.username }))
+  }).catch(error => message.error(error.message || '人员列表加载失败')))
+  await Promise.all(requests)
   document.addEventListener('visibilitychange', handleVisibilityChange)
 })
 
@@ -496,31 +506,7 @@ onBeforeUnmount(() => {
   document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 
-const handleMetricClick = async metric => {
-  if (!metric?.detailStatus) {
-    router.push(metric.path)
-    return
-  }
-
-  try {
-    const result = await getProjectList({
-      pageNo: 1,
-      pageSize: 1,
-      projectType: 'MANAGEMENT',
-      status: metric.detailStatus,
-    })
-    const project = result?.records?.[0] || result?.list?.[0]
-
-    if (project?.id) {
-      router.push({ name: 'ManagementProjectDetail', params: { id: String(project.id) } })
-      return
-    }
-
-    message.warning(`暂无${metric.title}`)
-  } catch (error) {
-    message.error(error?.message || '项目跳转失败')
-  }
-
+const handleMetricClick = metric => {
   if (metric?.path) router.push(metric.path)
 }
 

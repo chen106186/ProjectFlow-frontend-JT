@@ -1,4 +1,5 @@
 import { request } from '@/utils/request'
+import { fetchAllPages } from '@/utils/pagination'
 
 // 当前用户
 export const getCurrentUser = () => request('/api/system/me')
@@ -6,6 +7,7 @@ export const getCurrentUserPermissions = () => request('/api/system/me/permissio
 
 // 用户管理
 export const getUserList = params => request('/api/system/users', { params })
+export const getAllUsers = (params = {}) => fetchAllPages(getUserList, params)
 export const getUserDetail = id => request(`/api/system/users/${id}`)
 export const createUser = data => request('/api/system/users', { method: 'POST', body: data })
 export const updateUser = (id, data) => request(`/api/system/users/${id}`, { method: 'PUT', body: data })

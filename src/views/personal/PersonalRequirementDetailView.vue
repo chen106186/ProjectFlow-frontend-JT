@@ -10,11 +10,12 @@
         <a-tag :color="priorityColor(requirement.priority)">{{ priorityLabel }}</a-tag>
         <div class="detail-actions__right">
           <a-button v-if="canEdit" @click="openEditModal">编辑</a-button>
-          <template v-if="requirement.status === 'PENDING_REVIEW'">
+          <template v-if="canReview && requirement.status === 'PENDING_REVIEW'">
             <a-button type="primary" :loading="statusLoading === 'ACCEPTED'" @click="handleStatusChange('ACCEPTED')">采纳</a-button>
             <a-button danger :loading="statusLoading === 'REJECTED'" @click="handleStatusChange('REJECTED')">未采纳</a-button>
             <a-button :loading="statusLoading === 'SHELVED'" @click="handleStatusChange('SHELVED')">搁置</a-button>
           </template>
+          <a-button v-if="canReview && requirement.status === 'SHELVED'" :loading="statusLoading === 'PENDING_REVIEW'" @click="handleStatusChange('PENDING_REVIEW')">恢复评审</a-button>
         </div>
       </template>
     </div>
@@ -50,6 +51,10 @@
                 <th>创建时间</th>
                 <td>{{ createdAtText }}</td>
               </tr>
+              <tr>
+                <th>审核人</th>
+                <td colspan="5">{{ requirement.reviewerName || userRows.find(user => String(user.id) === String(requirement.reviewerId))?.realName || '-' }}</td>
+              </tr>
             </tbody>
           </table>
 
@@ -61,6 +66,9 @@
         <a-empty v-else-if="!loading" description="暂无需求详情" />
       </a-spin>
     </a-card>
+
+    <RequirementDelivery v-if="requirement" :requirement="requirement" :can-link="canEdit || canReview" :can-accept="canReview" />
+    <WorkDiscussion v-if="requirement" type="requirements" :id="requirement.id" />
 
     <a-card class="logs-card" :bordered="false">
       <template #title>
@@ -125,13 +133,17 @@
 import { ArrowLeftOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { getProjectList, getSystemUsers } from '@/api/managementProject'
+import { getProjectList } from '@/api/managementProject'
+import { getAllUsers } from '@/api/system'
 import { getRequirementById, getRequirementLogs, updateRequirement, updateRequirementStatus } from '@/api/requirements'
+import RequirementDelivery from '@/components/RequirementDelivery.vue'
+import WorkDiscussion from '@/components/WorkDiscussion.vue'
 import { useDictStore } from '@/store/dictStore'
 import { formatDateTime } from '@/utils/dateTime'
+import { canEditRequirement, canReviewRequirement } from '@/utils/authScope'
 
 const route = useRoute()
 const router = useRouter()
@@ -142,6 +154,7 @@ const from = route.query.from
 const loading = ref(false)
 const requirement = ref(null)
 const projectMap = ref({})
+const projectRows = ref([])
 const userRows = ref([])
 const statusLoading = ref('')
 const editVisible = ref(false)
@@ -185,14 +198,12 @@ const statusLabel = computed(() => dictStore.getDictLabel('requirementStatus', r
 const createdAtText = computed(() => formatDateTime(requirement.value?.createdAt))
 const logsReversed = computed(() => [...logs.value].reverse())
 
-const currentUserId = () => {
-  try { return JSON.parse(localStorage.getItem('userInfo') || '{}').id } catch { return null }
-}
-const canEdit = computed(() => requirement.value && String(requirement.value.createdBy) === String(currentUserId()))
+const canEdit = computed(() => canEditRequirement(requirement.value))
+const canReview = computed(() => canReviewRequirement(requirement.value))
 
 const typeOptions = computed(() => dictStore.getDictItems('requirementType'))
 const priorityOptions = computed(() => dictStore.getDictItems('requirementPriority'))
-const projectOptions = computed(() => Object.entries(projectMap.value).map(([value, label]) => ({ value, label })))
+const projectOptions = computed(() => projectRows.value.map(project => ({ value: project.id, label: project.name })))
 const reviewerOptions = computed(() => userRows.value.map(user => ({ label: user.realName || user.username, value: user.id })))
 
 const priorityColor = value => ({ URGENT: 'red', HIGH: 'orange', MEDIUM: 'gold', LOW: 'default' }[value] || 'default')
@@ -201,38 +212,46 @@ const statusSuccessText = status => ({ ACCEPTED: '需求已采纳', REJECTED: '�
 const formatLogTime = dt => formatDateTime(dt)
 const loadProjects = async () => {
   const result = await getProjectList({ pageNo: 1, pageSize: 200 })
-  projectMap.value = Object.fromEntries((result.records || []).map(item => [item.id, item.name]))
+  projectRows.value = result.records || []
+  projectMap.value = Object.fromEntries(projectRows.value.map(item => [item.id, item.name]))
 }
 
 const loadUsers = async () => {
-  const result = await getSystemUsers({ pageNo: 1, pageSize: 200, enabled: true })
-  userRows.value = result.records || []
+  userRows.value = await getAllUsers({ enabled: true })
 }
 
 const loadDetail = async () => {
+  const requirementId = route.params.id
   loading.value = true
+  requirement.value = null
   try {
-    requirement.value = await getRequirementById(route.params.id)
+    const detail = await getRequirementById(requirementId)
+    if (route.params.id === requirementId) requirement.value = detail
   } catch (error) {
-    requirement.value = null
-    message.error(error.message || '需求详情加载失败')
+    if (route.params.id === requirementId) {
+      requirement.value = null
+      message.error(error.message || '需求详情加载失败')
+    }
   } finally {
-    loading.value = false
+    if (route.params.id === requirementId) loading.value = false
   }
 }
 
 const loadLogs = async () => {
+  const requirementId = route.params.id
   logsLoading.value = true
   try {
-    logs.value = await getRequirementLogs(route.params.id) || []
+    const result = await getRequirementLogs(requirementId) || []
+    if (route.params.id === requirementId) logs.value = result
   } catch {
-    logs.value = []
+    if (route.params.id === requirementId) logs.value = []
   } finally {
-    logsLoading.value = false
+    if (route.params.id === requirementId) logsLoading.value = false
   }
 }
 
 const handleStatusChange = async status => {
+  if (!canReview.value || statusLoading.value) return
   statusLoading.value = status
   try {
     requirement.value = await updateRequirementStatus(route.params.id, status)
@@ -246,6 +265,7 @@ const handleStatusChange = async status => {
 }
 
 const openEditModal = () => {
+  if (!canEdit.value) return
   const r = requirement.value
   Object.assign(editForm, {
     title: r.title || '',
@@ -299,7 +319,7 @@ const initPage = async () => {
   await Promise.all([loadDetail(), loadLogs()])
 }
 
-onMounted(initPage)
+watch(() => route.params.id, () => initPage().catch(error => message.error(error.message || '需求加载失败')), { immediate: true })
 </script>
 
 <style scoped>

@@ -24,6 +24,7 @@
           <a-space>
             <a-button type="primary" @click="handleSearch">查询</a-button>
             <a-button @click="handleReset">重置</a-button>
+            <a-button :loading="exporting" @click="exportRows('operation-logs', buildOperationLogFilters(query), 'operation-logs.xlsx')">导出日志</a-button>
           </a-space>
         </a-form-item>
       </a-form>
@@ -84,6 +85,8 @@ import { onMounted, reactive, ref } from 'vue'
 
 import { getOperationLogs } from '@/api/system'
 import { formatDateTime } from '@/utils/dateTime'
+import { useExport } from '@/composables/useExport'
+import { buildOperationLogFilters } from '@/utils/exportFilters'
 
 const createDefaultQuery = () => ({
   keyword: '',
@@ -95,6 +98,7 @@ const createDefaultQuery = () => ({
 })
 
 const loading = ref(false)
+const { exporting, exportRows } = useExport()
 const logs = ref([])
 const query = reactive(createDefaultQuery())
 const pagination = reactive({
@@ -174,13 +178,7 @@ const fetchLogs = async () => {
   loading.value = true
   try {
     const result = await getOperationLogs({
-      keyword: query.keyword || undefined,
-      module: query.module || undefined,
-      businessType: query.businessType || undefined,
-      operationType: query.operationType || undefined,
-      operatorName: query.operatorName || undefined,
-      startDate: query.range?.[0] || undefined,
-      endDate: query.range?.[1] || undefined,
+      ...buildOperationLogFilters(query),
       pageNo: pagination.current,
       pageSize: pagination.pageSize,
     })
