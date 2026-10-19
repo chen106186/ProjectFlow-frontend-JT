@@ -124,7 +124,11 @@ const handleSubmit = async () => {
   grid-template-columns: minmax(560px, 58%) minmax(420px, 42%);
   min-height: 100vh;
   overflow: hidden;
-  background: #f8fbff url('@/assets/images/background.png') center / cover no-repeat;
+  background:
+    radial-gradient(circle at 14% 12%, rgb(0 122 255 / 18%), transparent 30rem),
+    radial-gradient(circle at 78% 10%, rgb(175 82 222 / 14%), transparent 32rem),
+    radial-gradient(circle at 60% 88%, rgb(52 199 89 / 12%), transparent 26rem),
+    linear-gradient(135deg, #fbfbfd 0%, #f5f5f7 48%, #f2f2f7 100%);
 }
 
 .login-brand-panel {
@@ -142,7 +146,8 @@ const handleSubmit = async () => {
   display: block;
   width: min(100%, 510px);
   margin: 0 auto -28px;
-  mix-blend-mode: multiply;
+  filter: drop-shadow(0 24px 48px rgb(0 0 0 / 10%));
+  mix-blend-mode: normal;
 }
 
 .login-brand-panel__copy {
@@ -151,7 +156,7 @@ const handleSubmit = async () => {
 
 .login-brand-panel__eyebrow {
   margin: 0 0 18px;
-  color: #1677ff;
+  color: #007aff;
   font-size: clamp(15px, 1.2vw, 22px);
   font-weight: 700;
   letter-spacing: 6px;
@@ -159,10 +164,10 @@ const handleSubmit = async () => {
 
 .login-brand-panel h1 {
   margin: 0;
-  color: #172b4d;
+  color: #1d1d1f;
   font-size: clamp(30px, 2.7vw, 48px);
-  font-weight: 700;
-  letter-spacing: 2px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
   line-height: 1.28;
 }
 
@@ -176,11 +181,12 @@ const handleSubmit = async () => {
 .login-form-card {
   width: min(100%, 440px);
   padding: 72px 48px 76px;
-  background: rgb(255 255 255 / 76%);
-  border: 1px solid rgb(255 255 255 / 76%);
-  border-radius: 8px;
-  box-shadow: 0 22px 48px rgb(40 91 165 / 14%);
-  backdrop-filter: blur(12px);
+  background: rgb(255 255 255 / 78%);
+  border: 1px solid rgb(255 255 255 / 78%);
+  border-radius: 28px;
+  box-shadow: 0 30px 90px rgb(0 0 0 / 12%), inset 0 1px 0 rgb(255 255 255 / 72%);
+  backdrop-filter: saturate(180%) blur(24px);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
 }
 
 .login-form-card__heading {
@@ -191,9 +197,10 @@ const handleSubmit = async () => {
 
 .login-form-card__heading h2 {
   margin: 0;
-  color: #172b4d;
-  font-size: 32px;
-  font-weight: 700;
+  color: #1d1d1f;
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
 }
 
 .login-form-card__heading::after {
@@ -201,9 +208,9 @@ const handleSubmit = async () => {
   bottom: -20px;
   left: 50%;
   width: 46px;
-  height: 4px;
-  background: #1677ff;
-  border-radius: 4px;
+  height: 5px;
+  background: linear-gradient(90deg, #007aff, #34c759);
+  border-radius: 999px;
   content: '';
   transform: translateX(-50%);
 }
@@ -215,20 +222,20 @@ const handleSubmit = async () => {
 .login-form-card :deep(.ant-input-affix-wrapper) {
   min-height: 58px;
   padding-inline: 18px;
-  border-color: #d9dee8;
-  border-radius: 8px;
+  border-color: rgb(60 60 67 / 16%);
+  border-radius: 16px;
   background: rgb(255 255 255 / 72%);
-  box-shadow: none;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 72%);
 }
 
 .login-form-card :deep(.ant-input-affix-wrapper-focused) {
-  border-color: #1677ff;
-  box-shadow: 0 0 0 2px rgb(22 119 255 / 10%);
+  border-color: #007aff;
+  box-shadow: 0 0 0 4px rgb(0 122 255 / 12%);
 }
 
 .login-form-card :deep(.ant-input-prefix),
 .login-form-card :deep(.ant-input-password-icon) {
-  color: #77839a;
+  color: #86868b;
   font-size: 19px;
 }
 
@@ -241,17 +248,17 @@ const handleSubmit = async () => {
 }
 
 .login-form-card :deep(.ant-checkbox-wrapper) {
-  color: #4b5b73;
+  color: #6e6e73;
   font-size: 16px;
 }
 
 .login-form-card__submit {
   width: 100%;
   height: 58px;
-  border-radius: 8px;
+  border-radius: 16px;
   font-size: 20px;
-  font-weight: 500;
-  box-shadow: 0 12px 20px rgb(22 119 255 / 22%);
+  font-weight: 700;
+  box-shadow: 0 16px 30px rgb(0 122 255 / 26%);
 }
 
 @media (max-width: 1100px) {

@@ -649,45 +649,56 @@ const handleUserMenuClick = ({ key }) => {
   min-width: 0;
   height: 100vh;
   overflow: hidden;
+  color: var(--app-text, #1d1d1f);
+  background:
+    radial-gradient(circle at 8% 0%, rgb(0 122 255 / 12%), transparent 24rem),
+    radial-gradient(circle at 92% 0%, rgb(175 82 222 / 10%), transparent 28rem),
+    linear-gradient(180deg, #fbfbfd 0%, #f5f5f7 52%, #f2f2f7 100%);
 }
 
 .app-header {
-  position: relative;
+  position: sticky;
+  top: 0;
   z-index: 10;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 52px;
-  padding: 0 24px 0 20px;
+  height: 56px;
+  padding: 0 22px;
   line-height: normal;
-  background: #ffffff8c;
-  /* box-shadow: 0 2px 8px rgb(0 0 0 / 12%); */
+  background: rgb(255 255 255 / 72%);
+  border-bottom: 1px solid rgb(60 60 67 / 12%);
+  box-shadow: 0 8px 26px rgb(0 0 0 / 5%);
+  backdrop-filter: saturate(180%) blur(24px);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
 }
 
 .app-brand {
   display: inline-flex;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
-  color: #000;
-  font-size: 20px;
-  font-weight: 600;
+  color: #1d1d1f;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .app-brand:hover {
-  color: #fff;
+  color: #007aff;
 }
 
 .app-brand__mark {
   display: block;
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   object-fit: contain;
-  border-radius: 8px;
+  border-radius: 10px;
+  box-shadow: 0 8px 20px rgb(0 122 255 / 22%);
 }
 
 .app-header__icon,
 .app-user {
-  color: #262626;
+  color: #1d1d1f;
 }
 
 .app-header__icon {
@@ -697,12 +708,16 @@ const handleUserMenuClick = ({ key }) => {
   width: 34px;
   height: 34px;
   padding: 0;
-  font-size: 20px;
+  font-size: 18px;
+  background: rgb(255 255 255 / 56%);
+  border: 1px solid rgb(60 60 67 / 12%);
+  border-radius: 999px;
 }
 
 .app-header__icon:hover,
 .app-user:hover {
-  color: #1677ff;
+  color: #007aff;
+  background: rgb(0 122 255 / 8%);
 }
 
 .notice-dropdown {
@@ -711,10 +726,12 @@ const handleUserMenuClick = ({ key }) => {
   width: 380px;
   max-height: 440px;
   overflow: hidden;
-  background: #fff;
-  border: 1px solid #eef1f5;
-  border-radius: 12px;
-  box-shadow: 0 12px 32px rgb(15 23 42 / 16%);
+  background: rgb(255 255 255 / 86%);
+  border: 1px solid rgb(60 60 67 / 14%);
+  border-radius: 20px;
+  box-shadow: 0 24px 70px rgb(0 0 0 / 18%);
+  backdrop-filter: saturate(180%) blur(24px);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
 }
 
 .notice-dropdown__header {
@@ -723,23 +740,23 @@ const handleUserMenuClick = ({ key }) => {
   align-items: center;
   justify-content: space-between;
   padding: 0 18px;
-  background: linear-gradient(90deg, #f7fbff 0%, #fff 58%);
-  border-bottom: 1px solid #eef1f5;
+  background: linear-gradient(90deg, rgb(245 245 247 / 88%) 0%, rgb(255 255 255 / 64%) 100%);
+  border-bottom: 1px solid rgb(60 60 67 / 12%);
 }
 
 .notice-dropdown__header strong {
-  color: #1f2937;
+  color: #1d1d1f;
   font-size: 15px;
   font-weight: 600;
 }
 
 .notice-dropdown__unread {
   padding: 3px 8px;
-  color: #1677ff;
+  color: #007aff;
   font-size: 12px;
   line-height: 18px;
-  background: #e6f4ff;
-  border-radius: 10px;
+  background: rgb(0 122 255 / 10%);
+  border-radius: 999px;
 }
 
 .notice-dropdown__list {
@@ -768,7 +785,7 @@ const handleUserMenuClick = ({ key }) => {
   overflow: hidden;
   color: #1f2937;
   text-align: left;
-  background: #fff;
+  background: transparent;
   border: 0;
   border-bottom: 1px solid #f0f2f5;
   cursor: default;
@@ -776,7 +793,7 @@ const handleUserMenuClick = ({ key }) => {
 }
 
 .notice-dropdown__item:hover {
-  background: #f6faff;
+  background: rgb(0 122 255 / 6%);
 }
 
 .notice-dropdown__item--unread::before {
@@ -786,7 +803,7 @@ const handleUserMenuClick = ({ key }) => {
   width: 6px;
   height: 6px;
   content: '';
-  background: #1677ff;
+  background: #007aff;
   border-radius: 50%;
 }
 
@@ -805,13 +822,13 @@ const handleUserMenuClick = ({ key }) => {
 }
 
 .notice-dropdown__content {
-  color: #7b8494;
+  color: #6e6e73;
   font-size: 12px;
   line-height: 18px;
 }
 
 .notice-dropdown__time {
-  color: #a3acb9;
+  color: #86868b;
   font-size: 12px;
   line-height: 18px;
 }
@@ -824,51 +841,62 @@ const handleUserMenuClick = ({ key }) => {
 .notice-dropdown__footer {
   flex: 0 0 52px;
   padding: 8px 14px;
-  background: #fff;
-  border-top: 1px solid #eef1f5;
+  background: rgb(255 255 255 / 62%);
+  border-top: 1px solid rgb(60 60 67 / 12%);
 }
 
 .notice-dropdown__footer :deep(.ant-btn) {
   height: 34px;
-  color: #1677ff;
+  color: #007aff;
   font-weight: 500;
-  background: #f3f8ff;
-  border-radius: 6px;
+  background: rgb(0 122 255 / 9%);
+  border-radius: 999px;
 }
 
 .app-user {
   display: inline-flex;
-  gap: 10px;
+  gap: 9px;
   align-items: center;
-  height: auto;
-  padding: 0;
-  font-weight: 500;
+  height: 38px;
+  padding: 2px 8px 2px 3px;
+  font-weight: 600;
+  background: rgb(255 255 255 / 56%);
+  border: 1px solid rgb(60 60 67 / 12%);
+  border-radius: 999px;
 }
 
 .app-user__arrow {
-  color: #595959;
+  color: #6e6e73;
   font-size: 12px;
 }
 
 .app-user :deep(.ant-avatar) {
   color: #fff;
-  background: #1677ff;
+  background: linear-gradient(180deg, #0a84ff 0%, #007aff 100%);
+  box-shadow: 0 8px 18px rgb(0 122 255 / 24%);
 }
 
 .app-layout__body {
   flex: 1;
-  height: calc(100vh - 68px);
+  height: calc(100vh - 56px);
   min-height: 0;
   overflow: hidden;
-  background: radial-gradient(ellipse 800px 600px at 0% 0%, #0071e32e 0%, transparent 60%), radial-gradient(ellipse 700px 500px at 0% 100%, #34c75924 0%, transparent 60%), radial-gradient(ellipse 900px 700px at 100% 0%, #af52de24 0%, transparent 60%), radial-gradient(ellipse 700px 500px at 100% 100%, #ff9f0a1f 0%, transparent 60%), #f5f5f7;
+  background:
+    radial-gradient(ellipse 800px 600px at 0% 0%, rgb(0 122 255 / 12%) 0%, transparent 60%),
+    radial-gradient(ellipse 700px 500px at 0% 100%, rgb(52 199 89 / 10%) 0%, transparent 60%),
+    radial-gradient(ellipse 900px 700px at 100% 0%, rgb(175 82 222 / 10%) 0%, transparent 60%),
+    #f5f5f7;
 }
 
 .app-sider {
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
-  background: #fff;
-  border-right: 1px solid #f0f0f0;
+  background: rgb(255 255 255 / 66%);
+  border-right: 1px solid rgb(60 60 67 / 12%);
+  box-shadow: 10px 0 34px rgb(0 0 0 / 4%);
+  backdrop-filter: saturate(180%) blur(24px);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
 }
 
 .app-sider :deep(.ant-layout-sider-children) {
@@ -878,12 +906,15 @@ const handleUserMenuClick = ({ key }) => {
 }
 
 .app-sider :deep(.ant-layout-sider-trigger) {
-  background: #fff;
-  border-top: 1px solid #f0f0f0;
+  color: #6e6e73;
+  background: rgb(255 255 255 / 70%);
+  border-top: 1px solid rgb(60 60 67 / 12%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 .app-sider :deep(.ant-menu) {
-  padding-top: 10px;
+  padding: 12px 8px;
   border-inline-end: none;
   background: transparent;
 }
@@ -892,7 +923,28 @@ const handleUserMenuClick = ({ key }) => {
 .app-sider :deep(.ant-menu-inline.ant-menu-root > .ant-menu-submenu > .ant-menu-submenu-title) {
   display: flex;
   align-items: center;
-  padding-inline-start: 20px !important;
+  min-height: 42px;
+  margin: 3px 0;
+  padding-inline-start: 16px !important;
+  color: #424245;
+  border-radius: 14px;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.app-sider :deep(.ant-menu-inline.ant-menu-root > .ant-menu-item:hover),
+.app-sider :deep(.ant-menu-inline.ant-menu-root > .ant-menu-submenu > .ant-menu-submenu-title:hover) {
+  color: #007aff;
+  background: rgb(0 122 255 / 7%);
+}
+
+.app-sider :deep(.ant-menu-item-selected) {
+  color: #007aff !important;
+  background: rgb(0 122 255 / 12%) !important;
+  box-shadow: inset 0 0 0 1px rgb(0 122 255 / 8%);
+}
+
+.app-sider :deep(.ant-menu-item-selected::after) {
+  display: none;
 }
 
 .app-sider :deep(.ant-menu-inline.ant-menu-root > .ant-menu-item > .anticon),
@@ -923,9 +975,12 @@ const handleUserMenuClick = ({ key }) => {
   flex: 0 0 52px;
   display: flex;
   align-items: center;
-  padding: 0 24px;
-  background: #fff;
-  box-shadow: 0 1px 6px rgb(15 23 42 / 6%);
+  padding: 0 28px;
+  background: rgb(255 255 255 / 58%);
+  border-bottom: 1px solid rgb(60 60 67 / 10%);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 4%);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
 }
 
 .app-content__spin {
@@ -949,7 +1004,7 @@ const handleUserMenuClick = ({ key }) => {
 .app-content__body {
   flex: 1;
   min-height: 0;
-  padding: 18px 18px 22px;
+  padding: 22px 24px 28px;
   overflow-x: hidden;
   overflow-y: auto;
 }
