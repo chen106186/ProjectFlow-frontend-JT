@@ -122,8 +122,9 @@ const handleSubmit = async () => {
 .login-page {
   display: grid;
   grid-template-columns: minmax(560px, 58%) minmax(420px, 42%);
+  height: 100vh;
   min-height: 100vh;
-  overflow: hidden;
+  overflow: auto;
   background:
     radial-gradient(circle at 14% 12%, rgb(0 122 255 / 18%), transparent 30rem),
     radial-gradient(circle at 78% 10%, rgb(175 82 222 / 14%), transparent 32rem),
@@ -157,7 +158,7 @@ const handleSubmit = async () => {
 .login-brand-panel__eyebrow {
   margin: 0 0 18px;
   color: #007aff;
-  font-size: clamp(15px, 1.2vw, 22px);
+  font-size: 22px;
   font-weight: 700;
   letter-spacing: 6px;
 }
@@ -165,7 +166,7 @@ const handleSubmit = async () => {
 .login-brand-panel h1 {
   margin: 0;
   color: #1d1d1f;
-  font-size: clamp(30px, 2.7vw, 48px);
+  font-size: 48px;
   font-weight: 800;
   letter-spacing: -0.04em;
   line-height: 1.28;

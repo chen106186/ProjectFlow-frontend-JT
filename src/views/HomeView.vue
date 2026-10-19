@@ -545,7 +545,7 @@ const handleTodoClick = item => {
 
 <style scoped>
 .home-view {
-  width: min(1600px, 100%);
+  width: min(var(--app-content-max-width), 100%);
   margin: 0 auto;
 }
 
@@ -1075,7 +1075,7 @@ const handleTodoClick = item => {
   font-size: 12px;
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 1460px) {
   .home-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

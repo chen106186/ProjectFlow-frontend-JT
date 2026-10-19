@@ -204,7 +204,7 @@ onMounted(fetchLogs)
 
 <style scoped>
 .operation-log-page {
-  width: min(1600px, 100%);
+  width: min(var(--app-content-max-width), 100%);
   height: calc(100vh - 68px - 52px - 40px);
   min-height: 0;
   margin: 0 auto;

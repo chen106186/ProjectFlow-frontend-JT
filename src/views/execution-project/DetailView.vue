@@ -1576,7 +1576,7 @@ onMounted(async () => {
 
 <style scoped>
 .execution-detail {
-  width: min(1600px, 100%);
+  width: min(var(--app-content-max-width), 100%);
   height: 100%;
   min-height: 0;
   margin: 0 auto;
@@ -1778,7 +1778,7 @@ onMounted(async () => {
 .upload-form :deep(.ant-select) { width: 100%; }
 .upload-modal-actions, .gantt-edit-actions { display: flex; justify-content: flex-end; gap: 16px; margin-top: 8px; }
 .upload-modal-actions .ant-btn { width: 118px; }
-@media (max-width: 1280px) {
+@media (max-width: 1540px) {
   .execution-tabs { gap: 20px; }
   .execution-summary { grid-template-columns: 1fr; }
   .execution-summary__progress { padding: 16px 0 0; border-top: 1px solid #edf0f3; border-left: 0; }

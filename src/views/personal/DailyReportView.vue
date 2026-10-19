@@ -305,7 +305,7 @@ const handleSave = async () => {
 .dr-page {
   display: flex;
   flex-direction: column;
-  width: min(1600px, 100%);
+  width: min(var(--app-content-max-width), 100%);
   margin: 0 auto;
 }
 

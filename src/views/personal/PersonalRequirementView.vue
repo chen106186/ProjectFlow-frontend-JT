@@ -562,7 +562,7 @@ onMounted(initPage)
 
 <style scoped>
 .requirement-page {
-  width: min(1600px, 100%);
+  width: min(var(--app-content-max-width), 100%);
   height: 100%;
   min-height: 0;
   margin: 0 auto;

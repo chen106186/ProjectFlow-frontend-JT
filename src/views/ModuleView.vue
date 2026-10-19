@@ -2159,7 +2159,7 @@ const trendPoints = [
 }
 
 .personal-page {
-  width: min(1600px, 100%);
+  width: min(var(--app-content-max-width), 100%);
   margin: 0 auto;
   scrollbar-color: #b8b8b8 transparent;
   scrollbar-width: thin;
@@ -3418,7 +3418,7 @@ const trendPoints = [
   font-weight: 600;
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 1460px) {
   .prototype-filter,
   .bug-filter,
   .stat-cards,

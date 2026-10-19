@@ -1070,4 +1070,18 @@ const handleUserMenuClick = ({ key }) => {
   min-height: 100%;
   overflow: visible;
 }
+
+@media (max-width: 1440px) {
+  .app-content__header {
+    padding-inline: 20px;
+  }
+
+  .app-content__body {
+    padding: 16px 16px 20px;
+  }
+
+  .app-content__body--fixed-list {
+    padding-bottom: 10px;
+  }
+}
 </style>

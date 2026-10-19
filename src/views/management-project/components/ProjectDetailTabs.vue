@@ -1110,7 +1110,7 @@ defineExpose({
   color: #bfbfbf;
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 1460px) {
   .document-categories {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }

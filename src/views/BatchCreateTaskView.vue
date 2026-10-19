@@ -394,7 +394,7 @@ onMounted(async () => {
 
 .batch-task-header h2 {
   margin: 0 0 0.375rem;
-  font-size: 1.25rem;
+  font-size: 20px;
   font-weight: 700;
   color: #1f2937;
 }
@@ -402,7 +402,7 @@ onMounted(async () => {
 .batch-task-header span,
 .batch-toolbar {
   color: #8c8c8c;
-  font-size: 0.8125rem;
+  font-size: 13px;
 }
 
 .batch-card {

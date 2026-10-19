@@ -218,7 +218,7 @@ function goDetail(target) {
 .daily-list-page {
   height: 100%;
   min-height: 0;
-  width: min(1600px, 100%);
+  width: min(var(--app-content-max-width), 100%);
   margin: 0 auto;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 500px;
@@ -264,7 +264,7 @@ function goDetail(target) {
 .daily-filter-item span {
   flex-shrink: 0;
   color: #262626;
-  font-size: 0.875rem;
+  font-size: 14px;
 }
 
 .daily-content-link {
@@ -328,9 +328,14 @@ function goDetail(target) {
   margin-top: 10px;
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1360px) {
   .daily-list-page {
     grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+
+  .daily-list-page:not(.daily-list-page--wide) {
+    grid-template-rows: minmax(420px, 1fr) auto;
   }
 }
 </style>

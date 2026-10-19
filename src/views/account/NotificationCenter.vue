@@ -247,7 +247,7 @@ onMounted(async () => {
 
 <style scoped>
 .notification-center {
-  width: min(1600px, 100%);
+  width: min(var(--app-content-max-width), 100%);
   height: calc(100vh - 68px - 52px - 40px);
   margin: 0 auto;
   min-height: 0;

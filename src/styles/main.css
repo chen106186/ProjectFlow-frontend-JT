@@ -25,6 +25,7 @@
   --app-table-font-size: 14px;
   --app-filter-control-height: 38px;
   --app-filter-label-width: 80px;
+  --app-content-max-width: max(1600px, calc(100vw - 320px));
 }
 
 html,
@@ -323,6 +324,7 @@ select {
 }
 
 .app-filter-card {
+  container-type: inline-size;
   margin-bottom: 16px;
   background: var(--app-glass-bg);
   border: 1px solid rgb(255 255 255 / 72%);
@@ -333,7 +335,7 @@ select {
 }
 
 .app-filter-card > .ant-card-body {
-  padding: 18px 36px 4px !important;
+  padding: var(--app-filter-padding, 18px 36px 4px) !important;
 }
 
 .app-filter-form {
@@ -422,12 +424,28 @@ select {
   justify-content: flex-end;
 }
 
-@media (max-width: 1280px) {
-  .app-filter-form {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+@container (max-width: 1440px) {
+  .app-filter-card > .ant-card-body {
+    --app-filter-padding: 16px 20px 2px;
   }
 
-  .app-filter-actions {
-    justify-self: start !important;
+  .app-filter-card.ant-card > .ant-card-body > .app-filter-form {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    column-gap: 24px !important;
+  }
+
+  .app-filter-card.ant-card .app-filter-form > .ant-form-item {
+    grid-row: auto !important;
+    grid-column: auto !important;
+  }
+
+  .app-filter-card.ant-card .app-filter-form > .app-filter-actions {
+    grid-column: -2 / -1 !important;
+  }
+}
+
+@container (max-width: 900px) {
+  .app-filter-card.ant-card > .ant-card-body > .app-filter-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }

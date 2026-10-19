@@ -918,7 +918,7 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.bug-page { height: 100%; width: min(1600px, 100%); margin: 0 auto; overflow-x: hidden; overflow-y: auto; color: #262626; }
+.bug-page { height: 100%; width: min(var(--app-content-max-width), 100%); margin: 0 auto; overflow-x: hidden; overflow-y: auto; color: #262626; }
 .bug-page--list { display: flex; flex: 1; flex-direction: column; height: auto; min-height: 0; overflow: clip; }
 .bug-filter, .bug-list, .bug-form-card { border: 1px solid #edf0f3; box-shadow: 0 2px 8px rgb(0 0 0 / 3%); }
 .bug-filter { flex: none; margin-bottom: 16px; }
@@ -989,7 +989,7 @@ onMounted(async () => {
   border-radius: 3px;
 }
 /* ── Detail page ── */
-.detail-page { width: min(1600px, 100%); margin: 0 auto; padding-bottom: 96px; }
+.detail-page { width: min(var(--app-content-max-width), 100%); margin: 0 auto; padding-bottom: 96px; }
 
 .detail-header {
   display: flex;

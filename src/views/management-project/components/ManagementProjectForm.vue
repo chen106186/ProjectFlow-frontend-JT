@@ -251,7 +251,7 @@ const handleSubmit = async () => {
 </script>
 
 <style scoped>
-.project-form-page { width: min(1600px, 100%); min-height: 100%; margin: 0 auto; overflow: visible; color: #262626; }
+.project-form-page { width: min(var(--app-content-max-width), 100%); min-height: 100%; margin: 0 auto; overflow: visible; color: #262626; }
 .project-form-card { width: min(1100px, 100%); margin: 0 auto; border: 1px solid #edf0f3; box-shadow: 0 2px 8px rgb(0 0 0 / 3%); }
 .project-form-card :deep(.ant-card-body) { padding: 24px 50px 30px; }
 .project-form-card h2 { margin: 0 0 24px; font-size: 18px; }

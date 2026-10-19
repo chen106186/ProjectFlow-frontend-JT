@@ -382,7 +382,7 @@ onMounted(async () => { await fetchReferenceData(); await fetchProjects() })
 </script>
 
 <style scoped>
-.execution-project-page { display: flex; flex-direction: column; width: min(1600px, 100%); height: 100%; min-height: 0; margin: 0 auto; overflow: hidden; color: #262626; }
+.execution-project-page { display: flex; flex-direction: column; width: min(var(--app-content-max-width), 100%); height: 100%; min-height: 0; margin: 0 auto; overflow: hidden; color: #262626; }
 .execution-filter, .execution-list { border: 1px solid #edf0f3; box-shadow: 0 2px 8px rgb(0 0 0 / 3%); }
 .execution-filter { flex: 0 0 auto; margin-bottom: 16px; }
 .execution-filter :deep(.ant-card-body) { padding: 20px 30px 4px; }

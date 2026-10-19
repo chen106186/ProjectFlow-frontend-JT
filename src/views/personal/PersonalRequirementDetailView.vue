@@ -304,7 +304,7 @@ onMounted(initPage)
 
 <style scoped>
 .requirement-detail-page {
-  width: min(1600px, 100%);
+  width: min(var(--app-content-max-width), 100%);
   margin: 0 auto;
   display: flex;
   flex-direction: column;

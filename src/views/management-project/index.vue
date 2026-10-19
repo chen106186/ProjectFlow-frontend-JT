@@ -286,7 +286,7 @@
               <template v-if="column.dataIndex === 'content'">
                 <a-space :size="4">
                   <span>{{ text }}</span>
-                  <a-tag v-if="record.relatedTaskId" color="blue" style="margin:0;font-size:0.6875rem;line-height:1.125rem;padding:0 0.25rem;">关联</a-tag>
+                  <a-tag v-if="record.relatedTaskId" color="blue" style="margin:0;font-size:11px;line-height:18px;padding:0 0.25rem;">关联</a-tag>
                 </a-space>
               </template>
               <a-tag v-else-if="column.dataIndex === 'priority'" color="orange">{{ text }}</a-tag>
@@ -1882,7 +1882,7 @@ const handleDeleteReport = async record => {
 </script>
 
 <style scoped>
-.project-page { min-height: 100%; width: min(1600px, 100%); margin: 0 auto; overflow: visible; color: #262626; }
+.project-page { min-height: 100%; width: min(var(--app-content-max-width), 100%); margin: 0 auto; overflow: visible; color: #262626; }
 .project-page--list { display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: hidden; }
 .project-filter, .project-list { border: 1px solid #edf0f3; box-shadow: 0 2px 8px rgb(0 0 0 / 3%); }
 .project-filter { flex: 0 0 auto; margin-bottom: 16px; }
