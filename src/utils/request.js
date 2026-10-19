@@ -187,10 +187,10 @@ export const downloadPost = async (url, data, filename = 'export.xlsx') => {
   triggerDownload(result.blob, result.fileName || filename)
 }
 
-export const downloadGet = async (url, filename = 'export') => {
-  const result = await download(url)
+export const downloadGet = async (url, filename = 'export', options = {}) => {
+  const result = await download(url, options)
 
-  triggerDownload(result.blob, result.fileName || filename)
+  triggerDownload(result.blob, result.fileName && result.fileName !== 'download' ? result.fileName : filename)
 }
 
 function triggerDownload(blob, filename) {

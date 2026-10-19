@@ -28,10 +28,13 @@
 
     <a-card class="requirement-list" :bordered="false">
       <div class="requirement-list__toolbar">
+        <a-space>
         <a-button type="primary" @click="openCreateModal">
           <PlusOutlined />
           新增需求
         </a-button>
+        <a-button :loading="exporting" @click="exportRows('requirements', buildRequirementFilters(query, { mineOnly: true }), 'requirements.xlsx')">导出需求</a-button>
+        </a-space>
         <div class="requirement-list__display">
           <template v-if="displayMode === 'group'">
             <span>分组条件：</span>
@@ -75,9 +78,9 @@
           <template v-else-if="column.dataIndex === 'ops'">
             <a-space :size="4">
               <a-tooltip title="编辑">
-                <a-button type="link" size="small" class="operation-icon-button" aria-label="编辑" @click="openEditModal(record)"><EditOutlined /></a-button>
+                <a-button type="link" size="small" class="operation-icon-button" aria-label="编辑" :disabled="!canEdit(record)" @click="openEditModal(record)"><EditOutlined /></a-button>
               </a-tooltip>
-              <template v-if="record.statusCode === 'PENDING_REVIEW'">
+              <template v-if="canReview(record) && record.statusCode === 'PENDING_REVIEW'">
                 <a-divider type="vertical" style="margin: 0;" />
                 <a-tooltip title="采纳">
                   <a-button type="link" size="small" class="operation-icon-button" aria-label="采纳" :loading="opRecord === record.id + '_ACCEPTED'" @click="handleStatusChange(record, 'ACCEPTED')"><CheckCircleOutlined /></a-button>
@@ -89,6 +92,7 @@
                   <a-button type="link" size="small" class="operation-icon-button" aria-label="搁置" :loading="opRecord === record.id + '_SHELVED'" @click="handleStatusChange(record, 'SHELVED')"><InboxOutlined /></a-button>
                 </a-tooltip>
               </template>
+                  <a-button v-if="canReview(record) && record.statusCode === 'SHELVED'" type="link" size="small" :loading="opRecord === record.id + '_PENDING_REVIEW'" @click="handleStatusChange(record, 'PENDING_REVIEW')">恢复评审</a-button>
             </a-space>
           </template>
           <template v-else>{{ text || '-' }}</template>
@@ -125,9 +129,9 @@
               <template v-else-if="column.dataIndex === 'ops'">
                 <a-space :size="4">
                   <a-tooltip title="编辑">
-                    <a-button type="link" size="small" class="operation-icon-button" aria-label="编辑" @click="openEditModal(record)"><EditOutlined /></a-button>
+                    <a-button type="link" size="small" class="operation-icon-button" aria-label="编辑" :disabled="!canEdit(record)" @click="openEditModal(record)"><EditOutlined /></a-button>
                   </a-tooltip>
-                  <template v-if="record.statusCode === 'PENDING_REVIEW'">
+                  <template v-if="canReview(record) && record.statusCode === 'PENDING_REVIEW'">
                     <a-divider type="vertical" style="margin: 0;" />
                     <a-tooltip title="采纳">
                       <a-button type="link" size="small" class="operation-icon-button" aria-label="采纳" :loading="opRecord === record.id + '_ACCEPTED'" @click="handleStatusChange(record, 'ACCEPTED')"><CheckCircleOutlined /></a-button>
@@ -139,6 +143,7 @@
                       <a-button type="link" size="small" class="operation-icon-button" aria-label="搁置" :loading="opRecord === record.id + '_SHELVED'" @click="handleStatusChange(record, 'SHELVED')"><InboxOutlined /></a-button>
                     </a-tooltip>
                   </template>
+                  <a-button v-if="canReview(record) && record.statusCode === 'SHELVED'" type="link" size="small" :loading="opRecord === record.id + '_PENDING_REVIEW'" @click="handleStatusChange(record, 'PENDING_REVIEW')">恢复评审</a-button>
                 </a-space>
               </template>
               <template v-else>{{ text || '-' }}</template>
@@ -185,8 +190,8 @@
         <a-form-item label="需求类型" name="requirementType">
           <a-select v-model:value="formState.requirementType" :options="typeOptions" placeholder="请选择需求类型" />
         </a-form-item>
-        <a-form-item v-if="editId" label="需求状态" name="status">
-          <a-select v-model:value="formState.status" :options="statusOptions" placeholder="请选择需求状态" />
+        <a-form-item label="审核人" name="reviewerId">
+          <a-select v-model:value="formState.reviewerId" :options="reviewerOptions" placeholder="请选择审核人" show-search option-filter-prop="label" />
         </a-form-item>
         <a-form-item label="优先级" name="priority">
           <a-select v-model:value="formState.priority" :options="priorityOptions" placeholder="请选择优先级" />
@@ -210,11 +215,16 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { getProjectList } from '@/api/managementProject'
+import { getAllUsers } from '@/api/system'
+import { useExport } from '@/composables/useExport'
+import { buildRequirementFilters } from '@/utils/exportFilters'
 import { createRequirement, listMyRequirements, updateRequirement, updateRequirementStatus } from '@/api/requirements'
 import { useDictStore } from '@/store/dictStore'
 import { formatDateTime } from '@/utils/dateTime'
+import { canEditRequirement, canReviewRequirement } from '@/utils/authScope'
 
 const router = useRouter()
+const { exporting, exportRows } = useExport()
 const dictStore = useDictStore()
 
 const loading = ref(false)
@@ -225,6 +235,10 @@ const editId = ref(null)
 const formRef = ref()
 const requirementRows = ref([])
 const projectRows = ref([])
+const userRows = ref([])
+const reviewerOptions = computed(() => userRows.value.map(user => ({ label: user.realName || user.username, value: user.id })))
+const canEdit = record => canEditRequirement(record)
+const canReview = record => canReviewRequirement(record)
 
 const query = reactive({
   keyword: '',
@@ -257,6 +271,7 @@ const groupOptions = [
 const createDefaultForm = () => ({
   title: '',
   projectId: undefined,
+  reviewerId: undefined,
   requirementType: undefined,
   status: undefined,
   priority: undefined,
@@ -269,6 +284,7 @@ const formState = reactive(createDefaultForm())
 const formRules = {
   title: [{ required: true, message: '请输入需求标题', trigger: 'blur' }],
   projectId: [{ required: true, message: '请选择所属项目', trigger: 'change' }],
+  reviewerId: [{ required: true, message: '请选择审核人', trigger: 'change' }],
   requirementType: [{ required: true, message: '请选择需求类型', trigger: 'change' }],
   priority: [{ required: true, message: '请选择优先级', trigger: 'change' }],
   description: [{ required: true, message: '请输入需求描述', trigger: 'blur' }],
@@ -342,6 +358,7 @@ const formatRequirementNo = item => {
 const mapRequirement = item => ({
   id: item.id,
   createdBy: item.createdBy,
+  reviewerId: item.reviewerId,
   requirementNo: formatRequirementNo(item),
   title: item.title,
   projectId: item.projectId,
@@ -354,7 +371,7 @@ const mapRequirement = item => ({
   statusCode: item.status,
   description: item.description,
   tags: item.tags,
-  submitter: currentUserName(),
+  submitter: item.creatorName || currentUserName(),
   createdAt: formatDateTime(item.createdAt),
 })
 
@@ -363,7 +380,7 @@ const filteredRows = computed(() => {
 
   return requirementRows.value.filter(item => {
     if (keyword) {
-      const text = [item.requirementNo, item.title, item.projectName].join(' ')
+      const text = [item.title, item.description].join(' ')
       if (!text.includes(keyword)) return false
     }
     if (query.projectId && String(item.projectId) !== String(query.projectId)) return false
@@ -460,7 +477,7 @@ const loadRequirements = async () => {
 
 const initPage = async () => {
   await dictStore.loadDicts()
-  await loadProjects()
+  await Promise.all([loadProjects(), getAllUsers({ enabled: true }).then(users => { userRows.value = users })])
   await loadRequirements()
 }
 
@@ -496,10 +513,12 @@ const openCreateModal = () => {
 }
 
 const openEditModal = record => {
+  if (!canEdit(record)) return
   editId.value = record.id
   Object.assign(formState, {
     title: record.title || '',
     projectId: record.projectId,
+    reviewerId: record.reviewerId,
     requirementType: record.requirementTypeCode,
     status: record.statusCode,
     priority: record.priorityCode,
@@ -519,13 +538,14 @@ const handleSubmit = async () => {
     const payload = {
       title: formState.title,
       projectId: formState.projectId,
+      reviewerId: formState.reviewerId,
       requirementType: formState.requirementType,
       priority: formState.priority,
       description: formState.description,
       tags: formState.tags || undefined,
     }
     if (editId.value) {
-      await updateRequirement(editId.value, { ...payload, status: formState.status })
+      await updateRequirement(editId.value, payload)
       message.success('需求已更新')
     } else {
       created = await createRequirement(payload)
@@ -544,6 +564,7 @@ const handleSubmit = async () => {
 }
 
 const handleStatusChange = async (record, status) => {
+  if (!canReview(record) || opRecord.value) return
   const key = `${record.id}_${status}`
   opRecord.value = key
   try {

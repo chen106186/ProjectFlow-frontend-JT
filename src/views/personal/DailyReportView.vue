@@ -24,7 +24,8 @@
             >
               <a-form-item label="日报日期">
                 <a-date-picker
-                  v-model:value="form.reportDate"
+                  :value="form.reportDate"
+                  @change="handleReportDateChange"
                   :allow-clear="false"
                   :disabled-date="disabledDailyDate"
                   class="dr-date-picker"
@@ -79,10 +80,10 @@
 
 <script setup>
 import { FileOutlined, LeftOutlined, UploadOutlined } from '@ant-design/icons-vue'
-import { message } from 'ant-design-vue'
+import { message, Modal } from 'ant-design-vue'
 import dayjs from 'dayjs'
-import { computed, onMounted, ref, shallowRef, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
 
 import {
   createDailyReport,
@@ -93,6 +94,7 @@ import {
 } from '@/api/dailyReports'
 import TinymceEditor from '@/components/TinymceEditor.vue'
 import DailyReportCalendarPanel from './DailyReportCalendarPanel.vue'
+import { getStoredProfile, isAdminProfile } from '@/utils/authScope'
 
 const route = useRoute()
 const router = useRouter()
@@ -111,11 +113,12 @@ const form = ref({ reportDate: editableDate, content: '' })
 const pendingFiles = ref([])
 const existingFiles = ref([])
 const editorRef = shallowRef()
+const profile = getStoredProfile()
 
 const reportMap = computed(() => {
   const map = {}
   for (const r of allReports.value) {
-    if (r.reportDate) {
+    if (r.reportDate && String(r.reporterId) === String(profile.id)) {
       const key = String(r.reportDate).slice(0, 10)
       map[key] = r
     }
@@ -126,11 +129,14 @@ const reportMap = computed(() => {
 const currentReport = computed(() => {
   const reportId = route.query.id
   if (reportId) {
-    return allReports.value.find(report => String(report.id) === String(reportId)) || null
+    const report = allReports.value.find(report => String(report.id) === String(reportId))
+    if (report && dayjs(report.reportDate).isSame(selectedDate.value, 'day')) return report
   }
   return reportMap.value[selectedDate.value.format('YYYY-MM-DD')] || null
 })
-const isEditableDate = computed(() => selectedDate.value.isSame(today, 'day') || selectedDate.value.isSame(yesterday, 'day'))
+const isEditableDate = computed(() =>
+  (selectedDate.value.isSame(today, 'day') || selectedDate.value.isSame(yesterday, 'day')) &&
+  (!currentReport.value || isAdminProfile(profile) || String(currentReport.value.reporterId) === String(profile.id)))
 const pageTitle = computed(() => {
   if (!isEditableDate.value) {
     return '日报详情'
@@ -139,7 +145,40 @@ const pageTitle = computed(() => {
   return currentReport.value ? '编辑日报' : '填写日报'
 })
 
+const hasUnsavedChanges = computed(() =>
+  form.value.content !== (currentReport.value?.content || '') || pendingFiles.value.length > 0)
+
+const confirmDiscard = () => {
+  if (submitLoading.value) {
+    message.info('正在保存日报，请稍候')
+    return Promise.resolve(false)
+  }
+  if (!hasUnsavedChanges.value) return Promise.resolve(true)
+  return new Promise(resolve => Modal.confirm({
+    title: '日报尚未保存',
+    content: '离开后将丢失未保存的正文和待上传附件。是否继续？',
+    okText: '放弃更改',
+    cancelText: '继续编辑',
+    onOk: () => resolve(true),
+    onCancel: () => resolve(false),
+  }))
+}
+
+const handleBeforeUnload = event => {
+  if (!hasUnsavedChanges.value) return
+  event.preventDefault()
+  event.returnValue = ''
+}
+
+onBeforeRouteLeave(confirmDiscard)
+onBeforeRouteUpdate(async (to, from) => {
+  if (to.query.date === from.query.date && to.query.id === from.query.id) return true
+  return confirmDiscard()
+})
+onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnload))
+
 onMounted(async () => {
+  window.addEventListener('beforeunload', handleBeforeUnload)
   await loadAll()
   syncForm()
 })
@@ -150,16 +189,8 @@ watch(
     const date = getRouteDate()
     selectedDate.value = date
     calendarValue.value = date
+    pendingFiles.value = []
     syncForm()
-  }
-)
-
-watch(
-  () => form.value.reportDate,
-  date => {
-    if (!date || date.isSame(selectedDate.value, 'day')) return
-    selectedDate.value = date
-    calendarValue.value = date
   }
 )
 
@@ -174,7 +205,6 @@ watch(
 watch(
   () => currentReport.value?.id,
   id => {
-    pendingFiles.value = []
     if (id) {
       loadFiles(id)
     } else {
@@ -211,13 +241,23 @@ function syncForm() {
   }
 }
 
-const handleDateSelect = date => {
+const handleDateSelect = async date => {
   if (date.isAfter(today, 'day')) {
     calendarValue.value = selectedDate.value
     return
   }
 
+  if (date.isSame(selectedDate.value, 'day')) return
+  if (!await confirmDiscard()) {
+    calendarValue.value = selectedDate.value
+    return
+  }
+  pendingFiles.value = []
   selectedDate.value = date
+}
+
+const handleReportDateChange = date => {
+  if (date) handleDateSelect(date)
 }
 
 const disabledDailyDate = date => date && !date.isSame(today, 'day') && !date.isSame(yesterday, 'day')
@@ -252,12 +292,14 @@ const removePendingFile = uid => {
   pendingFiles.value = pendingFiles.value.filter(file => file.uid !== uid)
 }
 
-const resetForm = () => {
+const resetForm = async () => {
+  if (!await confirmDiscard()) return
   syncForm()
   pendingFiles.value = []
 }
 
 const handleSave = async () => {
+  if (submitLoading.value) return
   if (!form.value.reportDate || disabledDailyDate(form.value.reportDate)) {
     message.warning('只能填写当天和前一天的日报')
     return
@@ -267,6 +309,7 @@ const handleSave = async () => {
     return
   }
   submitLoading.value = true
+  let reportSaved = false
   try {
     let savedReport
     const payload = {
@@ -276,25 +319,26 @@ const handleSave = async () => {
 
     if (currentReport.value?.id) {
       savedReport = await updateDailyReport(currentReport.value.id, payload)
-      message.success('日报已更新')
     } else {
       savedReport = await createDailyReport(payload)
-      message.success('日报已提交')
     }
 
     const reportId = savedReport?.id || currentReport.value?.id
-    for (const file of pendingFiles.value) {
+    reportSaved = true
+    if (savedReport?.id) {
+      allReports.value = [...allReports.value.filter(report => String(report.id) !== String(savedReport.id)), savedReport]
+    }
+    for (const file of [...pendingFiles.value]) {
       await uploadDailyReportFile(reportId, file.originFile)
+      pendingFiles.value = pendingFiles.value.filter(item => item.uid !== file.uid)
     }
-    if (pendingFiles.value.length) {
-      message.success('附件已上传')
-      pendingFiles.value = []
-      await loadFiles(reportId)
-    }
+    await loadFiles(reportId)
     selectedDate.value = form.value.reportDate
     await loadAll()
+    syncForm()
+    message.success('日报及附件已保存')
   } catch (e) {
-    message.error(e.message || '操作失败')
+    message.error(reportSaved ? `正文已保存，附件上传未完成，请重试：${e.message || '上传失败'}` : (e.message || '操作失败'))
   } finally {
     submitLoading.value = false
   }

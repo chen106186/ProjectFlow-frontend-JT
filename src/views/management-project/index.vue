@@ -61,7 +61,7 @@
 
     <template v-else>
       <div class="project-detail">
-        <div class="project-detail__heading"><a-button @click="handleBack"><ArrowLeftOutlined />返回</a-button><a-tag color="processing">{{ currentProject?.status || '-' }}</a-tag></div>
+        <div class="project-detail__heading"><a-button @click="handleBack"><ArrowLeftOutlined />返回</a-button><a-tag color="processing">{{ currentProject?.status || '-' }}</a-tag><a-button type="primary" @click="router.push({ name: 'WorkHub', query: { projectId: String(route.params.id) } })">项目工作台 / 交付版本</a-button></div>
         <section class="project-summary">
           <table class="project-summary-table">
             <tbody>
@@ -88,6 +88,7 @@
           </div>
         </section>
         <ProjectDetailTabs
+          :project-id="route.params.id"
           :key="route.params.id"
           ref="detailTabsRef"
           v-model:active-tab="activeTab"
@@ -495,7 +496,10 @@ const withAll = options => [{ label: '全部', value: '全部' }, ...options]
 const managerFilterOptions = computed(() => withAll(managerOptions.value))
 const typeFilterOptions = computed(() => withAll(projectTypeFormOptions.value))
 const stageFilterOptions = computed(() => withAll(stageOptions.value))
-const projectStatusFilterOptions = computed(() => withAll(projectStatusOptions.value))
+const projectStatusFilterOptions = computed(() => withAll([
+  { label: '已完成（含逾期完成）', value: 'COMPLETED_OR_OVERDUE_COMPLETED' },
+  ...projectStatusOptions.value,
+]))
 const contractFilterOptions = computed(() => withAll(contractOptions.value))
 const groupOptions = [{ label: '项目经理', value: 'manager' }, { label: '项目阶段', value: 'stage' }, { label: '项目状态', value: 'status' }, { label: '项目类型', value: 'type' }, { label: '合同状态', value: 'contractStatus' }]
 
@@ -561,14 +565,15 @@ const groupedProjects = computed(() => {
   return Array.from(groups, ([value, rows]) => ({ value, label: `${labelMap[groupField.value]}：${value}`, rows }))
 })
 
-const detailTabs = [
+const canViewLogs = computed(() => isAdmin.value || (currentUserProfile.value?.permissions || []).includes('system:log:view'))
+const detailTabs = computed(() => [
   { key: 'gantt', label: '项目甘特图', icon: ProjectOutlined },
   { key: 'tasks', label: '任务列表', icon: ProfileOutlined },
   { key: 'bugs', label: 'Bug列表', icon: BugOutlined },
   { key: 'reports', label: '项目汇报', icon: FlagOutlined },
   { key: 'documents', label: '文档中心', icon: SnippetsOutlined },
-  { key: 'logs', label: '操作日志', icon: FileTextOutlined },
-]
+  ...(canViewLogs.value ? [{ key: 'logs', label: '操作日志', icon: FileTextOutlined }] : []),
+])
 const ganttSummaryData = reactive({ total: 0, completed: 0, overdue: 0, dueSoon: 0, overallProgress: 0 })
 const ganttSummary = computed(() => [{ label: '项目状态', value: currentProject.value?.status || '-', desc: `整体进度 ${ganttSummaryData.overallProgress}%`, class: 'gantt-progress', icon: ProjectOutlined }, { label: '延期任务', value: `${ganttSummaryData.overdue} 个`, desc: '需重点关注', class: 'risk-high', icon: WarningOutlined }, { label: '即将到期', value: `${ganttSummaryData.dueSoon} 个`, desc: '未来 3 天内到期', class: 'risk-due', icon: ClockCircleOutlined }])
 const ganttStatusColors = { 未开始: 'default', 启动逾期: 'orange', 进行中: 'processing', 即将到期: 'gold', 已逾期: 'red', 已完成: 'green', 逾期完成: 'volcano', 里程碑: 'green' }
@@ -886,6 +891,7 @@ const isReportOperationLog = (log, reportId, itemIds = []) => {
   return relatedBizIds.has(String(bizId || '')) && (REPORT_LOG_BIZ_TYPES.has(bizType) || REPORT_LOG_MODULES.has(module))
 }
 const fetchReportOperationLogs = async (reportId, itemIds = []) => {
+  if (!canViewLogs.value) return []
   try {
     const result = await getOperationLogs({
       module: 'project-report',
@@ -1134,6 +1140,7 @@ const handleReportFilterChange = async filter => {
 }
 
 const fetchProjectOperationLogs = async projectId => {
+  if (!canViewLogs.value) return
   operationLogLoading.value = true
   try {
     const query = {

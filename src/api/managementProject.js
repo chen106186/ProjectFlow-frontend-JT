@@ -33,10 +33,10 @@ export const deleteReportItem = (reportId, itemId) => request(`/api/project-repo
 
 export const getProjectFiles = params => request('/api/files', { params })
 export const getProjectFolders = params => request('/api/files/folders', { params })
-export const uploadProjectFile = data => request('/api/files', { method: 'POST', body: data })
+export const uploadProjectFile = (data, options = {}) => request('/api/files', { method: 'POST', body: data, ...options })
 export const deleteProjectFile = id => request(`/api/files/${id}`, { method: 'DELETE' })
 export const deleteProjectFiles = ids => request('/api/files/batch', { method: 'DELETE', body: { ids } })
-export const downloadProjectFile = id => download(`/api/files/${id}/download`)
+export const downloadProjectFile = (id, options = {}) => download(`/api/files/${id}/download`, options)
 export const createProjectFolder = data => request('/api/files/folders', { method: 'POST', body: data })
 export const deleteProjectFolder = id => request(`/api/files/folders/${id}`, { method: 'DELETE' })
 export const downloadProjectFiles = payload => download('/api/files/batch-download', { method: 'POST', body: payload })

@@ -1,27 +1,28 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 import AppLayout from '@/layouts/AppLayout.vue'
-import ChangePasswordView from '@/views/account/ChangePasswordView.vue'
-import NotificationCenter from '@/views/account/NotificationCenter.vue'
-import ProfileView from '@/views/account/ProfileView.vue'
-import BugManagementView from '@/views/bug-management-view/index.vue'
-import ExecutionProject from '@/views/execution-project/index.vue'
-import ExecutionProjectDetail from '@/views/execution-project/DetailView.vue'
-import HomeView from '@/views/HomeView.vue'
-import LoginView from '@/views/LoginView.vue'
-import ManagementProject from '@/views/management-project/index.vue'
-import ManagementProjectForm from '@/views/management-project/components/ManagementProjectForm.vue'
-import ModuleView from '@/views/ModuleView.vue'
-import DailyReportListView from '@/views/personal/DailyReportListView.vue'
-import DailyReportView from '@/views/personal/DailyReportView.vue'
-import PersonalRequirementDetailView from '@/views/personal/PersonalRequirementDetailView.vue'
-import PersonalRequirementView from '@/views/personal/PersonalRequirementView.vue'
-import TaskDetailView from '@/views/personal/TaskDetailView.vue'
-import BatchCreateTaskView from '@/views/BatchCreateTaskView.vue'
-import OperationLogManagement from '@/views/system-settings/OperationLogManagement.vue'
-import RoleManagement from '@/views/system-settings/RoleManagement.vue'
-import UserManagement from '@/views/system-settings/UserManagement.vue'
-import RequirementManagementView from '@/views/requirement-management/index.vue'
+const ChangePasswordView = () => import('@/views/account/ChangePasswordView.vue')
+const NotificationCenter = () => import('@/views/account/NotificationCenter.vue')
+const ProfileView = () => import('@/views/account/ProfileView.vue')
+const BugManagementView = () => import('@/views/bug-management-view/index.vue')
+const ExecutionProject = () => import('@/views/execution-project/index.vue')
+const ExecutionProjectDetail = () => import('@/views/execution-project/DetailView.vue')
+const HomeView = () => import('@/views/HomeView.vue')
+const LoginView = () => import('@/views/LoginView.vue')
+const ManagementProject = () => import('@/views/management-project/index.vue')
+const ManagementProjectForm = () => import('@/views/management-project/components/ManagementProjectForm.vue')
+const ModuleView = () => import('@/views/ModuleView.vue')
+const DailyReportListView = () => import('@/views/personal/DailyReportListView.vue')
+const DailyReportView = () => import('@/views/personal/DailyReportView.vue')
+const PersonalRequirementDetailView = () => import('@/views/personal/PersonalRequirementDetailView.vue')
+const PersonalRequirementView = () => import('@/views/personal/PersonalRequirementView.vue')
+const TaskDetailView = () => import('@/views/personal/TaskDetailView.vue')
+const BatchCreateTaskView = () => import('@/views/BatchCreateTaskView.vue')
+const OperationLogManagement = () => import('@/views/system-settings/OperationLogManagement.vue')
+const RoleManagement = () => import('@/views/system-settings/RoleManagement.vue')
+const UserManagement = () => import('@/views/system-settings/UserManagement.vue')
+const RequirementManagementView = () => import('@/views/requirement-management/index.vue')
+const WorkHubView = () => import('@/views/WorkHubView.vue')
 
 const moduleRoutes = [
   { path: 'personal/tasks', name: 'PersonalTasks', title: '我的任务', group: '个人工作' },
@@ -128,6 +129,12 @@ const router = createRouter({
             parentTitle: '执行类项目',
             isProjectPage: true,
           },
+        },
+        {
+          path: 'workhub',
+          name: 'WorkHub',
+          component: WorkHubView,
+          meta: { title: '项目工作台', group: '项目清单' },
         },
         {
           path: 'settings/users',

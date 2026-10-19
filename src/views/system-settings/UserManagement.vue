@@ -21,7 +21,7 @@
       <a-card class="prototype-card org-card" :bordered="false">
         <div class="org-toolbar">
           <a-space align="end">
-            <a-button type="primary" @click="handleAddDepartment">
+            <a-button v-if="isAdmin" type="primary" @click="handleAddDepartment">
               <template #icon><PlusOutlined /></template>
               新增
             </a-button>
@@ -38,7 +38,7 @@
           <template #title="node">
             <div class="department-node">
               <span>{{ node.title }}</span>
-              <a-space class="department-node__actions" :size="2">
+              <a-space v-if="isAdmin" class="department-node__actions" :size="2">
                 <a-button type="link" size="small" @click.stop="handleEditDepartment(node.key)">编辑</a-button>
                 <a-popconfirm title="确定删除该部门吗？" ok-text="删除" cancel-text="取消" @confirm="handleDeleteDepartment(node.key)">
                   <a-button type="link" size="small" danger @click.stop>删除</a-button>
@@ -79,8 +79,8 @@
             <template v-else-if="column.dataIndex === 'operation'">
               <a-space :size="2">
                 <a-button v-if="!isSuperAdminUser(record)" type="link" size="small" @click="handleEdit(record)">编辑</a-button>
-                <a-button v-if="!isSuperAdminUser(record)" type="link" size="small" @click="handleAssignRole(record)">分配角色</a-button>
-                <a-button type="link" size="small" @click="handleResetPwd(record)">重置密码</a-button>
+                <a-button v-if="isAdmin && !isSuperAdminUser(record)" type="link" size="small" @click="handleAssignRole(record)">分配角色</a-button>
+                <a-button v-if="isAdmin" type="link" size="small" @click="handleResetPwd(record)">重置密码</a-button>
               </a-space>
             </template>
             <template v-else>{{ record[column.dataIndex] }}</template>
@@ -138,7 +138,7 @@
         <a-form-item label="所属部门" name="departmentId">
           <a-select v-model:value="formState.departmentId" placeholder="请选择所属部门" :options="departmentOptionsWithoutAll" />
         </a-form-item>
-        <a-form-item v-if="modalMode === 'create'" label="角色" name="roleId">
+        <a-form-item v-if="modalMode === 'create' && isAdmin" label="角色" name="roleId">
           <a-select v-model:value="formState.roleId" placeholder="请选择角色" :options="roleOptions" allow-clear />
         </a-form-item>
         <a-form-item label="手机号" name="phone">
@@ -200,6 +200,7 @@ import { PlusOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref } from 'vue'
+import { getStoredProfile, isAdminProfile } from '@/utils/authScope'
 import {
   assignSystemUserRoles,
   createSystemDepartment,
@@ -213,6 +214,8 @@ import {
   updateSystemUser,
   updateSystemUserEnabled,
 } from '@/api/systemSettings'
+
+const isAdmin = isAdminProfile(getStoredProfile())
 
 const columns = [
   { title: '序号', dataIndex: 'index', width: 72 },

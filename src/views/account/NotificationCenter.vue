@@ -77,6 +77,7 @@ import { message } from 'ant-design-vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getNotices, markAllNoticesRead, markNoticeRead } from '@/api/notices'
+import { getNoticeRoute, notifyNoticeRead } from '@/utils/noticeNavigation'
 
 const router = useRouter()
 
@@ -176,35 +177,28 @@ const handleRead = async (item) => {
   if (!item.read) {
     try {
       await markNoticeRead(item.id)
+      notifyNoticeRead()
       item.read = true
       totalUnread.value = Math.max(0, totalUnread.value - 1)
       if (activeTab.value === 'unread') {
         pagedTotal.value = Math.max(0, pagedTotal.value - 1)
         notices.value = notices.value.filter(n => n.id !== item.id)
       }
-    } catch { /* silent */ }
+    } catch (error) { message.error(error.message || '标记已读失败') }
   }
   navigateTo(item)
 }
 
 const navigateTo = (item) => {
-  if (!item.businessId) return
-  const type = item.businessType
-  if (type === 'Task') {
-    router.push({ name: 'PersonalTaskDetail', params: { id: String(item.businessId) } })
-  } else if (type === 'Bug') {
-    router.push({ name: 'BugDetail', params: { id: String(item.businessId) } })
-  } else if (type === 'ManagementProject') {
-    router.push({ name: 'ManagementProjectDetail', params: { id: String(item.businessId) } })
-  } else if (type === 'ExecutionProject') {
-    router.push({ name: 'ExecutionProjectDetail', params: { id: String(item.businessId) } })
-  }
+  const target = getNoticeRoute(item)
+  if (target) router.push(target)
 }
 
 const handleMarkAll = async () => {
   markingAll.value = true
   try {
     await markAllNoticesRead()
+    notifyNoticeRead()
     totalUnread.value = 0
     notices.value.forEach(n => { n.read = true })
     if (activeTab.value === 'unread') {

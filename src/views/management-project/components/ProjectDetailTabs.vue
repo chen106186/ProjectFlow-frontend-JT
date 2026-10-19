@@ -92,6 +92,8 @@
               <a-button type="link" size="small" @click="resetTaskFilters">清除筛选</a-button>
             </a-space>
             <a-space class="task-table-filters">
+              <small v-if="activeRisk">请先清除风险筛选后导出</small>
+              <a-button :disabled="Boolean(activeRisk)" :loading="exporting" @click="exportRows('tasks', buildTaskFilters({ status: taskStatusFilter, assigneeId: taskPersonFilter }, { projectId }), 'tasks.xlsx')">导出任务</a-button>
               <a-select v-model:value="taskStatusFilter" :options="TASK_STATUS_OPTIONS" style="min-width:7.5rem" />
               <a-select v-model:value="taskPersonFilter" :options="taskPersonOptions" style="min-width:7.5rem" />
             </a-space>
@@ -123,6 +125,7 @@
               <a-button type="link" size="small" @click="resetBugFilters">清除筛选</a-button>
             </a-space>
             <a-space class="bug-table-filters">
+              <a-button :loading="exporting" @click="exportRows('bugs', buildBugFilters(bugFilterParams, { projectId }), 'bugs.xlsx')">导出 Bug</a-button>
               <a-select v-model:value="bugStatusFilter" :options="bugStatusFilters" />
               <a-select v-model:value="bugAssigneeFilter" :options="bugAssigneeOptions" />
             </a-space>
@@ -231,6 +234,7 @@
         <section v-if="activeTab === 'logs'" class="detail-panel">
           <a-card class="operation-lifecycle-card" :bordered="false" :loading="operationLogLoading">
             <template #title><span class="operation-lifecycle-card__title">操作日志</span></template>
+            <template #extra><a-button :loading="exporting" @click="exportRows('operation-logs', { module: 'project', businessType: 'Project', businessId: projectId }, 'operation-logs.xlsx')">导出日志</a-button></template>
             <a-empty v-if="!operationLogRows.length" description="暂无操作记录" />
             <a-timeline v-else class="operation-lifecycle-timeline">
               <a-timeline-item v-for="log in operationLogRows" :key="log.id" :color="log.operationColor">
@@ -252,8 +256,13 @@
 import { CheckCircleOutlined, ClockCircleOutlined, DeleteOutlined, DownloadOutlined, FileOutlined, FireOutlined, FolderAddOutlined, FolderOpenOutlined, PlusOutlined, UploadOutlined, WarningOutlined } from '@ant-design/icons-vue'
 import dayjs from 'dayjs'
 import { computed, reactive, ref, watch } from 'vue'
+import { useExport } from '@/composables/useExport'
+import { buildBugFilters, buildTaskFilters } from '@/utils/exportFilters'
+
+const { exporting, exportRows } = useExport()
 
 const props = defineProps({
+  projectId: { type: [String, Number], required: true },
   activeTab: { type: String, required: true },
   tabs: { type: Array, required: true },
   ganttSummary: { type: Array, required: true },

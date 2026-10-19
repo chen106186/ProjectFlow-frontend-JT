@@ -28,6 +28,7 @@
                     :key="notice.id"
                     :class="['notice-dropdown__item', { 'notice-dropdown__item--unread': !notice.read }]"
                     type="button"
+                    @click="handleRecentNoticeClick(notice)"
                   >
                     <span class="notice-dropdown__title">{{ notice.title }}</span>
                     <span class="notice-dropdown__content">{{ notice.content }}</span>
@@ -160,11 +161,13 @@ import {
   UsergroupAddOutlined,
   UserOutlined,
 } from '@ant-design/icons-vue'
-import { computed, onMounted, ref, watch } from 'vue'
+import { message } from 'ant-design-vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { getNotices } from '@/api/notices'
+import { getNotices, getUnreadCount, markNoticeRead } from '@/api/notices'
 import { getCurrentUser } from '@/api/system'
+import { getNoticeRoute, noticeReadEvent, notifyNoticeRead } from '@/utils/noticeNavigation'
 
 const route = useRoute()
 const router = useRouter()
@@ -237,6 +240,7 @@ const navigationItems = [
     label: '项目清单',
     icon: ProjectOutlined,
     children: [
+      { key: '/workhub', path: '/workhub', label: '项目工作台', accessCodes: ['project', 'task', 'bug', 'requirement'], matches: [path => path.startsWith('/workhub')] },
       {
         key: '/projects/management',
         path: '/projects/management',
@@ -308,6 +312,7 @@ const navigationItems = [
 ]
 
 const routeGroupMap = {
+  '/workhub': 'projects',
   '/personal': 'personal',
   '/projects': 'projects',
   '/tasks': 'tasks',
@@ -507,6 +512,7 @@ const saveAuthProfile = profile => {
     USER_INFO_KEY,
     JSON.stringify({
       userId: profile.id,
+      id: profile.id,
       realName: profile.realName,
     })
   )
@@ -532,10 +538,8 @@ const loadUnreadNoticeCount = async () => {
   }
 
   try {
-    const result = await getNotices({ pageNo: 1, pageSize: 200, read: false })
-    const records = result?.records || result?.data?.records || (Array.isArray(result) ? result : [])
-    
-    unreadNoticeCount.value = Number(result?.total ?? result?.data?.total ?? records.length) || 0
+    const result = await getUnreadCount()
+    unreadNoticeCount.value = Number(result?.count ?? result) || 0
   } catch {
     unreadNoticeCount.value = 0
   }
@@ -551,8 +555,9 @@ const loadRecentNotices = async () => {
   try {
     const result = await getNotices({ pageNo: 1, pageSize: 5 })
     recentNotices.value = result?.records || result?.data?.records || []
-  } catch {
+  } catch (error) {
     recentNotices.value = []
+    message.error(error.message || '通知加载失败')
   } finally {
     recentNoticesLoading.value = false
   }
@@ -568,6 +573,22 @@ const formatNoticeTime = value => {
 
 const handleNoticeDropdownOpen = open => {
   if (open) loadRecentNotices()
+}
+
+const handleRecentNoticeClick = async notice => {
+  if (!notice.read) {
+    try {
+      await markNoticeRead(notice.id)
+      notice.read = true
+      notifyNoticeRead()
+    } catch (error) {
+      message.error(error.message || '标记已读失败')
+    }
+  }
+  noticeDropdownOpen.value = false
+  const target = getNoticeRoute(notice)
+  if (target) await router.push(target)
+  else handleViewAllNotices()
 }
 
 const handleViewAllNotices = () => {
@@ -601,8 +622,11 @@ const loadCurrentUserProfile = async () => {
 }
 
 onMounted(async () => {
+  window.addEventListener(noticeReadEvent, loadUnreadNoticeCount)
   await loadCurrentUserProfile()
 })
+
+onBeforeUnmount(() => window.removeEventListener(noticeReadEvent, loadUnreadNoticeCount))
 
 watch(
   () => route.path,
