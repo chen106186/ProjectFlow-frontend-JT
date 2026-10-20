@@ -109,7 +109,6 @@
           <a-breadcrumb class="app-breadcrumb" separator="›">
             <a-breadcrumb-item v-for="(item, index) in breadcrumbItems" :key="item.title">
               <router-link v-if="item.path && index < breadcrumbItems.length - 1" :to="item.path">
-                <HomeOutlined v-if="index === 0" class="app-breadcrumb__icon" />
                 {{ item.title }}
               </router-link>
               <span v-else>{{ item.title }}</span>
@@ -930,9 +929,9 @@ const handleUserMenuClick = ({ key }) => {
   overflow-x: hidden;
   scrollbar-width: none;
   -ms-overflow-style: none;
-  background: rgb(255 255 255 / 66%);
-  border-right: 1px solid rgb(60 60 67 / 12%);
-  box-shadow: 10px 0 34px rgb(0 0 0 / 4%);
+  background: #f8f9fb;
+  border-right: 1px solid #e7e9ee;
+  box-shadow: none;
 }
 
 .app-sider::-webkit-scrollbar {
@@ -946,17 +945,20 @@ const handleUserMenuClick = ({ key }) => {
 }
 
 .app-sider :deep(.ant-layout-sider-trigger) {
-  color: #6e6e73;
-  background: rgb(255 255 255 / 70%);
-  border-top: 1px solid rgb(60 60 67 / 12%);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  color: #737d8c;
+  background: #f8f9fb;
+  border-top: 1px solid #e7e9ee;
 }
 
 .app-sider :deep(.ant-menu) {
-  padding: 12px 8px;
+  padding: 12px 10px;
   border-inline-end: none;
   background: transparent;
+}
+
+.app-sider :deep(.ant-menu-sub) {
+  padding: 2px 4px 6px;
+  background: transparent !important;
 }
 
 .app-sider :deep(.ant-menu-inline.ant-menu-root > .ant-menu-item),
@@ -965,22 +967,23 @@ const handleUserMenuClick = ({ key }) => {
   align-items: center;
   min-height: 42px;
   margin: 3px 0;
-  padding-inline-start: 16px !important;
-  color: #424245;
-  border-radius: 14px;
-  transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+  padding-inline-start: 13px !important;
+  color: #465061;
+  border-radius: 10px;
+  transition: background-color 0.18s ease, color 0.18s ease;
 }
 
 .app-sider :deep(.ant-menu-inline.ant-menu-root > .ant-menu-item:hover),
 .app-sider :deep(.ant-menu-inline.ant-menu-root > .ant-menu-submenu > .ant-menu-submenu-title:hover) {
-  color: #007aff;
-  background: rgb(0 122 255 / 7%);
+  color: #1d1d1f;
+  background: #edf1f5;
 }
 
 .app-sider :deep(.ant-menu-item-selected) {
-  color: #007aff !important;
-  background: rgb(0 122 255 / 12%) !important;
-  box-shadow: inset 0 0 0 1px rgb(0 122 255 / 8%);
+  color: #0869d9 !important;
+  background: #e5f0ff !important;
+  box-shadow: none;
+  font-weight: 600;
 }
 
 .app-sider :deep(.ant-menu-item-selected::after) {
@@ -1001,8 +1004,15 @@ const handleUserMenuClick = ({ key }) => {
   align-items: center;
   justify-content: center;
   text-align: center;
+  width: calc(100% - 8px);
+  height: 38px;
+  margin: 2px 4px;
+  color: #5b6573;
+  border-radius: 9px;
 }
 .app-sider :deep(.ant-menu-inline .ant-menu-sub .ant-menu-title-content) { flex: none; margin-inline: 0; text-align: center; }
+.app-sider :deep(.ant-menu-inline .ant-menu-sub .ant-menu-item:hover) { background: #edf1f5; color: #1d1d1f; }
+.app-sider :deep(.ant-menu-inline .ant-menu-sub .ant-menu-item-selected) { color: #0869d9; }
 
 .app-content {
   display: flex;
@@ -1021,22 +1031,20 @@ const handleUserMenuClick = ({ key }) => {
 
 .app-content__header {
   z-index: 5;
-  flex: 0 0 52px;
+  flex: 0 0 48px;
   display: flex;
   align-items: center;
   padding: 0 28px;
-  background: rgb(255 255 255 / 58%);
-  border-bottom: 1px solid rgb(60 60 67 / 10%);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 4%);
-  backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  background: rgb(250 251 253 / 88%);
+  border-bottom: 1px solid #e7e9ee;
+  backdrop-filter: saturate(160%) blur(16px);
+  -webkit-backdrop-filter: saturate(160%) blur(16px);
 }
-.app-breadcrumb { min-width: 0; padding: 6px 10px; background: rgb(255 255 255 / 70%); border: 1px solid rgb(60 60 67 / 9%); border-radius: 999px; }
-.app-breadcrumb :deep(.ant-breadcrumb-link a) { color: #667085; transition: color .18s ease; }
-.app-breadcrumb :deep(.ant-breadcrumb-link a:hover) { color: #007aff; }
-.app-breadcrumb :deep(.ant-breadcrumb-separator) { color: #a5afbd; margin-inline: 10px; }
-.app-breadcrumb :deep(.ant-breadcrumb li:last-child .ant-breadcrumb-link) { color: #1d1d1f; font-weight: 600; }
-.app-breadcrumb__icon { margin-right: 4px; }
+.app-breadcrumb { min-width: 0; font-size: 13px; line-height: 1.4; }
+.app-breadcrumb :deep(.ant-breadcrumb-link a) { color: #768192; font-weight: 500; transition: color .18s ease; }
+.app-breadcrumb :deep(.ant-breadcrumb-link a:hover) { color: #0869d9; }
+.app-breadcrumb :deep(.ant-breadcrumb-separator) { color: #adb5c0; margin-inline: 10px; }
+.app-breadcrumb :deep(li:last-child .ant-breadcrumb-link) { color: #2b3442; font-weight: 600; }
 
 .app-content__spin {
   flex: 1;

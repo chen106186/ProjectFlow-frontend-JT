@@ -23,7 +23,7 @@
       <a-table v-if="displayMode === 'list'" row-key="id" :columns="columns" :data-source="visibleProjects" :loading="loading" :pagination="false" :scroll="{ x: 980 }">
         <template #bodyCell="{ column, record, index, text }">
           <template v-if="column.dataIndex === 'index'">{{ (pagination.current - 1) * pagination.pageSize + index + 1 }}</template>
-          <template v-else-if="column.dataIndex === 'name'"><a-button type="link" class="table-link" @click="handleDetail(record)">{{ text }}</a-button></template>
+          <template v-else-if="column.dataIndex === 'name'"><button type="button" class="table-link" @click="handleDetail(record)">{{ text }}</button></template>
           <template v-else-if="column.dataIndex === 'status'"><a-tag color="processing">{{ text }}</a-tag></template>
           <template v-else-if="column.dataIndex === 'operation'">
             <a-space v-if="canManageProject(record)" :size="4">
@@ -46,7 +46,7 @@
           <a-table v-if="!collapsedGroups.includes(group.value)" row-key="id" :columns="columns" :data-source="group.rows" :pagination="false" :scroll="{ x: 980 }" :show-header="groupIndex === 0">
             <template #bodyCell="{ column, record, index, text }">
               <template v-if="column.dataIndex === 'index'">{{ index + 1 }}</template>
-              <template v-else-if="column.dataIndex === 'name'"><a-button type="link" class="table-link" @click="handleDetail(record)">{{ text }}</a-button></template>
+              <template v-else-if="column.dataIndex === 'name'"><button type="button" class="table-link" @click="handleDetail(record)">{{ text }}</button></template>
               <template v-else-if="column.dataIndex === 'status'"><a-tag color="processing">{{ text }}</a-tag></template>
               <template v-else-if="column.dataIndex === 'operation'">
                 <a-space v-if="canManageProject(record)" :size="4">
@@ -402,7 +402,9 @@ onMounted(async () => { await fetchReferenceData(); await fetchProjects() })
 .execution-list__display { display: flex; align-items: center; gap: 12px; color: #8c8c8c; }
 .execution-list__display :deep(.ant-select) { width: 132px; }
 .execution-list :deep(.ant-table-cell) { white-space: nowrap; }
-.table-link { height: auto; padding: 0; }
+.table-link { max-width: 100%; padding: 0; overflow: hidden; border: 0; background: transparent; color: #252b36; font: inherit; font-weight: 500; text-align: left; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.table-link:hover { color: #007aff; }
+.table-link:focus-visible { outline: 2px solid #007aff; outline-offset: 3px; border-radius: 3px; }
 .operation-icon-button { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border-radius: 6px; }
 .operation-icon-button :deep(svg) { width: 15px; height: 15px; }
 .execution-groups { min-height: 100%; }

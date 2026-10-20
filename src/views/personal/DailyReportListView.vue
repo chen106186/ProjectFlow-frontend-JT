@@ -47,11 +47,9 @@
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.dataIndex === 'content'">
-            <a-tooltip :title="getReportContent(record)">
-              <a-button type="link" class="daily-content-link" @click="viewReport(record)">
-                {{ getReportContent(record) }}
-              </a-button>
-            </a-tooltip>
+            <button type="button" class="daily-content-link" @click="viewReport(record)">
+              {{ getReportContent(record) }}
+            </button>
           </template>
           <template v-else-if="column.dataIndex === 'operation'">
             <a-tooltip title="查看">
@@ -152,7 +150,7 @@ const paginationState = reactive({
 const columns = [
   { title: '日期', dataIndex: 'reportDate', width: 160 },
   { title: '提交人', dataIndex: 'reporterName', width: 200 },
-  { title: '内容', dataIndex: 'content', ellipsis: true,minWidth:200 },
+  { title: '内容', dataIndex: 'content', minWidth: 260 },
   { title: '提交时间', dataIndex: 'updatedAt', width: 220 },
   { title: '操作', dataIndex: 'operation', width: 90 },
 ]
@@ -338,24 +336,26 @@ async function downloadReportFile(file) {
 }
 
 .daily-content-link {
-  display: block;
+  display: -webkit-box;
   width: 100%;
   max-width: 100%;
-  height: auto;
   padding: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  border: 0;
+  background: transparent;
+  color: #344054;
+  font: inherit;
+  line-height: 1.55;
   text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  cursor: pointer;
 }
 
-.daily-content-link :deep(span) {
-  display: block;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+.daily-content-link:hover { color: #007aff; }
+.daily-content-link:focus-visible { outline: 2px solid #007aff; outline-offset: 3px; border-radius: 3px; }
 
 .operation-icon-button { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border-radius: 6px; }
 .operation-icon-button :deep(svg) { width: 15px; height: 15px; }

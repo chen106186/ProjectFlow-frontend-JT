@@ -23,12 +23,12 @@
             <div class="workhub-grid">
               <a-card title="最近需求" size="small"><template #extra><a-button type="link" @click="openList('requirements')">查看全部</a-button></template>
                 <a-list :data-source="(overview.requirements || []).slice(0, 5)" size="small">
-                  <template #renderItem="{ item }"><a-list-item><a-button type="link" @click="openItem('REQUIREMENT', item.id)">#{{ item.requirementNo }} {{ item.title }}</a-button><a-tag>{{ item.status }}</a-tag></a-list-item></template>
+                  <template #renderItem="{ item }"><a-list-item><button type="button" class="workhub-text-link" @click="openItem('REQUIREMENT', item.id)">#{{ item.requirementNo }} {{ item.title }}</button><a-tag>{{ item.status }}</a-tag></a-list-item></template>
                 </a-list>
               </a-card>
               <a-card title="最近任务" size="small"><template #extra><a-button type="link" @click="openList('tasks')">查看全部</a-button></template>
                 <a-list :data-source="(overview.tasks || []).slice(0, 5)" size="small">
-                  <template #renderItem="{ item }"><a-list-item><a-button type="link" @click="openItem('TASK', item.id)">{{ item.name }}</a-button><a-tag :color="item.blockerReason ? 'red' : 'default'">{{ item.blockerReason ? '阻塞' : item.status }}</a-tag></a-list-item></template>
+                  <template #renderItem="{ item }"><a-list-item><button type="button" class="workhub-text-link" @click="openItem('TASK', item.id)">{{ item.name }}</button><a-tag :color="item.blockerReason ? 'red' : 'default'">{{ item.blockerReason ? '阻塞' : item.status }}</a-tag></a-list-item></template>
                 </a-list>
               </a-card>
               <a-card title="最近 Bug" size="small" class="workhub-panel"><template #extra><a-button type="link" @click="openList('bugs')">查看全部</a-button></template>
@@ -102,7 +102,7 @@
         <a-tab-pane key="all" :tab="allTitle">
           <a-table :data-source="allRows" :columns="allColumns" row-key="id" :loading="allLoading" :pagination="{ pageSize: 20 }">
             <template #bodyCell="{ column, record }">
-              <a-button v-if="column.dataIndex === 'title'" type="link" @click="openItem(allType, record.id)">{{ record.title || record.name }}</a-button>
+              <button v-if="column.dataIndex === 'title'" type="button" class="workhub-text-link" @click="openItem(allType, record.id)">{{ record.title || record.name }}</button>
               <a-tag v-else-if="column.dataIndex === 'status'" :color="allType === 'BUG' ? bugStatusColors[record.status] : 'default'">{{ allType === 'BUG' ? (bugStatusLabels[record.status] || record.status) : record.status }}</a-tag>
             </template>
           </a-table>
@@ -111,7 +111,7 @@
           <div class="workhub-search"><a-input v-model:value="searchText" allow-clear placeholder="输入需求、任务、Bug 的标题或编号" @press-enter="search" /><a-button type="primary" :loading="searching" @click="search">搜索</a-button></div>
           <a-table :data-source="searchResults" :columns="searchColumns" row-key="key" :loading="searching" :pagination="{ pageSize: 20 }">
             <template #bodyCell="{ column, record }">
-              <a-button v-if="column.dataIndex === 'title'" type="link" @click="openItem(record.type, record.id)">{{ record.title }}</a-button>
+              <button v-if="column.dataIndex === 'title'" type="button" class="workhub-text-link" @click="openItem(record.type, record.id)">{{ record.title }}</button>
               <span v-else-if="column.dataIndex === 'type'">{{ { REQUIREMENT: '需求', TASK: '任务', BUG: 'Bug' }[record.type] }}</span>
               <a-tag v-else-if="column.dataIndex === 'status'" :color="record.type === 'BUG' ? bugStatusColors[record.status] : 'default'">{{ record.type === 'BUG' ? (bugStatusLabels[record.status] || record.status) : record.status }}</a-tag>
             </template>
@@ -223,6 +223,12 @@ const load = async () => {
 fetchAllPages(getProjectList).then(items => {
   projects.value = items
   if (projectId.value) {
+    if (!items.some(project => String(project.id) === projectId.value)) {
+      projectId.value = undefined
+      router.replace({ name: 'WorkHub', query: { ...route.query, projectId: undefined } })
+      message.warning('项目链接已失效，请重新选择项目')
+      return
+    }
     const rootId = workhubRootProjectId(items, projectId.value)
     if (rootId !== projectId.value) {
       projectId.value = rootId
@@ -242,6 +248,11 @@ const changeProject = id => {
   load()
 }
 watch(() => route.query.projectId, value => {
+  if (value && projects.value.length && !projects.value.some(project => String(project.id) === String(value))) {
+    projectId.value = undefined
+    router.replace({ name: 'WorkHub', query: { ...route.query, projectId: undefined } })
+    return
+  }
   const next = value ? workhubRootProjectId(projects.value, value) : undefined
   if (next !== projectId.value) { projectId.value = next; bugPage.value = 1; filePage.value = 1; activityPage.value = 1; load() }
 })
@@ -337,6 +348,9 @@ const saveRelease = async () => {
 .workhub-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .workhub-grid :deep(.ant-list-item) { min-width: 0; }
 .workhub-grid :deep(.ant-list-item .ant-btn) { max-width: 80%; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+.workhub-text-link { max-width: 100%; overflow: hidden; padding: 0; border: 0; background: transparent; color: #344054; font: inherit; font-weight: 500; text-align: left; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.workhub-text-link:hover { color: #007aff; }
+.workhub-text-link:focus-visible { outline: 2px solid #007aff; outline-offset: 3px; border-radius: 3px; }
 .workhub-panel { min-width: 0; }
 .workhub-recent-list :deep(.ant-list-item) { display: flex; gap: 12px; min-height: 52px; }
 .workhub-item-link { display: flex; align-items: center; min-width: 0; flex: 1; gap: 9px; padding: 0; border: 0; background: transparent; color: #263445; cursor: pointer; text-align: left; }

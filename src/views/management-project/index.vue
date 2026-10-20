@@ -25,7 +25,7 @@
         <a-table v-if="displayMode === 'list'" row-key="id" :columns="projectColumns" :data-source="filteredProjects" :loading="projectLoading" :pagination="false" :scroll="{ x: 1480 }">
           <template #bodyCell="{ column, record, index, text }">
             <template v-if="column.dataIndex === 'index'">{{ (projectPagination.current - 1) * projectPagination.pageSize + index + 1 }}</template>
-            <template v-else-if="column.dataIndex === 'name'"><a-button type="link" class="table-link" @click="handleDetail(record)">{{ text }}</a-button></template>
+            <template v-else-if="column.dataIndex === 'name'"><button type="button" class="table-link" @click="handleDetail(record)">{{ text }}</button></template>
             <template v-else-if="column.dataIndex === 'status'"><a-tag color="green">{{ text }}</a-tag></template>
             <template v-else-if="column.dataIndex === 'contractStatus'"><a-tag color="green">{{ text }}</a-tag></template>
             <template v-else-if="column.dataIndex === 'operation'"><a-space v-if="canManageProject(record)"><a-button type="link" size="small" @click="handleEdit(record)"><EditOutlined /></a-button><a-popconfirm title="确定删除该项目吗？" @confirm="handleDelete(record)"><a-button type="link" size="small" danger><DeleteOutlined /></a-button></a-popconfirm></a-space></template>
@@ -37,7 +37,7 @@
             <a-table v-if="!isGroupCollapsed(group.value)" row-key="id" :columns="projectColumns" :data-source="group.rows" :pagination="false" :scroll="{ x: 1480 }" :show-header="groupIndex === 0">
               <template #bodyCell="{ column, record, index, text }">
                 <template v-if="column.dataIndex === 'index'">{{ index + 1 }}</template>
-                <template v-else-if="column.dataIndex === 'name'"><a-button type="link" class="table-link" @click="handleDetail(record)">{{ text }}</a-button></template>
+                <template v-else-if="column.dataIndex === 'name'"><button type="button" class="table-link" @click="handleDetail(record)">{{ text }}</button></template>
                 <template v-else-if="column.dataIndex === 'status'"><a-tag color="green">{{ text }}</a-tag></template>
                 <template v-else-if="column.dataIndex === 'contractStatus'"><a-tag color="green">{{ text }}</a-tag></template>
                 <template v-else-if="column.dataIndex === 'operation'"><a-space v-if="canManageProject(record)"><a-button type="link" size="small" @click="handleEdit(record)"><EditOutlined /></a-button><a-popconfirm title="确定删除该项目吗？" @confirm="handleDelete(record)"><a-button type="link" size="small" danger><DeleteOutlined /></a-button></a-popconfirm></a-space></template>
@@ -1914,7 +1914,9 @@ const handleDeleteReport = async record => {
 .project-group + .project-group { margin-top: 8px; }
 .project-group__header { display: flex; align-items: center; justify-content: space-between; height: 40px; padding: 0 14px; font-weight: 600; background: #fafafa; border-top: 1px solid #edf0f3; border-bottom: 1px solid #edf0f3; }
 .project-group__header button { display: inline-flex; gap: 8px; align-items: center; padding: 0; font-weight: 600; background: transparent; border: 0; cursor: pointer; }
-.table-link { height: auto; padding: 0; }
+.table-link { max-width: 100%; padding: 0; overflow: hidden; border: 0; background: transparent; color: #252b36; font: inherit; font-weight: 500; text-align: left; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.table-link:hover { color: #007aff; }
+.table-link:focus-visible { outline: 2px solid #007aff; outline-offset: 3px; border-radius: 3px; }
 .project-detail { min-height: 100%; overflow: visible; }
 .project-detail__heading { display: flex; align-items: center; gap: 16px; margin-bottom: 6px; }
 .project-detail__heading :deep(.ant-tag) { padding: 6px 14px; font-size: 16px; }

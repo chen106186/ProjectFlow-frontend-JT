@@ -544,11 +544,6 @@
 
     <template v-else>
       <section class="module-fallback">
-        <a-breadcrumb class="module-view__breadcrumb">
-          <a-breadcrumb-item>首页</a-breadcrumb-item>
-          <a-breadcrumb-item v-if="route.meta.group !== route.meta.title">{{ route.meta.group }}</a-breadcrumb-item>
-          <a-breadcrumb-item>{{ route.meta.title }}</a-breadcrumb-item>
-        </a-breadcrumb>
         <h1>{{ route.meta.title }}</h1>
         <a-card class="prototype-card" :bordered="false">
           <a-result status="info" title="页面基础路由已初始化" sub-title="当前优先完成个人工作模块，其余模块保留通用静态页。">
