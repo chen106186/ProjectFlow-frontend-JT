@@ -5,6 +5,7 @@ import { getNoticeRoute } from '../src/utils/noticeNavigation.js'
 import { fetchAllPages } from '../src/utils/pagination.js'
 import { buildBugFilters } from '../src/utils/exportFilters.js'
 import { deliveryProjectIds } from '../src/utils/deliveryProjects.js'
+import { workhubProjectOptions, workhubRootProjectId } from '../src/utils/workhubProjects.js'
 
 test('requirement creator edits while the assigned reviewer reviews', () => {
   const requirement = { createdBy: 11, reviewerId: 22 }
@@ -86,7 +87,19 @@ test('delivery scope includes related management and execution projects only', (
     { id: 100 }, { id: 200, managementProjectId: 100 },
     { id: 201, managementProjectId: 100 }, { id: 300 },
   ]
-  assert.deepEqual(deliveryProjectIds(projects, 100), [100, 200, 201])
-  assert.deepEqual(deliveryProjectIds(projects, 200), [200, 100])
-  assert.deepEqual(deliveryProjectIds(projects, 300), [300])
+  assert.deepEqual(deliveryProjectIds(projects, 100), ['100', '200', '201'])
+  assert.deepEqual(deliveryProjectIds(projects, 200), ['200', '100'])
+  assert.deepEqual(deliveryProjectIds(projects, 300), ['300'])
+})
+
+test('workhub groups linked projects and preserves nineteen-digit identifiers', () => {
+  const projects = [
+    { id: '2092058604511309800', name: 'AI玩具', projectType: 'MANAGEMENT' },
+    { id: '2092058628834078700', name: 'AI玩具', projectType: 'EXECUTION', managementProjectId: '2092058604511309800' },
+    { id: '2092058700000000000', name: '其他项目', projectType: 'MANAGEMENT' },
+  ]
+  assert.deepEqual(workhubProjectOptions(projects).map(option => option.value),
+    ['2092058604511309800', '2092058700000000000'])
+  assert.equal(workhubRootProjectId(projects, projects[1].id), projects[0].id)
+  assert.deepEqual(deliveryProjectIds(projects, projects[0].id), [projects[0].id, projects[1].id])
 })

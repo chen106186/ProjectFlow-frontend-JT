@@ -5,7 +5,7 @@ const root = '/api/workhub'
 export const getRequirementDelivery = id => request(`${root}/requirements/${id}/delivery`)
 export const setRequirementTasks = (id, taskIds) => request(`${root}/requirements/${id}/tasks`, { method: 'PUT', body: { taskIds } })
 export const acceptRequirement = (id, data) => request(`${root}/requirements/${id}/acceptance`, { method: 'PUT', body: data })
-export const getProjectOverview = id => request(`${root}/projects/${id}/overview`)
+export const getProjectOverview = (id, params = {}) => request(`${root}/projects/${id}/overview`, { params })
 export const listReleases = id => request(`${root}/projects/${id}/releases`)
 export const createRelease = data => request(`${root}/releases`, { method: 'POST', body: data })
 export const updateRelease = (id, data) => request(`${root}/releases/${id}`, { method: 'PUT', body: data })
