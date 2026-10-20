@@ -21,7 +21,6 @@
           <a-space>
             <a-button type="primary" @click="handleCreate"><PlusOutlined />新增Bug</a-button>
             <a-button :loading="exporting" @click="exportRows('bugs', buildBugFilters(queryParams), 'bugs.xlsx')">导出 Bug</a-button>
-            <SavedFilterBar scope="BUG" :filters="buildBugFilters(queryParams)" @apply="applySavedBugFilters" />
           </a-space>
           <div class="bug-list__group">
             <template v-if="displayMode === 'group'">
@@ -43,7 +42,7 @@
             :data-source="bugs"
             :pagination="false"
             :loading="listLoading"
-            :scroll="{ x: 1500, y: '100%' }"
+            :scroll="{ x: 900, y: '100%' }"
             size="middle"
             table-layout="fixed"
           >
@@ -62,13 +61,8 @@
                 <a-tag :color="statusColors[text]">{{ statusLabels[text] || text }}</a-tag>
               </template>
               <template v-else-if="column.dataIndex === 'solution'">
-                <a-tooltip :title="solutionHoverText(record)">
-                  <span class="bug-solution-cell">
-                    <a-tag v-if="text" :color="text === 'DEFERRED' ? 'orange' : 'blue'">{{ resolveSolutionLabels[text] || text }}</a-tag>
-                    <span v-else>-</span>
-                    <span v-if="solutionSummary(record)" class="bug-solution-note">{{ solutionSummary(record) }}</span>
-                  </span>
-                </a-tooltip>
+                <a-tag v-if="record.solution" :color="solutionTagColor(record.solution)">{{ resolveSolutionLabels[record.solution] || record.solution }}</a-tag>
+                <span v-else>-</span>
               </template>
               <template v-else-if="column.dataIndex === 'createdAt'">{{ formatDateTime(text) }}</template>
               <template v-else-if="column.dataIndex === 'resolvedDate'">{{ text || '-' }}</template>
@@ -109,7 +103,7 @@
                 :columns="columns.filter(c => c.dataIndex !== 'index')"
                 :data-source="group"
                 :pagination="false"
-                :scroll="{ x: 1500 }"
+                :scroll="{ x: 900 }"
                 size="middle"
                 table-layout="fixed"
               >
@@ -127,13 +121,8 @@
                     <a-tag :color="statusColors[text]">{{ statusLabels[text] || text }}</a-tag>
                   </template>
                   <template v-else-if="column.dataIndex === 'solution'">
-                    <a-tooltip :title="solutionHoverText(record)">
-                      <span class="bug-solution-cell">
-                        <a-tag v-if="text" :color="text === 'DEFERRED' ? 'orange' : 'blue'">{{ resolveSolutionLabels[text] || text }}</a-tag>
-                        <span v-else>-</span>
-                        <span v-if="solutionSummary(record)" class="bug-solution-note">{{ solutionSummary(record) }}</span>
-                      </span>
-                    </a-tooltip>
+                    <a-tag v-if="record.solution" :color="solutionTagColor(record.solution)">{{ resolveSolutionLabels[record.solution] || record.solution }}</a-tag>
+                    <span v-else>-</span>
                   </template>
                   <template v-else-if="column.dataIndex === 'createdAt'">{{ formatDateTime(text) }}</template>
                   <template v-else-if="column.dataIndex === 'resolvedDate'">{{ text || '-' }}</template>
@@ -457,7 +446,6 @@ import { request } from '@/utils/request'
 import { useExport } from '@/composables/useExport'
 import { getAllUsers } from '@/api/system'
 import { buildBugFilters } from '@/utils/exportFilters'
-import SavedFilterBar from '@/components/SavedFilterBar.vue'
 
 const route = useRoute()
 const { exporting, exportRows } = useExport()
@@ -506,17 +494,17 @@ const collapsedGroups = ref([])
 const queryParams = reactive({ keyword: '', projectId: route.query.projectId ? Number(route.query.projectId) : undefined, priority: undefined, status: undefined, creatorId: undefined, assigneeId: undefined, createdAtRange: [] })
 
 const columns = [
-  { title: '编号', dataIndex: 'bugNo', width: 80 },
-  { title: 'Bug标题', dataIndex: 'title', width: 360, ellipsis: true },
-  { title: '所属项目', dataIndex: 'projectName', width: 130, ellipsis: true },
-  { title: '严重等级', dataIndex: 'priority', width: 110 },
-  { title: '状态', dataIndex: 'status', width: 110 },
-  { title: '解决方案', dataIndex: 'solution', width: 210, ellipsis: true },
-  { title: '创建人', dataIndex: 'creatorName', width: 90 },
-  { title: '指定人', dataIndex: 'assigneeName', width: 90 },
-  { title: '创建时间', dataIndex: 'createdAt', width: 170 },
-  { title: '解决日期', dataIndex: 'resolvedDate', width: 120 },
-  { title: '操作', dataIndex: 'operation', width: 120, fixed: 'right' },
+  { title: '编号', dataIndex: 'bugNo', width: 65 },
+  { title: 'Bug标题', dataIndex: 'title', width: 260, ellipsis: true },
+  { title: '所属项目', dataIndex: 'projectName', width: 100, ellipsis: true },
+  { title: '严重等级', dataIndex: 'priority', width: 75 },
+  { title: '状态', dataIndex: 'status', width: 75 },
+  { title: '解决方案', dataIndex: 'solution', width: 95 },
+  { title: '创建人', dataIndex: 'creatorName', width: 75, responsive: ['xxl'] },
+  { title: '指定人', dataIndex: 'assigneeName', width: 75, responsive: ['xxl'] },
+  { title: '创建时间', dataIndex: 'createdAt', width: 145 },
+  { title: '解决日期', dataIndex: 'resolvedDate', width: 105, responsive: ['xxl'] },
+  { title: '操作', dataIndex: 'operation', width: 80 },
 ]
 
 const groupedBugs = computed(() => {
@@ -586,16 +574,6 @@ const handleReset = () => {
   Object.assign(queryParams, { keyword: '', projectId: undefined, priority: undefined, status: undefined, creatorId: undefined, assigneeId: undefined, createdAtRange: [] })
   current.value = 1
   loadBugs()
-}
-const applySavedBugFilters = filters => {
-  Object.assign(queryParams, {
-    keyword: filters.keyword || '', projectId: filters.projectId ? Number(filters.projectId) : undefined,
-    priority: filters.priority || undefined, status: filters.status || undefined,
-    creatorId: filters.creatorId ? Number(filters.creatorId) : undefined,
-    assigneeId: filters.assigneeId ? Number(filters.assigneeId) : undefined,
-    createdAtRange: [filters.createdFrom, filters.createdTo].filter(Boolean),
-  })
-  handleSearch()
 }
 const handleGroupPageChange = (page, size) => { current.value = page; pageSize.value = size; loadBugs() }
 
@@ -920,21 +898,7 @@ const resolveSolutionOptions = [
   { label: '不予解决', value: 'WONT_FIX' },
 ]
 const resolveSolutionLabels = Object.fromEntries(resolveSolutionOptions.map(item => [item.value, item.label]))
-const solutionText = bug => {
-  const html = bug?.resolveRemark || ''
-  if (!html) return ''
-  if (typeof DOMParser === 'undefined') return String(html).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
-  return new DOMParser().parseFromString(html, 'text/html').body.textContent?.replace(/\s+/g, ' ').trim() || ''
-}
-const solutionSummary = bug => {
-  const text = solutionText(bug)
-  return text.length > 16 ? `${text.slice(0, 16)}…` : text
-}
-const solutionHoverText = bug => [
-  resolveSolutionLabels[bug?.solution] || bug?.solution || '尚未解决',
-  bug?.resolvedDate ? `日期：${bug.resolvedDate}` : '',
-  solutionText(bug),
-].filter(Boolean).join(' · ')
+const solutionTagColor = solution => ({ RESOLVED: 'blue', DEFERRED: 'orange', WONT_FIX: 'default' })[solution] || 'geekblue'
 
 const resetResolveForm = () => {
   Object.assign(resolveForm, createDefaultResolveForm())
@@ -1150,9 +1114,6 @@ onMounted(async () => {
 .bug-list :deep(.ant-table-cell) { white-space: nowrap; }
 .bug-title-text { display: block; width: 100%; overflow: hidden; color: #1677ff; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 .bug-no { color: #1677ff; font-size: 12px; font-weight: 600; font-family: monospace; }
-.bug-solution-cell { display: flex; align-items: center; min-width: 0; overflow: hidden; }
-.bug-solution-cell :deep(.ant-tag) { flex: none; margin-inline-end: 6px; }
-.bug-solution-note { overflow: hidden; color: #667085; text-overflow: ellipsis; white-space: nowrap; }
 .recording-picker { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
 .recording-picker small, .recording-existing { width: 100%; color: #8c8c8c; }
 .recording-picker__selected { min-width: 0; overflow-wrap: anywhere; }
@@ -1471,11 +1432,16 @@ onMounted(async () => {
   }
 }
 :deep(.ant-modal-body) { padding-top: 10px; }
-@media (max-width: 960px) {
-  .bug-filter__form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 1440px) {
+  .bug-filter__form.app-filter-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .bug-filter__field--creator,
   .bug-filter__field--assignee,
   .bug-filter__field--date { grid-row: auto; grid-column: auto; }
-  .bug-filter__actions { grid-column: 2; }
+  .bug-filter__actions { grid-row: auto; grid-column: 2; }
+}
+@media (max-width: 680px) {
+  .bug-filter__form.app-filter-form { grid-template-columns: minmax(0, 1fr); }
+  .bug-filter__actions { grid-column: 1; justify-self: start; }
+  .bug-list__toolbar { align-items: flex-start; flex-wrap: wrap; gap: 12px; }
 }
 </style>

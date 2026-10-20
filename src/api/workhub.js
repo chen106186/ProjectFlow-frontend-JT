@@ -16,9 +16,6 @@ export const listWorkComments = (type, id) => request(`${root}/${type}/${id}/com
 export const getMentionCandidates = (type, id) => request(`${root}/${type}/${id}/mention-candidates`)
 export const addWorkComment = (type, id, data) => request(`${root}/${type}/${id}/comments`, { method: 'POST', body: data })
 export const searchWork = q => request(`${root}/search`, { params: { q } })
-export const listSavedViews = scope => request(`${root}/saved-views`, { params: { scope } })
-export const saveWorkView = data => request(`${root}/saved-views`, { method: 'POST', body: data })
-export const deleteWorkView = id => request(`${root}/saved-views/${id}`, { method: 'DELETE' })
 
 const workflow = id => `${root}/releases/${id}/workflow`
 export const getIterationWorkflow = id => request(workflow(id))

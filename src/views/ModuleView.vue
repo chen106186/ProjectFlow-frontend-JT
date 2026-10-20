@@ -138,7 +138,6 @@
               </a-button>
               <a-button v-if="route.name === 'AllTasks'" @click="router.push({ name: 'TaskBatchCreate' })">批量创建任务</a-button>
               <a-button :loading="exporting" @click="exportRows('tasks', getTaskFilters(), 'tasks.xlsx')">导出任务</a-button>
-              <SavedFilterBar scope="TASK" :filters="getTaskFilters()" @apply="applySavedTaskFilters" />
             </a-space>
             <div class="task-list__display">
               <template v-if="taskDisplayMode === 'group'">
@@ -734,7 +733,6 @@ import { buildBugFilters, buildTaskFilters } from '@/utils/exportFilters'
 import { formatDateTime } from '@/utils/dateTime'
 import { OPERATION_ACTIONS, OPERATION_MODULES, recordOperationLog } from '@/utils/operationLog'
 import { canViewAllStatistics, getStoredProfile } from '@/utils/authScope'
-import SavedFilterBar from '@/components/SavedFilterBar.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -1568,16 +1566,6 @@ const handleTaskSearch = () => {
   })
 }
 
-const applySavedTaskFilters = filters => {
-  taskFilter.value = {
-    keyword: filters.keyword || '', projectId: filters.projectId ? Number(filters.projectId) : undefined,
-    assigneeId: filters.assigneeId ? Number(filters.assigneeId) : undefined,
-    priority: filters.priority || undefined, status: filters.status || undefined,
-    plannedEndDate: filters.plannedEndDate ? dayjs(filters.plannedEndDate) : undefined,
-  }
-  taskCurrentPage.value = 1
-  loadTasks()
-}
 
 const handleTaskReset = () => {
   taskFilter.value = {

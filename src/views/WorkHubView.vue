@@ -4,7 +4,7 @@
       <div class="workhub-heading">
         <div><h2>项目工作台</h2><p>交付范围、当前阻塞和最近动态集中查看</p></div>
         <a-select v-model:value="projectId" show-search option-filter-prop="label" :options="projectOptions"
-          placeholder="选择项目" style="min-width: 280px" @change="changeProject" />
+          placeholder="选择项目" class="workhub-project-select" @change="changeProject" />
       </div>
       <a-tabs v-model:activeKey="activeTab">
         <a-tab-pane key="overview" tab="项目概览">
@@ -84,9 +84,7 @@
           </a-table>
         </a-tab-pane>
         <a-tab-pane key="search" tab="快速查找">
-          <div class="workhub-search"><a-input-search v-model:value="searchText" enter-button="搜索" allow-clear placeholder="输入需求、任务、Bug 的标题或编号" @search="search" />
-            <SavedFilterBar scope="GLOBAL" :filters="{ keyword: searchText }" @apply="applySearchView" />
-          </div>
+          <div class="workhub-search"><a-input-search v-model:value="searchText" enter-button="搜索" allow-clear placeholder="输入需求、任务、Bug 的标题或编号" @search="search" /></div>
           <a-table :data-source="searchResults" :columns="searchColumns" row-key="key" :loading="searching" :pagination="{ pageSize: 20 }">
             <template #bodyCell="{ column, record }">
               <a-button v-if="column.dataIndex === 'title'" type="link" @click="openItem(record.type, record.id)">{{ record.title }}</a-button>
@@ -117,7 +115,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { getProjectBugs, getProjectList, getProjectTasks } from '@/api/managementProject'
 import { listRequirements } from '@/api/requirements'
 import { createRelease, getProjectOverview, searchWork, updateRelease } from '@/api/workhub'
-import SavedFilterBar from '@/components/SavedFilterBar.vue'
 import { getStoredProfile, isAdminProfile } from '@/utils/authScope'
 import { formatDateTime } from '@/utils/dateTime'
 import { fetchAllPages } from '@/utils/pagination'
@@ -216,10 +213,6 @@ const search = async () => {
   catch (error) { message.error(error.message || '搜索失败') }
   finally { searching.value = false }
 }
-const applySearchView = filters => {
-  searchText.value = filters.keyword || ''
-  search()
-}
 const loadReleaseOptions = async () => {
   const ids = deliveryProjectIds(projects.value, projectId.value)
   const [requirements, tasks] = await Promise.all([
@@ -259,7 +252,8 @@ const saveRelease = async () => {
 
 <style scoped>
 .workhub-page { padding: 20px; }
-.workhub-heading, .workhub-toolbar { display: flex; justify-content: space-between; gap: 20px; align-items: center; }
+.workhub-heading, .workhub-toolbar { display: flex; justify-content: space-between; gap: 20px; align-items: center; flex-wrap: wrap; }
+.workhub-project-select { width: min(100%, 320px); }
 .workhub-heading h2 { margin: 0; }
 .workhub-heading p, .workhub-toolbar p { color: #7d8795; margin: 4px 0 0; }
 .workhub-stats { display: grid; grid-template-columns: repeat(6, minmax(110px, 1fr)); gap: 12px; margin: 12px 0 18px; }
@@ -269,9 +263,11 @@ const saveRelease = async () => {
 .workhub-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .workhub-grid :deep(.ant-list-item) { min-width: 0; }
 .workhub-grid :deep(.ant-list-item .ant-btn) { max-width: 80%; overflow: hidden; text-overflow: ellipsis; text-align: left; }
-.workhub-search { display: flex; gap: 12px; margin-bottom: 16px; align-items: center; }
+.workhub-search { width: min(100%, 760px); margin-bottom: 16px; }
+.workhub-search :deep(.ant-input-search) { width: 100%; }
 .release-checklist { padding: 4px 12px; }
 .release-checklist strong { display: block; margin: 8px 0; }
 .release-checklist p { margin: 6px 0; }
 @media (max-width: 1050px) { .workhub-stats { grid-template-columns: repeat(3, 1fr); } .workhub-grid { grid-template-columns: 1fr; } .workhub-search { flex-direction: column; align-items: stretch; } }
+@media (max-width: 600px) { .workhub-page { padding: 12px; } .workhub-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .workhub-project-select { width: 100%; } }
 </style>

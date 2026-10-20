@@ -34,7 +34,6 @@
           新增需求
         </a-button>
         <a-button :loading="exporting" @click="exportRows('requirements', buildRequirementFilters(query), 'requirements.xlsx')">导出需求</a-button>
-        <SavedFilterBar scope="REQUIREMENT" :filters="buildRequirementFilters(query)" @apply="applySavedRequirementFilters" />
         </a-space>
         <div class="req-list-display">
           <template v-if="displayMode === 'group'">
@@ -241,7 +240,6 @@ import { CheckCircleOutlined, CloseCircleOutlined, DownOutlined, EditOutlined, I
 import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import SavedFilterBar from '@/components/SavedFilterBar.vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { getProjectList } from '@/api/managementProject'
@@ -411,14 +409,6 @@ const handleReset = () => {
   Object.assign(query, { keyword: '', projectId: undefined, requirementType: undefined, priority: undefined, status: undefined })
   pagination.current = 1
   fetchData()
-}
-const applySavedRequirementFilters = filters => {
-  Object.assign(query, {
-    keyword: filters.keyword || '', projectId: filters.projectId ? Number(filters.projectId) : undefined,
-    requirementType: filters.requirementType || undefined,
-    priority: filters.priority || undefined, status: filters.status || undefined,
-  })
-  handleSearch()
 }
 
 const handlePageChange = (current, pageSize) => {

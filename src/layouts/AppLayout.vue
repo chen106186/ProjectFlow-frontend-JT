@@ -78,7 +78,7 @@
         collapsible
         theme="light"
       >
-        <a-menu mode="inline" :motion="{ css: false }" :open-keys="openKeys" :selected-keys="selectedKeys" @open-change="handleOpenChange">
+        <a-menu mode="inline" :inline-indent="0" :open-keys="openKeys" :selected-keys="selectedKeys" @open-change="handleOpenChange">
           <template v-for="item in visibleNavigation" :key="item.key">
             <a-sub-menu v-if="item.children?.length" :key="item.key">
               <template #icon><component :is="item.icon" /></template>
@@ -106,9 +106,10 @@
         ]"
       >
         <header v-if="profileReady && route.name !== 'Home'" class="app-content__header">
-          <a-breadcrumb>
+          <a-breadcrumb class="app-breadcrumb" separator="›">
             <a-breadcrumb-item v-for="(item, index) in breadcrumbItems" :key="item.title">
               <router-link v-if="item.path && index < breadcrumbItems.length - 1" :to="item.path">
+                <HomeOutlined v-if="index === 0" class="app-breadcrumb__icon" />
                 {{ item.title }}
               </router-link>
               <span v-else>{{ item.title }}</span>
@@ -199,6 +200,12 @@ const MENU_CACHE_KEYS = [
 ]
 
 const isSiderCollapsed = ref(false)
+let wasNarrowViewport = false
+const syncSiderForViewport = () => {
+  const narrow = window.innerWidth < 1100
+  if (narrow !== wasNarrowViewport) isSiderCollapsed.value = narrow
+  wasNarrowViewport = narrow
+}
 const openKeys = ref([])
 const profileLoading = ref(false)
 const profileReady = ref(false)
@@ -622,11 +629,16 @@ const loadCurrentUserProfile = async () => {
 }
 
 onMounted(async () => {
+  syncSiderForViewport()
+  window.addEventListener('resize', syncSiderForViewport)
   window.addEventListener(noticeReadEvent, loadUnreadNoticeCount)
   await loadCurrentUserProfile()
 })
 
-onBeforeUnmount(() => window.removeEventListener(noticeReadEvent, loadUnreadNoticeCount))
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', syncSiderForViewport)
+  window.removeEventListener(noticeReadEvent, loadUnreadNoticeCount)
+})
 
 watch(
   () => route.path,
@@ -985,8 +997,12 @@ const handleUserMenuClick = ({ key }) => {
 
 .app-sider :deep(.ant-menu-inline .ant-menu-sub .ant-menu-item) {
   padding-inline-start: 0 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
 }
+.app-sider :deep(.ant-menu-inline .ant-menu-sub .ant-menu-title-content) { flex: none; margin-inline: 0; text-align: center; }
 
 .app-content {
   display: flex;
@@ -1015,6 +1031,12 @@ const handleUserMenuClick = ({ key }) => {
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
 }
+.app-breadcrumb { min-width: 0; padding: 6px 10px; background: rgb(255 255 255 / 70%); border: 1px solid rgb(60 60 67 / 9%); border-radius: 999px; }
+.app-breadcrumb :deep(.ant-breadcrumb-link a) { color: #667085; transition: color .18s ease; }
+.app-breadcrumb :deep(.ant-breadcrumb-link a:hover) { color: #007aff; }
+.app-breadcrumb :deep(.ant-breadcrumb-separator) { color: #a5afbd; margin-inline: 10px; }
+.app-breadcrumb :deep(.ant-breadcrumb li:last-child .ant-breadcrumb-link) { color: #1d1d1f; font-weight: 600; }
+.app-breadcrumb__icon { margin-right: 4px; }
 
 .app-content__spin {
   flex: 1;
@@ -1116,5 +1138,11 @@ const handleUserMenuClick = ({ key }) => {
   .app-content__body--fixed-list {
     padding-bottom: 10px;
   }
+}
+@media (max-width: 640px) {
+  .app-brand span { display: none; }
+  .app-header { padding-inline: 12px; }
+  .app-content__header { padding-inline: 10px; }
+  .app-content__body { padding: 12px; }
 }
 </style>
