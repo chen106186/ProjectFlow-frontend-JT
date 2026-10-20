@@ -57,19 +57,29 @@
 
           <a-card :bordered="false" title="过程记录与凭证" class="iteration-record-card">
             <p class="iteration-tip">评审纪要、设计稿、测试报告、风险和决策按时间追加，已记录内容不可覆盖。</p>
+            <a-alert v-if="!canAddRecord" type="info" show-icon message="当前阶段暂不可追加记录或上传凭证；审批中请先撤回申请，已发布后仅可记录上线及跟进阶段。" class="iteration-record-alert" />
             <a-form layout="vertical" class="iteration-form">
-              <a-form-item label="记录类型"><a-select v-model:value="recordForm.recordType" :options="recordTypeOptions" /></a-form-item>
-              <a-form-item label="标题"><a-input v-model:value="recordForm.title" :maxlength="160" placeholder="例如：需求评审结论" /></a-form-item>
-              <a-form-item label="详细内容" class="iteration-form__wide"><a-textarea v-model:value="recordForm.content" :rows="3" :maxlength="4000" placeholder="记录讨论、问题、决定、结果或后续行动" /></a-form-item>
-              <a-form-item label="凭证链接" class="iteration-form__wide"><a-input v-model:value="recordForm.evidenceUrl" :maxlength="1000" placeholder="可填写评审文档、设计稿、测试报告或上线文件的 http(s) 链接" /></a-form-item>
+              <a-form-item label="记录类型"><a-select v-model:value="recordForm.recordType" :options="recordTypeOptions" :disabled="!canAddRecord" /></a-form-item>
+              <a-form-item label="标题"><a-input v-model:value="recordForm.title" :maxlength="160" :disabled="!canAddRecord" placeholder="例如：需求评审结论" /></a-form-item>
+              <a-form-item label="详细内容" class="iteration-form__wide"><a-textarea v-model:value="recordForm.content" :rows="3" :maxlength="4000" :disabled="!canAddRecord" placeholder="记录讨论、问题、决定、结果或后续行动" /></a-form-item>
+              <a-form-item label="凭证链接" class="iteration-form__wide"><a-input v-model:value="recordForm.evidenceUrl" :maxlength="1000" :disabled="!canAddRecord" placeholder="可填写评审文档、设计稿、测试报告或上线文件的 http(s) 链接" /></a-form-item>
             </a-form>
-            <a-button :loading="savingRecord" @click="saveRecord">追加记录</a-button>
+            <a-button :disabled="!canAddRecord" :loading="savingRecord" @click="saveRecord">追加记录</a-button>
+            <div class="iteration-upload">
+              <a-upload :file-list="evidenceFiles" :before-upload="selectEvidence" :disabled="!canAddRecord || uploadingEvidence"
+                :max-count="1" accept=".pdf,.docx,.xlsx,.pptx,.png,.jpg,.jpeg,.drawio,.md,.txt,.csv" @remove="removeEvidence">
+                <a-button :disabled="!canAddRecord || uploadingEvidence">选择本阶段凭证文件</a-button>
+              </a-upload>
+              <a-button type="primary" :disabled="!canAddRecord || !evidenceFiles.length" :loading="uploadingEvidence" @click="uploadEvidence">上传并留痕</a-button>
+              <span class="iteration-tip">单个文件不超过 50 MB；上传后不可删除，可继续上传新版本。</span>
+            </div>
             <a-timeline class="iteration-history">
               <a-timeline-item v-for="item in selectedRecords" :key="item.id">
                 <strong>{{ item.title }}</strong> <a-tag>{{ recordTypeLabels[item.recordType] || item.recordType }}</a-tag>
                 <small>{{ item.actorName || memberName(item.actorId) }} · {{ formatDateTime(item.createdAt) }}</small>
                 <p>{{ item.content }}</p>
                 <a v-if="item.evidenceUrl" :href="item.evidenceUrl" target="_blank" rel="noopener noreferrer">查看凭证</a>
+                <a-button v-if="item.fileId" type="link" class="iteration-download" @click="downloadEvidence(item)">下载凭证文件</a-button>
                 <details v-if="item.beforeJson || item.afterJson"><summary>查看变更前后内容</summary><pre>变更前：{{ item.beforeJson || '-' }}\n变更后：{{ item.afterJson || '-' }}</pre></details>
               </a-timeline-item>
             </a-timeline>
@@ -123,7 +133,8 @@ import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { addIterationRecord, decideReleaseApplication, getIterationWorkflow, saveReleaseApplication,
-  submitReleaseApplication, updateIterationStage, updateRelease, withdrawReleaseApplication } from '@/api/workhub'
+  submitReleaseApplication, updateIterationStage, updateRelease, uploadIterationEvidence, withdrawReleaseApplication } from '@/api/workhub'
+import { downloadProjectFile } from '@/api/managementProject'
 import { getStoredProfile } from '@/utils/authScope'
 import { formatDateTime } from '@/utils/dateTime'
 
@@ -134,6 +145,8 @@ const workflow = ref({ release: {}, stages: [], application: {}, records: [], me
 const loading = ref(false)
 const savingStage = ref(false)
 const savingRecord = ref(false)
+const uploadingEvidence = ref(false)
+const evidenceFiles = ref([])
 const savingApplication = ref(false)
 const submitting = ref(false)
 const deciding = ref(false)
@@ -153,7 +166,14 @@ const canManage = computed(() => !!workflow.value.canManage)
 const selectedStage = computed(() => stages.value.find(item => item.stageCode === selectedCode.value))
 const memberOptions = computed(() => (workflow.value.members || []).map(item => ({ value: item.id, label: item.name || `用户 ${item.id}` })))
 const selectedRecords = computed(() => (workflow.value.records || []).filter(item => item.stageCode === selectedCode.value))
-const canEditStage = computed(() => selectedCode.value !== 'PRODUCTION_RELEASE'
+const canAddRecord = computed(() => {
+  if (release.value.status === 'CANCELLED') return false
+  const released = release.value.status === 'RELEASED'
+  if (selectedCode.value === 'POST_RELEASE' || selectedCode.value === 'PRODUCTION_RELEASE') return released
+  return !released && !['SUBMITTED', 'APPROVED'].includes(application.value.status)
+})
+const canEditStage = computed(() => release.value.status !== 'CANCELLED'
+  && selectedCode.value !== 'PRODUCTION_RELEASE'
   && (selectedCode.value !== 'POST_RELEASE' || release.value.status === 'RELEASED')
   && (selectedCode.value === 'POST_RELEASE' || release.value.status !== 'RELEASED')
   && (canManage.value || String(selectedStage.value?.ownerId) === String(profile.id))
@@ -210,7 +230,7 @@ const load = async () => {
   finally { loading.value = false }
 }
 watch(() => route.params.id, load, { immediate: true })
-const selectStage = code => { selectedCode.value = code; syncStageForm() }
+const selectStage = code => { selectedCode.value = code; evidenceFiles.value = []; syncStageForm() }
 const saveStage = async () => {
   if (stageForm.status === 'COMPLETED' && (!stageForm.ownerId || !stageForm.actualEnd || !stageForm.conclusion.trim())) {
     message.warning('完成阶段需填写负责人、实际完成日期和结论'); return
@@ -229,6 +249,34 @@ const saveRecord = async () => {
     message.success('过程记录已追加')
   } catch (error) { message.error(error.message || '记录保存失败') }
   finally { savingRecord.value = false }
+}
+const selectEvidence = file => {
+  if (file.size > 50 * 1024 * 1024) { message.warning('凭证文件不能超过 50 MB'); return false }
+  evidenceFiles.value = [file]
+  return false
+}
+const removeEvidence = () => { evidenceFiles.value = [] }
+const uploadEvidence = async () => {
+  const file = evidenceFiles.value[0]
+  if (!file) return
+  uploadingEvidence.value = true
+  try {
+    applyWorkflow(await uploadIterationEvidence(route.params.id, selectedCode.value, file))
+    evidenceFiles.value = []
+    message.success('凭证文件已上传并留痕')
+  } catch (error) { message.error(error.message || '凭证上传失败') }
+  finally { uploadingEvidence.value = false }
+}
+const downloadEvidence = async item => {
+  try {
+    const result = await downloadProjectFile(item.fileId, { timeout: 300000 })
+    const url = URL.createObjectURL(result.blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = result.fileName || item.title
+    link.click()
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+  } catch (error) { message.error(error.message || '凭证下载失败') }
 }
 const saveApplication = async () => {
   if (Object.values(applicationForm).some(value => !value)) { message.warning('请完整填写上线申请单'); return }
@@ -294,6 +342,10 @@ const changeReleaseStatus = async status => {
 .iteration-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; }
 .iteration-form__wide { grid-column: 1 / -1; }
 .iteration-history { margin-top: 24px; }
+.iteration-record-alert { margin-bottom: 16px; }
+.iteration-upload { display: flex; flex-wrap: wrap; align-items: start; gap: 12px; margin-top: 16px; }
+.iteration-upload .iteration-tip { line-height: 32px; }
+.iteration-download { padding-left: 8px; }
 .iteration-history small { display: block; color: #98a2b3; }
 .iteration-history p { white-space: pre-wrap; margin: 8px 0; }
 .iteration-history pre { white-space: pre-wrap; word-break: break-word; font-size: 12px; }

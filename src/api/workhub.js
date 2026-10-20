@@ -24,6 +24,11 @@ const workflow = id => `${root}/releases/${id}/workflow`
 export const getIterationWorkflow = id => request(workflow(id))
 export const updateIterationStage = (id, code, data) => request(`${workflow(id)}/stages/${code}`, { method: 'PUT', body: data })
 export const addIterationRecord = (id, data) => request(`${workflow(id)}/records`, { method: 'POST', body: data })
+export const uploadIterationEvidence = (id, code, file) => {
+  const body = new FormData()
+  body.append('file', file)
+  return request(`${workflow(id)}/stages/${code}/files`, { method: 'POST', body, timeout: 300000 })
+}
 export const saveReleaseApplication = (id, data) => request(`${workflow(id)}/application`, { method: 'PUT', body: data })
 export const submitReleaseApplication = id => request(`${workflow(id)}/application/submit`, { method: 'POST' })
 export const decideReleaseApplication = (id, data) => request(`${workflow(id)}/application/decision`, { method: 'POST', body: data })
