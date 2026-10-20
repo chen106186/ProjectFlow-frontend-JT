@@ -568,6 +568,25 @@
           <a-form-item label="任务名称" required><a-input v-model:value="taskFormState.name" placeholder="请输入任务名称" /></a-form-item>
           <a-form-item label="负责人" required><a-select v-model:value="taskFormState.assigneeId" :options="taskUserOptions" placeholder="请选择负责人" /></a-form-item>
           <a-form-item label="角色"><a-select v-model:value="taskFormState.roleName" :options="roleOptions" allow-clear placeholder="请选择角色" /></a-form-item>
+          <a-form-item v-if="!editingTaskId" label="任务类型" required>
+            <a-select v-model:value="taskFormState.workType" :options="taskWorkTypeOptions" />
+          </a-form-item>
+          <template v-if="!editingTaskId && taskFormState.workType === 'FEATURE'">
+            <a-form-item label="关联需求" required><a-select v-model:value="taskFormState.requirementId" show-search option-filter-prop="label" :options="taskRequirementOptions" placeholder="选择本次开发对应的需求" /></a-form-item>
+          </template>
+          <template v-if="!editingTaskId && taskFormState.workType === 'RELEASE_EXECUTION'">
+            <a-divider orientation="left">上线安排</a-divider>
+            <a-form-item label="交付版本" required><a-select v-model:value="taskFormState.releaseId" show-search option-filter-prop="label" :options="taskReleaseOptions" placeholder="选择已有交付版本" /></a-form-item>
+            <a-form-item label="发布环境" required><a-input v-model:value="taskFormState.releaseEnvironment" placeholder="例如：生产环境" /></a-form-item>
+            <a-form-item label="上线开始" required><a-date-picker v-model:value="taskFormState.releaseWindowStart" show-time value-format="YYYY-MM-DDTHH:mm:ss" style="width:100%" /></a-form-item>
+            <a-form-item label="上线结束" required><a-date-picker v-model:value="taskFormState.releaseWindowEnd" show-time value-format="YYYY-MM-DDTHH:mm:ss" style="width:100%" /></a-form-item>
+            <a-form-item label="上线负责人" required><a-select v-model:value="taskFormState.releaseLeadId" show-search option-filter-prop="label" :options="taskUserOptions" /></a-form-item>
+            <a-form-item label="执行人员" required><a-select v-model:value="taskFormState.releaseOperatorIds" mode="multiple" show-search option-filter-prop="label" :options="taskUserOptions" /></a-form-item>
+            <a-form-item label="验证人员"><a-select v-model:value="taskFormState.releaseVerifierId" show-search option-filter-prop="label" :options="taskUserOptions" allow-clear /></a-form-item>
+            <a-form-item label="值守人员"><a-select v-model:value="taskFormState.releaseSupportIds" mode="multiple" show-search option-filter-prop="label" :options="taskUserOptions" /></a-form-item>
+            <a-form-item label="会议计划时间"><a-date-picker v-model:value="taskFormState.meetingPlannedAt" show-time value-format="YYYY-MM-DDTHH:mm:ss" style="width:100%" /></a-form-item>
+            <a-alert type="info" show-icon message="会议纪要、上线申请和实际报告在任务详情及版本档案中填写；上线执行任务不计入版本就绪检查。" />
+          </template>
           <a-form-item label="标签"><a-input v-model:value="taskFormState.tags" placeholder="多个标签用逗号分隔" /></a-form-item>
           <a-form-item v-if="editingTaskId" label="状态"><a-select v-model:value="taskFormState.status" :options="taskStatusSelectOptions" placeholder="请选择状态" /></a-form-item>
           <a-form-item label="优先级" required><a-select v-model:value="taskFormState.priority" :options="taskPrioritySelectOptions" placeholder="请选择优先级" /></a-form-item>
@@ -700,6 +719,8 @@ import dayjs from 'dayjs'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { createDailyReport, fetchDailyReports } from '@/api/dailyReports'
+import { listRequirements } from '@/api/requirements'
+import { listReleases } from '@/api/workhub'
 import {
   assignBug,
   closeBug,
@@ -771,6 +792,8 @@ const dailySubmitLoading = ref(false)
 const taskApiRows = ref([])
 const taskUsers = ref([])
 const taskProjects = ref([])
+const taskReleaseOptions = ref([])
+const taskRequirementOptions = ref([])
 const taskDictLabels = ref({ taskPriority: {}, taskStatus: {} })
 const taskPaginationTotal = ref(0)
 const taskListLoading = ref(false)
@@ -815,6 +838,7 @@ const taskFormState = ref({
   projectId: undefined,
   name: '',
   roleName: undefined,
+  workType: 'GENERAL',
   priority: undefined,
   assigneeId: undefined,
   status: undefined,
@@ -855,6 +879,29 @@ const taskModalTitle = computed(() => {
   if (taskModalMode.value === 'create') return '新建任务'
   if (isPersonalTasks.value) return '更新进度'
   return '编辑任务'
+})
+const taskWorkTypeOptions = [
+  { label: '普通任务', value: 'GENERAL' },
+  { label: '功能开发', value: 'FEATURE' },
+  { label: '上线执行', value: 'RELEASE_EXECUTION' },
+]
+watch(() => taskFormState.value.projectId, async id => {
+  taskReleaseOptions.value = []
+  taskRequirementOptions.value = []
+  if (!id || !taskEditOpen.value || editingTaskId.value) return
+  try {
+    const project = taskProjects.value.find(item => String(item.id) === String(id))
+    const ids = [...new Set([id, project?.managementProjectId].filter(Boolean))]
+    const [releases, requirementPages] = await Promise.all([
+      listReleases(id),
+      Promise.all(ids.map(projectId => listRequirements({ projectId, pageNo: 1, pageSize: 200 }))),
+    ])
+    if (String(taskFormState.value.projectId) !== String(id)) return
+    taskReleaseOptions.value = (releases || []).filter(item => !['RELEASED', 'CANCELLED'].includes(item.status))
+      .map(item => ({ value: item.id, label: `${item.name} · ${item.targetDate || '待定'}` }))
+    taskRequirementOptions.value = requirementPages.flatMap(page => page.records || [])
+      .map(item => ({ value: item.id, label: `#${item.requirementNo || item.id} ${item.title}` }))
+  } catch (error) { message.error(error.message || '需求和版本加载失败') }
 })
 const taskGroupOptions = [
   { label: '所属项目', value: 'project' },
@@ -1513,6 +1560,17 @@ const openTaskModal = (mode, record) => {
       projectId: undefined,
       name: '',
       roleName: route.name === 'TestingTasks' ? '测试' : (route.name === 'DevelopmentTasks' ? '开发' : undefined),
+      workType: route.name === 'DevelopmentTasks' ? 'FEATURE' : 'GENERAL',
+      requirementId: undefined,
+      releaseId: undefined,
+      releaseEnvironment: '生产环境',
+      releaseWindowStart: undefined,
+      releaseWindowEnd: undefined,
+      releaseLeadId: undefined,
+      releaseOperatorIds: [],
+      releaseVerifierId: undefined,
+      releaseSupportIds: [],
+      meetingPlannedAt: undefined,
       priority: undefined,
       assigneeId: undefined,
       status: undefined,
@@ -1612,10 +1670,24 @@ const handleTaskSubmit = async () => {
       if (!fs.projectId) { message.warning('请选择所属项目'); taskSubmitLoading.value = false; return }
       if (!fs.assigneeId) { message.warning('请选择负责人'); taskSubmitLoading.value = false; return }
       if (!fs.priority) { message.warning('请选择优先级'); taskSubmitLoading.value = false; return }
+      if (!editingTaskId.value && fs.workType === 'FEATURE' && !fs.requirementId) { message.warning('请选择关联需求'); return }
+      if (!editingTaskId.value && fs.workType === 'RELEASE_EXECUTION' &&
+        (!fs.releaseId || !fs.releaseEnvironment?.trim() || !fs.releaseWindowStart || !fs.releaseWindowEnd || !fs.releaseLeadId || !fs.releaseOperatorIds?.length)) {
+        message.warning('请完整填写上线版本、环境、时间和执行人员'); return
+      }
       body = {
         projectId: fs.projectId,
         name: fs.name,
         roleName: fs.roleName || undefined,
+        ...(!editingTaskId.value ? {
+          workType: fs.workType || 'GENERAL', requirementId: fs.workType === 'FEATURE' ? fs.requirementId : undefined,
+          releaseId: fs.workType === 'RELEASE_EXECUTION' ? fs.releaseId : undefined,
+          releaseEnvironment: fs.workType === 'RELEASE_EXECUTION' ? fs.releaseEnvironment?.trim() : undefined,
+          releaseWindowStart: fs.releaseWindowStart || undefined, releaseWindowEnd: fs.releaseWindowEnd || undefined,
+          releaseLeadId: fs.releaseLeadId, releaseOperatorIds: fs.releaseOperatorIds,
+          releaseVerifierId: fs.releaseVerifierId, releaseSupportIds: fs.releaseSupportIds,
+          meetingPlannedAt: fs.meetingPlannedAt || undefined,
+        } : {}),
         priority: fs.priority,
         assigneeId: fs.assigneeId,
         status: fs.status || undefined,

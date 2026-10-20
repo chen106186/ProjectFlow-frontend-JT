@@ -89,6 +89,10 @@
       </div>
 
       <a-card :bordered="false" title="上线申请单" class="iteration-application">
+        <a-alert v-if="workflow.releaseExecutionTaskId" type="info" show-icon class="iteration-record-alert">
+          <template #message>上线会议和实际报告记录在<a @click="router.push({ name: 'AllTaskDetail', params: { id: workflow.releaseExecutionTaskId } })">上线执行任务 #{{ workflow.releaseExecutionTaskId }}</a>，申请审批以本版本档案为准。</template>
+        </a-alert>
+        <a-alert v-else type="warning" show-icon class="iteration-record-alert" message="请先创建关联本版本的上线执行任务，再召开上线会议并提交申请。" />
         <div class="iteration-application__status">
           <a-tag :color="applicationColor[application.status] || 'default'">{{ applicationStatus[application.status] || '未填写' }}</a-tag>
           <span v-if="application.applicantId">申请人：{{ memberName(application.applicantId) }}</span>
@@ -132,7 +136,7 @@
 import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { addIterationRecord, decideReleaseApplication, getIterationWorkflow, saveReleaseApplication,
+import { addIterationRecord, decideReleaseApplication, getIterationWorkflow, getReleaseExecution, saveReleaseApplication,
   submitReleaseApplication, updateIterationStage, updateRelease, uploadIterationEvidence, withdrawReleaseApplication } from '@/api/workhub'
 import { downloadProjectFile } from '@/api/managementProject'
 import { getStoredProfile } from '@/utils/authScope'
@@ -142,6 +146,7 @@ const route = useRoute()
 const router = useRouter()
 const profile = getStoredProfile()
 const workflow = ref({ release: {}, stages: [], application: {}, records: [], members: [], canManage: false })
+const executionPlan = ref(null)
 const loading = ref(false)
 const savingStage = ref(false)
 const savingRecord = ref(false)
@@ -216,6 +221,11 @@ const syncApplicationForm = () => {
   const value = application.value
   for (const key of Object.keys(applicationForm)) applicationForm[key] = value[key]
     || (['approverId', 'windowStart', 'windowEnd'].includes(key) ? undefined : '')
+  if (!value.environment && executionPlan.value) {
+    applicationForm.environment = executionPlan.value.environment
+    applicationForm.windowStart = executionPlan.value.windowStart
+    applicationForm.windowEnd = executionPlan.value.windowEnd
+  }
 }
 const applyWorkflow = value => {
   workflow.value = value || workflow.value
@@ -225,7 +235,11 @@ const applyWorkflow = value => {
 }
 const load = async () => {
   loading.value = true
-  try { applyWorkflow(await getIterationWorkflow(route.params.id)) }
+  try {
+    const next = await getIterationWorkflow(route.params.id)
+    executionPlan.value = next.releaseExecutionTaskId ? await getReleaseExecution(next.releaseExecutionTaskId) : null
+    applyWorkflow(next)
+  }
   catch (error) { message.error(error.message || '迭代档案加载失败') }
   finally { loading.value = false }
 }

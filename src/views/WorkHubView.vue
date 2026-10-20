@@ -299,7 +299,8 @@ const loadReleaseOptions = async () => {
     Promise.all(ids.map(id => fetchAllPages(getProjectTasks, { projectId: id }))),
   ])
   requirementOptions.value = requirements.flat().map(item => ({ value: item.id, label: `${item.projectName || item.projectId} · ${item.requirementNo || item.id} · ${item.title}` }))
-  taskOptions.value = tasks.flat().map(item => ({ value: item.id, label: `${item.projectName || item.projectId} · ${item.name}` }))
+  taskOptions.value = tasks.flat().filter(item => item.workType !== 'RELEASE_EXECUTION')
+    .map(item => ({ value: item.id, label: `${item.projectName || item.projectId} · ${item.name}` }))
 }
 const openRelease = async record => {
   try { await loadReleaseOptions() }
