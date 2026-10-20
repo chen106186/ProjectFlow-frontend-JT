@@ -78,7 +78,7 @@
         collapsible
         theme="light"
       >
-        <a-menu mode="inline" :open-keys="openKeys" :selected-keys="selectedKeys" @open-change="handleOpenChange">
+        <a-menu mode="inline" :motion="{ css: false }" :open-keys="openKeys" :selected-keys="selectedKeys" @open-change="handleOpenChange">
           <template v-for="item in visibleNavigation" :key="item.key">
             <a-sub-menu v-if="item.children?.length" :key="item.key">
               <template #icon><component :is="item.icon" /></template>
@@ -231,7 +231,7 @@ const navigationItems = [
       { key: '/personal/statistics', path: '/personal/statistics', label: '我的统计', accessCodes: ANY_WORK_CODES, matches: [path => path === '/personal/statistics'] },
       { key: '/personal/tasks', path: '/personal/tasks', label: '我的任务', accessCodes: ['task'], matches: [path => path.startsWith('/personal/tasks')] },
       { key: '/personal/requirements', path: '/personal/requirements', label: '我的需求', accessCodes: ['requirement'], matches: [path => path.startsWith('/personal/requirements')] },
-      { key: '/personal/bugs', path: '/personal/bugs', label: '我的 Bug', accessCodes: ['bug'], matches: [path => path === '/personal/bugs'] },
+      { key: '/personal/bugs', path: '/personal/bugs', label: '我的 Bug', accessCodes: [], matches: [path => path === '/personal/bugs'] },
       { key: '/personal/daily', path: '/personal/daily', label: '我的日报', accessCodes: ['daily-report'], matches: [path => path.startsWith('/personal/daily')] },
      ],
   },
@@ -280,7 +280,7 @@ const navigationItems = [
     path: '/bugs',
     label: 'Bug 列表',
     icon: BugOutlined,
-    accessCodes: ['bug'],
+    accessCodes: [],
     matches: [path => path.startsWith('/bugs')],
   },
   {
@@ -916,11 +916,15 @@ const handleUserMenuClick = ({ key }) => {
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   background: rgb(255 255 255 / 66%);
   border-right: 1px solid rgb(60 60 67 / 12%);
   box-shadow: 10px 0 34px rgb(0 0 0 / 4%);
-  backdrop-filter: saturate(180%) blur(24px);
-  -webkit-backdrop-filter: saturate(180%) blur(24px);
+}
+
+.app-sider::-webkit-scrollbar {
+  display: none;
 }
 
 .app-sider :deep(.ant-layout-sider-children) {
@@ -976,6 +980,11 @@ const handleUserMenuClick = ({ key }) => {
   flex: 0 0 16px;
   width: 16px;
   margin-inline-end: 10px;
+  text-align: center;
+}
+
+.app-sider :deep(.ant-menu-inline .ant-menu-sub .ant-menu-item) {
+  padding-inline-start: 0 !important;
   text-align: center;
 }
 

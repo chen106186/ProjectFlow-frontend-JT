@@ -721,6 +721,7 @@ import {
   getProjectBugs,
   getProjectFiles,
   getProjectList,
+  getBugProjectOptions,
   getProjectTasks,
   getTaskById,
   updateBug,
@@ -1151,10 +1152,10 @@ async function fetchBugModuleData() {
     const [dicts, users, projects] = await Promise.all([
       getDicts(),
       getAllUsers({ enabled: true }),
-      getProjectList({ pageNo: 1, pageSize: 200, projectType: 'MANAGEMENT' }),
+      getBugProjectOptions(),
     ])
     bugUsers.value = users
-    bugProjects.value = projects.records || []
+    bugProjects.value = projects || []
     // reuse taskPriority dict for bug priority labels
     const priorityItems = dicts.find(item => item.type === 'taskPriority')?.items || []
     if (priorityItems.length && !Object.keys(taskDictLabels.value.taskPriority).length) {

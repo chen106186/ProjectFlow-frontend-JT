@@ -19,6 +19,7 @@ export const updateGanttNode = (projectId, nodeId, data) => request(`/api/projec
 
 export const getProjectTasks = params => request('/api/tasks', { params })
 export const getProjectBugs = params => request('/api/bugs', { params })
+export const getBugProjectOptions = () => request('/api/bugs/project-options')
 export const getProjectBugSummary = params => request('/api/bugs/summary', { params })
 
 export const getProjectReports = params => request('/api/project-reports', { params })

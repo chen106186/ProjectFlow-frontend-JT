@@ -45,6 +45,9 @@ test('requirement and task notices open their matching detail routes', () => {
     name: 'PersonalTaskDetail', params: { id: '7' },
   })
   assert.equal(getNoticeRoute({ businessType: 'SYSTEM' }), null)
+  assert.deepEqual(getNoticeRoute({ businessType: 'Project', businessId: 100 }), {
+    name: 'WorkHub', query: { projectId: '100', tab: 'releases' },
+  })
 })
 
 test('personnel selection loads beyond 200 records using valid page sizes', async () => {

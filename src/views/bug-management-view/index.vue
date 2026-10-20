@@ -448,13 +448,14 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, shallowR
 import { useRoute, useRouter } from 'vue-router'
 import {
   getProjectBugs, getBugById, createBug, updateBug, closeBug, reopenBug, assignBug,
-  addBugComment, listBugComments, getProjectList, getProjectTasks, getSystemUsers, resolveBug,
+  addBugComment, listBugComments, getBugProjectOptions, getProjectTasks, resolveBug,
   getProjectFiles, uploadProjectFile, downloadProjectFile, deleteProjectFile,
 } from '@/api/managementProject'
 import TinymceEditor from '@/components/TinymceEditor.vue'
 import { formatDateTime } from '@/utils/dateTime'
 import { request } from '@/utils/request'
 import { useExport } from '@/composables/useExport'
+import { getAllUsers } from '@/api/system'
 import { buildBugFilters } from '@/utils/exportFilters'
 import SavedFilterBar from '@/components/SavedFilterBar.vue'
 
@@ -492,9 +493,7 @@ const currentUserId = computed(() => {
 })
 const projectOptions = computed(() => projects.value.map(p => ({ label: p.name, value: p.id })))
 const userOptions = computed(() => users.value.map(u => ({ label: u.realName, value: u.id })))
-const bugFormUserOptions = computed(() => users.value
-  .filter(user => String(user.id) !== String(currentUserId.value))
-  .map(user => ({ label: user.realName, value: user.id })))
+const bugFormUserOptions = computed(() => users.value.map(user => ({ label: user.realName, value: user.id })))
 
 const bugs = ref([])
 const total = ref(0)
@@ -893,7 +892,8 @@ const loadRelatedTasks = async projectId => {
         .map(task => ({ label: task.name, value: task.id }))
     }
   } catch (error) {
-    message.error(error.message || '关联任务加载失败')
+    // 任何员工都能提交 Bug；无项目任务权限时保持关联任务为空即可。
+    relatedTaskOptions.value = []
   } finally {
     relatedTaskLoading.value = false
   }
@@ -1109,11 +1109,11 @@ onBeforeUnmount(() => {
 
 onMounted(async () => {
   const [projectRes, userRes] = await Promise.all([
-    getProjectList({ projectType: 'MANAGEMENT', pageSize: 200 }).catch(() => ({ records: [] })),
-    getSystemUsers({ pageSize: 200 }).catch(() => ({ records: [] })),
+    getBugProjectOptions().catch(() => []),
+    getAllUsers({ enabled: true }).catch(() => []),
   ])
-  projects.value = projectRes.records || []
-  users.value = userRes.records || []
+  projects.value = projectRes || []
+  users.value = userRes || []
 })
 </script>
 

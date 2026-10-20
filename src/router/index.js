@@ -23,6 +23,7 @@ const RoleManagement = () => import('@/views/system-settings/RoleManagement.vue'
 const UserManagement = () => import('@/views/system-settings/UserManagement.vue')
 const RequirementManagementView = () => import('@/views/requirement-management/index.vue')
 const WorkHubView = () => import('@/views/WorkHubView.vue')
+const IterationView = () => import('@/views/IterationView.vue')
 
 const moduleRoutes = [
   { path: 'personal/tasks', name: 'PersonalTasks', title: '我的任务', group: '个人工作' },
@@ -135,6 +136,12 @@ const router = createRouter({
           name: 'WorkHub',
           component: WorkHubView,
           meta: { title: '项目工作台', group: '项目清单' },
+        },
+        {
+          path: 'workhub/releases/:id',
+          name: 'IterationDetail',
+          component: IterationView,
+          meta: { title: '版本迭代档案', group: '项目清单', parentTitle: '项目工作台' },
         },
         {
           path: 'settings/users',

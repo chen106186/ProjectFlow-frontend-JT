@@ -4,6 +4,7 @@ export const notifyNoticeRead = () => window.dispatchEvent(new Event(noticeReadE
 
 export const getNoticeRoute = notice => {
   if (!notice?.businessId) return null
+  if (notice.businessType === 'Project') return { name: 'WorkHub', query: { projectId: String(notice.businessId), tab: 'releases' } }
   const names = {
     Task: 'PersonalTaskDetail',
     Bug: 'BugDetail',

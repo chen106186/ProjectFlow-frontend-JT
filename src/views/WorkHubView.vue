@@ -50,7 +50,10 @@
                 <template v-if="column.dataIndex === 'status'"><a-tag :color="record.status === 'RELEASED' ? 'green' : record.ready ? 'blue' : 'orange'">{{ releaseStatus[record.status] || record.status }}</a-tag></template>
                 <template v-else-if="column.dataIndex === 'scope'">{{ record.requirements?.length || 0 }} 项需求 / {{ record.tasks?.length || 0 }} 项任务</template>
                 <template v-else-if="column.dataIndex === 'ready'"><a-tag :color="record.ready ? 'green' : 'red'">{{ record.ready ? '可交付' : '待处理' }}</a-tag>未关闭 Bug {{ record.openBugCount || 0 }}<span v-if="record.invalidLinkedTaskCount"> · 异常关联任务 {{ record.invalidLinkedTaskCount }}</span></template>
-                <template v-else-if="column.dataIndex === 'operation'"><a-button v-if="canManageProject && record.status !== 'RELEASED'" type="link" @click="openRelease(record)">编辑 / 流转</a-button></template>
+                <template v-else-if="column.dataIndex === 'operation'"><a-space>
+                  <a-button type="link" @click="router.push({ name: 'IterationDetail', params: { id: record.id } })">迭代档案</a-button>
+                  <a-button v-if="canManageProject && record.status !== 'RELEASED'" type="link" @click="openRelease(record)">编辑范围</a-button>
+                </a-space></template>
               </template>
               <template #expandedRowRender="{ record }">
                 <div class="release-checklist">
@@ -165,7 +168,7 @@ const availableReleaseStatuses = computed(() => releaseStatusOptions.filter(opti
 const releaseColumns = [
   { title: '版本', dataIndex: 'name' }, { title: '计划交付', dataIndex: 'targetDate', width: 120 },
   { title: '范围', dataIndex: 'scope', width: 180 }, { title: '就绪检查', dataIndex: 'ready', width: 190 },
-  { title: '状态', dataIndex: 'status', width: 120 }, { title: '操作', dataIndex: 'operation', width: 130 },
+  { title: '状态', dataIndex: 'status', width: 120 }, { title: '操作', dataIndex: 'operation', width: 200 },
 ]
 const searchColumns = [
   { title: '类型', dataIndex: 'type', width: 100 }, { title: '编号', dataIndex: 'number', width: 110 },
